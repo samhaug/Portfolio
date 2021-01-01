@@ -80,7 +80,7 @@ def Radon_forward(t,p,R,delta,ref_dist,line_model):
     # Loop through each frequency.
     freqs = int(np.floor((iF+1)/2.))
     for i in range(freqs):
-        print 100*(float(i)/freqs)
+        print(100*(float(i)/freqs))
         # Make time-shift matrix, A.
         f=(i/float(iF))*dF
         A=np.exp((2j*np.pi*f)*Tshift)
@@ -215,7 +215,7 @@ def Radon_inverse(t,delta,M,p,weights,ref_dist,line_model,inversion_model,\
     #for i in range(int(np.floor((iF+1)/2.))):
     freq_c = int(np.floor((iF+1)/2.))
     for i in range(0,freq_c):
-        print 100*float(i)/freq_c
+        print(100*float(i)/freq_c)
         #for i in range(0,3):
         # Make time-shift matrix, A.
         f=((i)/float(iF))*dF

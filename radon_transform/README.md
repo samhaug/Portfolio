@@ -1,13 +1,20 @@
-# China_ScSn_code
+# Radon\_Transform
 
-This directory has the scripts neccessary to create a CRP stack of ScS reverberations given a data h5 stream and a corresponding synth h5 stream.
+This directory has the scripts neccessary to perform a radon transformation
+on an h5 directory of seismograms to remove noise from specific incidence angles
+and travel times. Useful for extracting signals buried in noise.
+
+The figure demonstrating the effect of filtering is S2 in Supplemental.pdf
+
+
+#Workflow steps
 
 execute\_mouveout.h5 runs steps 2-5 in serial. radon\_transform need user interaction to mask the ScS reverberations.
 Workflow:
 
 1. Use radon\_transform.py to create radon.h5 stream files. These are used for migration
 
-2. Use extract\_data\_reverb.py to make a reverb.h5 files. This code needs a synthetic and data h5 stream file. It uses cross correlation to find the reverb intervals in the data.
+2: Use extract\_data\_reverb.py to make a reverb.h5 files. This code needs a synthetic and data h5 stream file. It uses cross correlation to find the reverb intervals in the data.
 
 3. Use deconvolve.py on each of the reverb.h5 files. This code needs to be run ffor synthetic and data. Name the output files synth\_deconvolve.h5 and data\_deconvolve.h5 as a convention.
 

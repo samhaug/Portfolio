@@ -4,7 +4,7 @@
 ==============================================================================
 
 File Name : radon_transform.py
-Purpose : apply radon transform to trace.
+Purpose : Apply radon transform to seismograms.
 Creation Date : 19-03-2018
 Last Modified : Mon 07 May 2018 09:35:31 AM EDT
 Created By : Samuel M. Haugland
@@ -12,13 +12,7 @@ Created By : Samuel M. Haugland
 ==============================================================================
 '''
 
-import numpy as np
-from matplotlib import pyplot as plt
-import h5py
-import obspy
 import argparse
-import Radon
-from PIL import Image,ImageDraw
 
 def main():
     parser = argparse.ArgumentParser(description='Radon transform')
@@ -29,6 +23,13 @@ def main():
     parser.add_argument('--read', metavar='T/F',type=str,
                         help='read from existing radon datfile',default='False')
     args = parser.parse_args()
+
+    import Radon
+    from PIL import Image,ImageDraw
+    import numpy as np
+    from matplotlib import pyplot as plt
+    import h5py
+    import obspy
 
     std = obspy.read(args.data)
     sts = obspy.read(args.synth)
@@ -157,7 +158,7 @@ def block_stream(st):
     st.interpolate(2)
     st.filter('bandpass',freqmin=1./100,freqmax=1./10,zerophase=True)
     for idx,tr in enumerate(st):
-        if tr.stats.o < 0:
+        if tr.stats.sac['o'] < 0:
             z = np.zeros(int(np.abs(tr.stats.o)*tr.stats.sampling_rate))
             st[idx].data = np.hstack((z,tr.data))
         elif tr.stats.o > 0:
