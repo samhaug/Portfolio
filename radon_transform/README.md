@@ -4,10 +4,10 @@ This directory has the scripts neccessary to perform a radon transformation
 on an h5 directory of seismograms to remove noise from specific incidence angles
 and travel times. Useful for extracting signals buried in noise.
 
-The figure demonstrating the effect of filtering is S2 in Supplemental.pdf
+**The figure demonstrating the effect of filtering is S2 in Supplemental.pdf**
 
 
-#Workflow steps
+## Workflow steps
 
 execute\_mouveout.h5 runs steps 2-5 in serial. radon\_transform need user interaction to mask the ScS reverberations.
 Workflow:
