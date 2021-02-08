@@ -1,5 +1,0 @@
-      subroutine perform(nhashg)
-      commmon/perfmce/nhash
-      nhashg=nhash
-      return
-      end
