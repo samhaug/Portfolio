@@ -1,0 +1,47 @@
+      parameter (mxstat=100)
+      parameter (mxspn=220)
+      parameter (mxform=40)
+      parameter (mxcmnt=9999)
+      parameter (mxgnab=50)
+      parameter (mxunab=20)
+      parameter (mxchan=300)
+      parameter (mxresp=10000)
+      parameter (mxstwn=100)
+      parameter (mxchwn=20)
+      parameter (mxflwn=10)
+      parameter (mxpces=50000)
+      parameter (mxchprm=19)
+      parameter (MXSTAGE=10)
+      character*3 vform,chwant
+      character*5 stcode,stwant
+      character*70 comnts
+      character*50 gnabbr
+      character*1 cclass,flwant
+      character*20 unnam
+      character*50 undsc
+      double precision tstpc
+      common/cgsnr/stwant(mxstwn),chwant(mxchwn),flwant(mxflwn)
+     1  ,vform,stcode(mxstat),comnts(mxcmnt),cclass(mxcmnt)
+     1  ,gnabbr(mxgnab),unnam(0:mxunab),undsc(mxunab)
+      common/igsnr/iwntch,nwntst,nwntch,nwntfl
+     1            ,iyear1,jday1,ihr1,min1,fsec1,jsec1v
+     1            ,iyear2,jday2,ihr2,min2,fsec2,jsec2v
+     1            ,nstats,istptr,istseq(mxstat),nspans
+     1  ,iysp1(mxspn),jdsp1(mxspn),ihsp1(mxspn),misp1(mxspn),fssp1(mxspn)
+     1  ,iysp2(mxspn),jdsp2(mxspn),ihsp2(mxspn),misp2(mxspn),fssp2(mxspn)
+     1  ,ispseq(mxspn)
+     1  ,locfmc(mxform),locunc(mxunab)
+     1  ,iucmlv(mxcmnt)
+     1  ,locid(mxstat),lcinst(mxstat)
+     1  ,stlat(mxstat),stlon(mxstat),elevn(mxstat),nchan(mxstat) 
+     1  ,nscmnt
+     1  ,ifvaxl(mxstat),ifvaxs(mxstat),jsecstn1(mxstat),jsecstn2(mxstat)
+     1  ,indchn(mxstat),indrsp(mxchan),fresp(mxresp)
+     1  ,numchn,ichdta(mxchprm,mxchan),npces(mxchan),kfirpc(mxchan),nchcom
+     1  ,klaspc(mxchan)
+     1  ,kpiece,iseqpc(mxpces),isubpc(mxpces)
+     1  ,isqpcn(mxpces),isbpcn(mxpces),tstpc(mxpces)
+     1  ,istpc(mxpces),kchnl(mxpces),knexpc(mxpces)
+     1  ,iadstage(MXSTAGE)
+      dimension iresp(mxresp),fchdta(mxchprm,mxchan)
+      equivalence (iresp(1),fresp(1)),(fchdta(1,1),ichdta(1,1))

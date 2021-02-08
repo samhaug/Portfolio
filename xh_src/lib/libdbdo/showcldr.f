@@ -1,0 +1,199 @@
+      subroutine showcldr(lu,itcldr,mscldr,mtcldr,itim1,itim2,lrep,lint,fmt,iad)
+      integer*4 itim1(2),itim2(2),ltim(2),jtim(2)
+      include '../libdb/dblib.h'
+      integer*4 START,STOP,CONTINUE
+      parameter(STOP=z'00004000',START=z'00008000',CONTINUE=z'0000c000')
+      parameter (MXLINE=200)
+      parameter (MXNLINE=5)
+      character*(MXLINE) aline(MXNLINE),cline,oline
+      character*80 string
+      character*24 time
+      character*1 aline1(MXLINE*MXNLINE),cline1(MXLINE)
+      equivalence (aline,aline1),(cline,cline1)
+      linfo=ibig(itcldr+OTRLI)
+      call scanintvl(itcldr,mscldr,mtcldr,itim1,itim2,-1,iad)
+
+
+      nseen=ibig(iad)
+      call balloc(1+nseen*(linfo+2),ia)
+      call balloc(1,iad1)
+      nseen1=ibig(iad1)
+      call balloc(nseen1*(linfo+2),ia)
+      aline(1)=' '
+      laline=0
+      cline=' '
+      lcline=0
+      mnline=1
+      do i=1,nseen
+        lstat=and(ibig(iad+(i-1)*(linfo+2)+2),CONTINUE)
+        lrank=and(ibig(iad+(i-1)*(linfo+2)+2),z'00000fff')
+        jtim(1)=ibig(iad+(i-1)*(linfo+2)+1)
+        jtim(2)=ibig(iad+(i-1)*(linfo+2)+2)
+        if(lstat.ne.STOP) then
+          if(lstat.eq.START.and.itcmp(itim1,jtim).eq.0) then
+            do ii=(lrank-1)*lint+1+1,lrank*lint-1
+              cline1(ii)='_'
+            enddo
+            lcline=max0(lcline,lrank*lint)
+          else
+            cline1((lrank-1)*lint+1)='|'
+            cline1(lrank*lint)='|'
+            lcline=max0(lcline,lrank*lint)
+          endif
+          aline1((lrank-1)*lint+1)='|'
+          aline1(lrank*lint)='|'
+c          write(string,fmt) 
+c     1      (ibig(iad+(i-1)*(linfo+2)+2+j),j=1,linfo)
+c          lstring=istlen(string)
+          call fmt(ibig(iad+(i-1)*(linfo+2)+3),string,lstring)
+          nline=1+(lstring-1)/(lint-2)
+          if(nline.gt.MXNLINE) pause 'showcldr: too manly lines'
+          string(lstring+1:(lint-2)*nline)=' '
+          if(nline.gt.mnline) then
+            do j=mnline+1,nline
+              aline(j)=' '
+            enddo
+          endif
+          do j=1,nline
+            aline(j)((lrank-1)*lint+2:lrank*lint-1)
+     1         =string(1+(j-1)*(lint-2):j*(lint-2))
+          enddo
+          mnline=max0(mnline,nline)
+          laline=max0(laline,lrank*lint)
+        else if(itcmp(jtim,itim1).eq.0) then
+          do ii=(lrank-1)*lint+1+1,lrank*lint-1
+            cline1(ii)='_'
+          enddo
+          lcline=max0(lcline,lrank*lint)
+          cline1((lrank-1)*lint+1)='|'
+          cline1(lrank*lint)='|'
+          lcline=max0(lcline,lrank*lint)
+        endif
+      enddo
+      ltim(1)=itim1(1)
+      ltim(2)=itim1(2)
+      ifout=1
+      do i=1,nseen1
+        lstat=and(ibig(iad1+(i-1)*(linfo+2)+2),CONTINUE)
+        lrank=and(ibig(iad1+(i-1)*(linfo+2)+2),z'00000fff')
+        jtim(1)=ibig(iad1+(i-1)*(linfo+2)+1)
+        jtim(2)=ibig(iad1+(i-1)*(linfo+2)+2)
+        info=ibig(iad1+(i-1)*(linfo+2)+3)
+        if(itcmp(jtim,ltim).ne.0.and.ifout.ne.0) then
+          call timeint(ltim,time,ltime)
+          oline=cline(1:lcline)//' '//time(1:ltime-1)
+          loline=lcline+ltime
+          if(loline.eq.0) loline=1
+          write(lu,'(a)') oline(1:loline)
+          do j=1,mnline
+            if(j.gt.1) then
+              lr=1
+              do while(lr*lint.le.laline)
+                ii=(lr-1)*lint+1
+                aline(j)(ii:ii)=aline(1)(ii:ii)
+                ii=lr*lint
+                aline(j)(ii:ii)=aline(1)(ii:ii)
+                lr=lr+1
+              enddo
+            endif
+            write(oline,'(a)') aline(j)(1:laline)
+            loline=istlen(oline)
+            if(loline.eq.0) loline=1
+            write(lu,'(a)') oline(1:loline)
+          enddo
+          lr=1
+          do while(lr*lint-1.le.laline)
+            aline(1)((lr-1)*lint+2:lr*lint-1)=' '
+            lr=lr+1
+          enddo
+          write(oline,'(a)') aline(1)(1:laline)
+          loline=istlen(oline)
+          if(loline.eq.0) loline=1
+          do j=1,lrep
+            write(lu,'(a)') oline(1:loline)
+          enddo
+          cline=aline(1)
+          mnline=1
+          lcline=laline
+          ltim(1)=jtim(1)
+          ltim(2)=jtim(2)
+          ifout=0
+        endif
+
+        if(lstat.eq.START) then
+          aline1((lrank-1)*lint+1)='|'
+          aline1(lrank*lint)='|'
+c          write(string,fmt) 
+c     1      (ibig(iad1+(i-1)*(linfo+2)+2+j),j=1,linfo)
+c          lstring=istlen(string)
+          call fmt(ibig(iad1+(i-1)*(linfo+2)+3),string,lstring)
+          nline=1+(lstring-1)/(lint-2)
+          if(nline.gt.MXNLINE) pause 'showcldr: too manly lines'
+          string(lstring+1:(lint-2)*nline)=' '
+          if(nline.gt.mnline) then
+            do j=mnline+1,nline
+              aline(j)=' '
+            enddo
+          endif
+          do j=1,nline
+            aline(j)((lrank-1)*lint+2:lrank*lint-1)
+     1         =string(1+(j-1)*(lint-2):j*(lint-2))
+          enddo
+          mnline=max0(mnline,nline)
+          laline=max0(laline,lrank*lint)
+          do ii=(lrank-1)*lint+1+1,lrank*lint-1
+            cline1(ii)='_'
+          enddo
+          lcline=max0(lcline,lrank*lint)
+          ifout=1
+        else if(lstat.eq.STOP.and.itcmp(jtim,itim2).lt.0) then
+          aline1((lrank-1)*lint+1)=' '
+          aline1(lrank*lint)=' '
+          laline=istlen(aline(1)(1:laline))
+          do ii=(lrank-1)*lint+1+1,lrank*lint-1
+            cline1(ii)='_'
+          enddo
+          lcline=max0(lcline,lrank*lint)
+          ifout=1
+        endif
+      enddo
+      jtim(1)=itim2(1)
+      jtim(2)=itim2(2)
+      if(itcmp(jtim,ltim).ne.0.and.ifout.ne.0) then
+        call timeint(ltim,time,ltime)
+        oline=cline(1:lcline)//' '//time(1:ltime-1)
+        loline=lcline+ltime
+        if(loline.eq.0) loline=1
+        write(lu,'(a)') oline(1:loline)
+        do j=1,mnline
+          if(j.gt.1) then
+            lr=1
+            do while(lr*lint.le.laline)
+              ii=(lr-1)*lint+1
+              aline(j)(ii:ii)=aline(1)(ii:ii)
+              ii=lr*lint
+              aline(j)(ii:ii)=aline(1)(ii:ii)
+              lr=lr+1
+            enddo
+          endif
+          write(oline,'(a)') aline(j)(1:laline)
+          loline=istlen(oline)
+          if(loline.eq.0) loline=1
+          write(lu,'(a)') oline(1:loline)
+        enddo
+        lr=1
+        do while(lr*lint-1.le.laline)
+          aline(1)((lr-1)*lint+2:lr*lint-1)=' '
+          lr=lr+1
+        enddo
+        laline=istlen(aline(1)(1:laline))
+        call timeint(jtim,time,ltime)
+        oline=aline(1)(1:laline)//' '//time(1:ltime-1)
+        loline=laline+ltime
+        if(loline.eq.0) loline=1
+        write(lu,'(a)') oline(1:loline)
+      endif
+      call dalloc(1+nseen1*(linfo+2),iad1)
+      call dalloc(1+nseen*(linfo+2),iad)
+      return
+      end

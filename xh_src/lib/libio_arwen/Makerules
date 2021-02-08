@@ -1,0 +1,25 @@
+FCOMPILE = g77 -c -fno-silent -ffixed-line-length-none -Wno-globals -static -fno-automatic -finit-local-zero
+FCOMPILENOSTATIC = g77 -c -fno-silent -ffixed-line-length-none -Wno-globals -fno-automatic -finit-local-zero
+FLINK = g77 -static
+FLINKNOSTATIC = g77
+FFCOMPILE = g77 -c -fno-silent -ffixed-line-length-none -Wno-globals -fno-automatic -finit-local-zero -DMachinel
+FFCOMPILENOSTATIC = g77 -c -fno-silent -ffixed-line-length-none -Wno-globals -DMachinel
+CCOMPILE = gcc -c -DMachinel
+MAKE = make
+
+.f.a:
+	${FCOMPILE}  $<
+	ar rv $@ $*.o
+	rm -f $*.o
+
+.F.a:
+	${FFCOMPILE}  $<
+	ar rv $@ $*.o
+	rm -f $*.o
+
+.c.a:	
+	${CCOMPILE} $<
+	ar rv $@ $*.o
+	rm -f $*.o
+
+SOCKETLIBS =

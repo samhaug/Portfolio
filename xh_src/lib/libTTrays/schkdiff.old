@@ -1,0 +1,169 @@
+      subroutine schkdiff(phin,hdep,delta,phout,ierr)
+
+      character*(*) phin,phout
+
+      common/delmxS/delmxsdep(50),delmxsdel(50),delmxsspl(50),
+     1              delmnsels,delmxsels,ndelmxs
+      common/delmxP/delmxpdep(50),delmxpdel(50),delmxpspl(50),
+     1              delmnselp,delmxselp,ndelmxp
+      common/iinitdelmx/iinitdelmxpar
+
+      data delmns/21/
+      data delmnp/24/
+      data delmnups/12/
+      data delmnupp/15/
+
+      parameter(NPHS=16)
+      character*20 phslist(NPHS),dumphs
+      dimension lphslist(NPHS)
+      data phslist/'P','PP','PPP','PPPP','PcP','Pdiff',
+     1             'S','SS','SSS','SSSS','ScS','Sdiff',
+     1             'pP','pPP','sS','sSS'/
+
+      ierr=0
+      if(hdep.gt.725) then
+       write(6,*) 'dchkdiff: event depth > 725'
+       ierr=1
+       return
+      endif
+
+      phout=''
+
+      if(iinitdelmxpar.ne.999) then
+c      write(6,*) 'initialising table for distinguishing direct and diff. waves'
+       call sinitdelmx()
+       iinitdelmxpar=999
+      endif
+
+c     find length of phases
+      do i=1,NPHS
+       lphslist(i)=istlen(phslist(i))
+      enddo
+
+      lphin=istlen(phin)
+      ifnd=0
+      i=0
+      do while(i.lt.NPHS.and.ifnd.eq.0)
+       i=i+1
+       if(lphin.eq.lphslist(i)) then
+        dumphs=phslist(i)
+        if(phin(1:lphin).eq.dumphs(1:lphin)) then
+         ifnd=i
+        endif
+       endif
+      enddo
+
+c     return if this phase is not included in phslist
+      if(ifnd.eq.0) then
+       ierr=999
+       phout=phin
+       return
+      endif
+
+c     check minimum distances
+c     P,PP,PPP,PPPP
+      if(ifnd.eq.1.or.ifnd.eq.2.or.ifnd.eq.3.or.ifnd.eq.4) then
+       if(delta.lt.delmnp*float(ifnd))  then
+        ierr=2
+        return
+       endif
+c     S,SS,SSS,SSSS
+      else if(ifnd.eq.7.or.ifnd.eq.8.or.ifnd.eq.9.or.ifnd.eq.10) then
+       if(delta.lt.delmns*float(ifnd-6)) then
+        ierr=2
+        return
+       endif
+      else if(ifnd.eq.13.or.ifnd.eq.14) then
+       if(delta.lt.delmnupp+delmnp*float(ifnd-12)) then
+        ierr=2
+        return
+       endif
+       else if(ifnd.eq.15.or.ifnd.eq.16) then
+       if(delta.lt.delmnups+delmns*float(ifnd-14)) then
+        ierr=2
+        return
+       endif
+      endif
+
+c     do no more checking for SS,SSS,PP,PPP,pP,pPP,sS,sSS
+      if(ifnd.eq.8.or.ifnd.eq.9.or.ifnd.eq.10.or.
+     1   ifnd.eq.2.or.ifnd.eq.3.or.ifnd.eq.4.or.
+     1   ifnd.eq.13.or.ifnd.eq.14.or.ifnd.eq.15.or.ifnd.eq.16) then
+       phout=phin
+       return
+      endif
+
+c     check ScS 
+c -------------------------
+      if(lphin.eq.3.and.phin(1:3).eq.'ScS') then
+       call splint(delmxsdep,delmxsdel,delmxsspl,ndelmxs,hdep,delcrit)
+       if(delta.gt.delcrit) then
+        phout='Sdiff'
+       else
+        phout='ScS'
+       endif
+       lout=istlen(phout)
+       if(lphin.ne.lout) write(6,*) phin(1:lphin),' identified as ',phout(1:lout)
+       return
+      endif
+
+c     check PcP
+c --------------------
+      if(lphin.eq.3.and.phin(1:3).eq.'PcP') then
+       call splint(delmxpdep,delmxpdel,delmxpspl,ndelmxp,hdep,delcrit)
+       if(delta.gt.delcrit) then
+        phout='Pdiff'
+       else
+        phout='PcP'
+       endif
+       lout=istlen(phout)
+       if(lphin.ne.lout) write(6,*) phin(1:lphin),' identified as ',phout(1:lout)
+       return
+       endif
+
+
+c     check S and Sdiff
+c -----------
+      if(phin(1:1).eq.'S') then
+       if(delta.lt.delmnsels) then
+        phout='S'
+       else if(delta.gt.delmxsels) then
+        phout='Sdiff'
+       else
+        call splint(delmxsdep,delmxsdel,delmxsspl,ndelmxs,hdep,delcrit)
+c       write(6,*) 'maximum delta for direct wave for source at this depth: ',delcrit
+        if(delta.gt.delcrit) then
+         phout='Sdiff'
+        else
+         phout='S'
+        endif
+       endif
+       lout=istlen(phout)
+       if(lphin.ne.lout) write(6,*) phin(1:lphin),' identified as ',phout(1:lout)
+       return
+      endif
+
+
+c     check P and Pdiff
+c -------------------
+      if(phin(1:1).eq.'P') then
+       if(delta.lt.delmnselp) then
+        phout='P'
+       else if(delta.gt.delmxselp) then
+        phout='Pdiff'
+       else
+        call splint(delmxpdep,delmxpdel,delmxpspl,ndelmxp,hdep,delcrit)
+c       write(6,*) 'maximum delta for direct wave for source at this depth: ',delcrit
+        if(delta.gt.delcrit) then
+         phout='Pdiff'
+        else
+         phout='P'
+        endif
+       endif
+       lout=istlen(phout)
+       if(lphin.ne.lout) write(6,*) phin(1:lphin),' identified as ',phout(1:lout)
+       return
+      endif
+
+      end
+

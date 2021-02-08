@@ -1,0 +1,77 @@
+LIB = libhet
+
+include	$(HOME)/etc/Makerules
+
+$(LIBDIR)/$(LIB).a: \
+	$(LIBDIR)/$(LIB).a(makemom.o) \
+	$(LIBDIR)/$(LIB).a(sccmake.o) \
+	$(LIBDIR)/$(LIB).a(adjuss.o) \
+	$(LIBDIR)/$(LIB).a(eigen.o) \
+	$(LIBDIR)/$(LIB).a(mtrace.o) \
+	$(LIBDIR)/$(LIB).a(extnd.o) \
+	$(LIBDIR)/$(LIB).a(getpar.o) \
+	$(LIBDIR)/$(LIB).a(msfer.o) \
+	$(LIBDIR)/$(LIB).a(ocav.o) \
+	$(LIBDIR)/$(LIB).a(pole.o) \
+	$(LIBDIR)/$(LIB).a(rdsour.o) \
+	$(LIBDIR)/$(LIB).a(rspida.o) \
+	$(LIBDIR)/$(LIB).a(sphars.o) \
+	$(LIBDIR)/$(LIB).a(strinv.o) \
+	$(LIBDIR)/$(LIB).a(tapcla.o) \
+	$(LIBDIR)/$(LIB).a(torpar.o) \
+	$(LIBDIR)/$(LIB).a(adjust.o) \
+	$(LIBDIR)/$(LIB).a(getmdl.o) \
+	$(LIBDIR)/$(LIB).a(reinit.o) \
+	$(LIBDIR)/$(LIB).a(sosfrs.o) \
+	$(LIBDIR)/$(LIB).a(sdomode.o) \
+	$(LIBDIR)/$(LIB).a(spline.o) \
+	$(LIBDIR)/$(LIB).a(strnsf.o) \
+	$(LIBDIR)/$(LIB).a(ahousn.o) \
+	$(LIBDIR)/$(LIB).a(apsour.o) \
+	$(LIBDIR)/$(LIB).a(atant.o) \
+	$(LIBDIR)/$(LIB).a(epcntr.o) \
+	$(LIBDIR)/$(LIB).a(idanum.o) \
+	$(LIBDIR)/$(LIB).a(modes.o) \
+	$(LIBDIR)/$(LIB).a(ndays.o) \
+	$(LIBDIR)/$(LIB).a(proces.o) \
+	$(LIBDIR)/$(LIB).a(rotmx2.o) \
+	$(LIBDIR)/$(LIB).a(sourpa.o) \
+	$(LIBDIR)/$(LIB).a(stsort.o) \
+	$(LIBDIR)/$(LIB).a(apstrc.o) \
+	$(LIBDIR)/$(LIB).a(eigpar.o) \
+	$(LIBDIR)/$(LIB).a(eqpar.o) \
+	$(LIBDIR)/$(LIB).a(idares.o) \
+	$(LIBDIR)/$(LIB).a(mtors.o) \
+	$(LIBDIR)/$(LIB).a(resida.o) \
+	$(LIBDIR)/$(LIB).a(stablp.o) \
+	$(LIBDIR)/$(LIB).a(tapclr.o) \
+	$(LIBDIR)/$(LIB).a(matrix.o) \
+	$(LIBDIR)/$(LIB).a(output.o) \
+	$(LIBDIR)/$(LIB).a(rsoinc.o) \
+	$(LIBDIR)/$(LIB).a(scoefp.o) \
+	$(LIBDIR)/$(LIB).a(select.o) \
+	$(LIBDIR)/$(LIB).a(sfrpar.o) \
+	$(LIBDIR)/$(LIB).a(snginv.o) \
+	$(LIBDIR)/$(LIB).a(somain.o) \
+	$(LIBDIR)/$(LIB).a(sotors.o) \
+	$(LIBDIR)/$(LIB).a(tdomode.o) \
+	$(LIBDIR)/$(LIB).a(spharp.o) \
+	$(LIBDIR)/$(LIB).a(stapcl.o) \
+	$(LIBDIR)/$(LIB).a(ttablp.o) \
+	$(LIBDIR)/$(LIB).a(ocfun.o) \
+	$(LIBDIR)/$(LIB).a(rida.o) \
+	$(LIBDIR)/$(LIB).a(tcoefp.o) \
+	$(LIBDIR)/$(LIB).a(tsroot.o) \
+	$(LIBDIR)/$(LIB).a(ylmav.o) \
+	$(LIBDIR)/$(LIB).a(clear.o) \
+	$(LIBDIR)/$(LIB).a(gdida.o) \
+	$(LIBDIR)/$(LIB).a(idaresp.o) \
+	$(LIBDIR)/$(LIB).a(iscan.o) \
+	$(LIBDIR)/$(LIB).a(lida.o) \
+	$(LIBDIR)/$(LIB).a(ppfp.o) \
+	$(LIBDIR)/$(LIB).a(setup1.o) \
+	$(LIBDIR)/$(LIB).a(statn.o) 
+
+$(LIBDIR)/$(LIB).a(statn.o): ./sroida.h
+
+include	$(HOME)/etc/Makeranlib

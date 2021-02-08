@@ -1,0 +1,137 @@
+      subroutine sosfrs
+      common/intap/ jstat,itype,icomp,ifact,jter,neig,npoint
+     1   ,jifdep,jnstr,jtrans,j1s,j1f,j2s,j2f,jnpar,jiftwo
+      common/iap5/ synt(514,10),addf(7710)
+      common/ap1/ t0,dt,ommax
+     1     ,theta,caz,saz,epc(2,4)
+     1     ,f(6),f2pf3,f2mf3,dum2(4)
+
+      common/ap2/ xl(380),omega(380),qbar(380),grv(380),elp(380),
+     1  u(6,380),sp(12,380)
+      common/iap1/ psfer(8,2),ptors(8,2)
+c      dimension psfer(8,2),ptors(8,2)
+      common/inter/ knt,xj,zz1,zz2
+
+       common/tab3/h1(2),h2(2),z1(4),z2(4),z3(4),z4(4)
+     1 ,p1(6),p2(6),p3(6),p4(6),p5(6),p6(6),p7(6),p8(6),p9(6),p10(6)
+     1 ,q1(3),q2(3),q3(3),q4(3),q5(3),q6(3),q7(3)
+
+cc#include "tab3.h"
+
+      common/iap2/ b1c,a2c,b2c,b2s,a3c,a3s
+
+
+      complex a0,step
+      dimension xaux(514),yaux(514),c(6,10),xmul(10),cc(6,10,2)
+     1   ,fact(10)
+      nc=6*ifact
+      do nn=1,380
+        x=xl(nn)
+        if(x.lt.0.) go to 99
+        om=omega(nn)
+        if(om.gt.ommax) go to 100
+        if(x.ne.xj) then
+          knt=0
+          xj=x
+          l=xj+.001
+          call sphars(l,theta,caz,saz,epc,icomp,psfer,ptors)
+          call fvclr(c,1,3*20)
+          call fvclr(xmul,1,10)
+          call fvclr(cc,1,3*20*2)
+          do k=1,2
+c           call stabls(xj,psfer(1,k))
+            xj2=xj*(xj+1.)
+            p3(1)=-.5*xj2-1.
+            p3(3)=xj2
+            p5(3)=-.5*xj2
+            p5(4)=.5*xj2
+            p6(3)=.5*xj2
+            p7(3)=.25*(xj2+2.)
+            z2(3)=-.5*xj2
+            f62=2.*f(6)
+            b1c=f(4)*psfer(3,k)+f(5)*psfer(4,k)
+            a2c=f2mf3*psfer(5,k)+f62*psfer(6,k)
+            b2c=f(4)*psfer(5,k)+f(5)*psfer(6,k)
+            b2s=f(4)*psfer(6,k)-f(5)*psfer(5,k)
+            a3c=f2mf3*psfer(7,k)+f62*psfer(8,k)
+            a3s=f2mf3*psfer(8,k)-f62*psfer(7,k)
+
+            do  i=1,neig
+c             call scoefs(jter,i,xmul,psfer(1,k))
+              call fvclr(xmul,1,10)
+              if(i.le.4) then
+                f0f=z1(i)*f(1)+z2(i)*f2pf3
+                if(jter.lt.0) then
+                  xmul(1)=psfer(1,k)*f0f-b1c*z3(i)+a2c*z4(i)
+                  goto 300
+                else
+                  xmul(1)=psfer(1,k)*z1(i)
+                  xmul(2)=psfer(1,k)*z2(i)
+                  x0s=psfer(5,k)*z4(i)
+                  xmul(3)=xmul(2)-x0s
+                  xmul(2)=xmul(2)+x0s
+                  xmul(4)=-psfer(3,k)*z3(i)
+                  xmul(5)=-psfer(4,k)*z3(i)
+                  xmul(6)=2.*psfer(6,k)*z4(i)
+                  if(jter.eq.0) goto 300
+                endif
+              endif
+              f85=p8(i)*f(1)-p5(i)*f2pf3
+              p91=p9(i)+p1(i)
+              f435=f(4)*(p3(i)-p5(i))
+              f1667=-f(1)*p1(i)+f(2)*(p6(i)+p7(i))+f(3)*p7(i)
+              f66=f(6)*p6(i)
+              p24=p2(i)+p4(i)
+              f535=f(5)*(p3(i)-p5(i))
+              f1767=-f(1)*p1(i)+f(2)*p7(i)+f(3)*(p6(i)+p7(i))
+              xmul(7)=psfer(1,k)*f85-b1c*p91+a2c*p4(i)
+              xmul(8)=psfer(1,k)*f435+psfer(3,k)*f1667
+     1            +psfer(4,k)*f66+b2c*p24-a3c*p10(i)
+              xmul(9)=psfer(1,k)*f535+psfer(4,k)*f1767
+     1            +psfer(3,k)*f66+b2s*p24-a3s*p10(i)
+ 300          continue
+              do j=1,ifact
+                cc(i,j,k)=xmul(j)
+              enddo
+            enddo
+          enddo
+        endif
+c skip processing fundamental modes in the case of body waves
+        if(knt.eq.0.and.dt.lt.20.) go to 100
+        call adjuss(x,om,grv(nn),elp(nn),sp(1,nn),dtheta)
+        qb=-.5*qbar(nn)
+#if ( Machine == S )
+        arg2=om*t0
+        xmul2=om*dt
+        arg2=arg2-xmul2
+        arg1=arg2*qb
+        xmul1=xmul2*qb
+        do i=1,npoint
+          xaux(i)=-0.95179*exp(arg1+xmul1*i)*cos(arg2+xmul2*i)
+        enddo
+c      call mtrace((-0.95179,0.),cmplx(om,-qb*om)
+c     1     ,t0,dt,npoint,8,xaux,yaux)
+#else
+        arg=om*t0
+        a0=-cmplx(.95179,0.)*cexp(cmplx(qb*arg,arg))
+        arg=om*dt
+        step=cexp(cmplx(qb*arg,arg))
+        do i=1,npoint
+          xaux(i)=real(a0)
+          a0=a0*step
+        enddo
+#endif
+        call fvsma1(cc(1,1,2),dtheta,cc(1,1,1),c(1,1),nc)
+
+ccC$DIR PARALLEL
+        do i=1,ifact
+          call fdotpr(c(1,i),1,u(1,nn),1,fact(i),neig)
+          call fvsma2(xaux,fact(i),synt(1,i),npoint)
+        enddo
+
+  100   knt=knt+1
+      enddo
+      return
+   99 jstat=-1
+      return
+      end

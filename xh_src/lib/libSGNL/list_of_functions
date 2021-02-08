@@ -1,0 +1,35 @@
+// complex addition: 				z=a+b
+fcomplex cplus(a,b)
+
+// complex subtraction: 			z=a-b
+fcomplex cmin(a,b)
+
+// complex multiplication:			z=a*b
+fcomplex cmltp(a,b)
+
+// complex division:				z=a/b
+fcomplex cdiv(a,b)
+
+// complex negative: 				z=-a
+fcomplex cngtv(a)
+
+// multiplication of float and complex number: 	z=k0*a
+fcomplex dmltp(k0,a)
+
+// conjugate: 					z=conjg(a)
+fcomplex conjg(a)
+
+// complex inversion: 				z=1/a
+fcomplex cinvs(a)
+
+// complex square root:				z=sqrt(a)
+fcomplex csqrt(a)
+
+// make complex number of two floats: 		z=cmplx(x,y)
+fcomplex cmplx(x,y)
+
+// complex exponent function: 			z=exp(a)
+fcomplex cexp(a)
+
+// absolute value of a: 			k0=ccabs(a)
+double ccabs(a)

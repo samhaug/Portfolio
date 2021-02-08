@@ -1,0 +1,111 @@
+c---------------------------------------------------------------
+      subroutine getlrec(ireci)
+      include 'seedbuf.h'
+cc      integer*4 ibuf(8192)
+cc      integer*2 jbuf(16384)
+cc      equivalence (ibuf(1),jbuf(1))
+cc      common/buffer/lut,lrec,lrech,nlrblk,i2bias,i4bias,irec,ibyte
+cc     1 ,itype,icont,ibuf
+cc      common/gotrcs/igot1,igot2
+      include 'seedparam.h'
+      common/plevel/iprtlv
+      character*8 str8
+      character*1 typ1,typ2
+      logical blank
+      irec=ireci
+   10 if(irec.lt.igot1.or.irec.gt.igot2) then
+        itry=0
+  101   continue
+        if(nlrblk.gt.0) then
+          iblock=1+(irec-1)/nlrblk
+          call bffi(lut,1,ibuf,lrec*nlrblk,j,mgot,iblock)
+          if(j.eq.3) then
+            itype=0
+            return
+          endif
+          igot1=1+(iblock-1)*nlrblk
+        else
+          iadbuf=1
+          mgot=0
+          do i=1,-nlrblk
+            iblock=i-(irec-1)*nlrblk
+            call bffi(lut,1,ibuf(iadbuf),-lrec/nlrblk,j,m,iblock)
+            if(j.eq.3) then
+              itype=0
+              return
+            endif
+            iadbuf=iadbuf+m/4
+            mgot=mgot+m
+          enddo
+          igot1=irec
+        endif
+        lrgot=mgot/lrec
+        if(mgot.ne.lrec*lrgot) then
+          write(6,*) 'getlrec: irec=',irec,' lrec=',lrec, ' lrgot=',lrgot,' mgot=',mgot
+          nmiss=lrec*nlrblk-mgot
+          if(nmiss.gt.0.and.nmiss.lt.lrec-64) then
+            write(6,*) 'headers OK, continuing'
+            lrgot=nlrblk
+            mgot=lrec*nlrblk
+          else
+            stop 'getlrec: Incomplete logical record'
+          endif
+        endif
+        igot2=igot1-1+lrgot
+      endif
+      if(irec.lt.igot1.or.irec.gt.igot2) then
+        itype=0
+        return
+      endif
+      i2bias=(irec-igot1)*(lrec/2)
+      i4bias=i2bias/2
+      write(str8,"(2a4)") (ibuf(i4bias+i),i=1,2)
+      read(str8,"(i6,2a1)") iseq,typ1,typ2
+      if(iprtlv.ge.3)
+     1 write(6,"('irec:',i6,'  iseq:',i6,2x,2a1)") irec,iseq,typ1,typ2
+      if(iseq.ne.irec) then
+        if(iseq.eq.0) then
+          itype=0
+          return
+        endif
+c       itype=0
+c       write(6,'(''getlrec: wrong sequence number: irec:'',i12,''  iseq:'',i12)') irec,iseq
+c       return
+c       stop 'Error in getrec: wrong sequence number'
+      endif
+      if     (typ1.eq.'V') then
+        itype=STPV
+      else if(typ1.eq.'A') then
+        itype=STPA
+      else if(typ1.eq.'S') then
+        itype=STPS
+      else if(typ1.eq.'T') then
+        itype=STPT
+      else if(typ1.eq.'D'.or.typ1.eq.'R') then
+        itype=STPD
+        blank=(ibuf(i4bias+3).eq.z'20202020')
+        if(blank) then
+          do i=4,5
+            blank=blank.and.(ibuf(i4bias+i).eq.z'20202020')
+          enddo
+          if(.not.blank) stop 'unexpectedly not blank data record'
+          itype=0
+          return
+        endif
+      else if(typ1.eq.' '.and.typ2.eq.' ') then
+        irec=1+irec
+        goto 10
+      else
+        write(0,*) 'Warning: Unknown header type code'
+        itype=-1  ! code for an unwanted record type
+      endif
+      if(typ2.eq.' ') then
+        icont=0
+      else if(typ2.eq.'*') then
+        icont=1
+      else
+        stop 'Illegal continuation code'
+      endif
+      ibyte=8
+      return
+      end

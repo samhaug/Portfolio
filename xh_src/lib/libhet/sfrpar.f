@@ -1,0 +1,88 @@
+
+C$**********************************************************************
+CPROG SFRPAR
+CXREF
+      SUBROUTINE SFRPAR(NMIN,OMMAX,R0,NSHEAR,LU1,LU2)
+      save
+      DIMENSION G(6)
+      COMMON/BIGSPA/ XL(380),OM(380),QB(380),GRV(380),EL(380),
+     1EV(2280),PT(12,380),B1(1024),B2(1024),B3(1024),B4(1024),
+     2B5(256,10),EH(2280)
+      DIMENSION B(8740),E(6,380),H(6,380)
+      COMMON/TAPE/ FILT(250),INDSFR(330),INDTOR(300),KNTSFR(330),
+     1KNTTOR(300),KNTS,KNTT,IU1,NBATCH
+      COMMON/SPLIN/ FILS(5),IR1
+      EQUIVALENCE (XL(1),B(1)),(EV(1),E(1,1)),(EH(1),H(1,1))
+      DATA I256/256/
+      IRLST=0
+      IU1=LU1
+      X=0.
+      KNT=0
+      DO 100 NN=1,KNTS
+      NT=KNTSFR(NN)-NMIN
+      IF(NT.EQ.0) GO TO 99
+      IT1=INDSFR(NN)+NMIN
+      IT2=IT1+KNTSFR(NN)-1
+      DO 1 I=IT1,IT2
+      IREC=(I+255)/I256
+      IF(IREC.NE.IRLST) CALL GETPAR(I,LU1,LU2,B1,B2,B3,B4,B5,IRLST,
+     1IR1,NSHEAR)
+      IF(NN.EQ.2.AND.I.EQ.IT1) GO TO 1
+      IP=MOD(I-1,I256)+1
+      IP256=IP+I256
+      IP512=IP256+I256
+      IP768=IP512+I256
+      OMEGA=B1(IP)
+      IF(I.EQ.IT1.AND.OMEGA.GT.OMMAX) GO TO 99
+      IF(OMEGA.GT.OMMAX) GO TO 100
+      KNT=KNT+1
+      OM(KNT)=OMEGA
+      QB(KNT)=B1(IP256)
+      AV=B1(IP512)
+      AH=B1(IP768)
+      XL(KNT)=X
+      GRV(KNT)=B2(IP)
+      EL(KNT)=B2(IP256)
+      PT(1,KNT)=B2(IP512)
+      PT(2,KNT)=B2(IP768)
+      DO 2 K=1,NSHEAR
+      K2=K+2
+    2 PT(K2,KNT)=B5(IP,K)
+      U1=B3(IP)
+      UP1=B3(IP256)
+      V1=B3(IP512)
+      VP1=B3(IP768)
+      U2=B4(IP)
+      UP2=B4(IP256)
+      V2=B4(IP512)
+      VP2=B4(IP768)
+      CALL SPLINE(U1,UP1,U2,UP2,US,UPS,UPPS)
+      CALL SPLINE(V1,VP1,V2,VP2,VS,VPS,VPPS)
+      G(1)=US/R0
+      G(2)=UPS
+      G(3)=VS/R0
+      G(4)=VPS
+      G(5)=R0*UPPS
+      G(6)=R0*VPPS
+      DO 7 K=1,6
+      E(K,KNT)=AV*G(K)
+    7 H(K,KNT)=AH*G(K)
+      IF(KNT.LT.380) GO TO 1
+      CALL BFFOUT(3,1,B,8740,J)
+      DO 4 K=1,2280
+    4 EV(K)=EH(K)
+      CALL BFFOUT(4,1,B,8740,J)
+      KNT=0
+    1 CONTINUE
+  100 X=X+1.
+   99 KNT=KNT+1
+      XL(KNT)=-1.
+      CALL BFFOUT(3,1,B,8740,J)
+      M=6*(KNT-1)
+      DO 6 K=1,M
+    6 EV(K)=EH(K)
+      CALL BFFOUT(4,1,B,8740,J)
+C     END FILE 3
+      CALL REWFL(3)
+      RETURN
+      END

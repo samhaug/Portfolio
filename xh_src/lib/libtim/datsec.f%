@@ -1,0 +1,7 @@
+
+      subroutine datsec(imo,ida,iyr,ihr,imi,isec,jsec)
+      fsec=isec
+      call datjul(imo,ida,1900+iyr,jd)
+      call timsec(iyr+1900,jd,ihr,imi,fsec,jsec)
+      return
+      end

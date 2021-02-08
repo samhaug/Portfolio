@@ -1,0 +1,95 @@
+dbdo is a program for making a database out of a collection
+of SEED volumes and, subsequently, to retrieve data, to interrogate
+the responses etc.
+
+The first step is to make a '.bl' file for each of the seed volumes.
+This is an ascii representation of the SEED blockettes 
+describing the data pieces and responses in the volume.
+If you want to understand what is in the .bl file read the SEED manual.
+
+
+% cd ~/sdvols
+
+% /home/eeyore_data3/john/eq/bin5/seedblocks mex95_geos.seed -t VASD -o b -sd /home/eeyore_data3/john/dta/seeddefs
+
+(The '-sd' switch defines a file containing SEED definitions; it defaults
+to the value of the environment variable SEEDDEFS_PATH; the '-t' switch
+defaults to VASD, and so is not, in fact, needed in this example. This switch
+tells seedblocks what kinds of records to process: Volume, Abbreviation,
+Station, Data. An alternative value would be VAST which tells seedblocks
+not to examine the data records, but instead to trust the
+Timeseries-headers in the SEED volume. Provided it's a valid SEED
+volume this should yield the same results. In general, though, it's
+a good idea to ask seedblocks to look at the data records themselves... ).
+
+The 'seedblocks' command has made mex95_geos.seed.bl (i.e. the suffix '.bl'
+is added to the name of the seed volume).
+
+Now we run dbdo to add this .bl file to our private dbdo data base.
+If you don't have a private dbdo database these commands will
+make one -- you need to invent a name -- here 'mysdvols':
+
+% /home/eeyore_data3/john/eq/bin5/dbdo
+> open -w mysdvols       ! this opens (with write access) the dbdo database
+                                       called mysdvols in the cwd
+
+                         ! if it exists new data will be added
+
+Now we have to read in the .bl file, and tell dbdo the absolute pathname
+of the seed volume to which it relates.
+
+> eat mex95_geos.seed.bl /home/eeyore1/das/sdvols/mex95_geos.seed
+
+
+
+> ^D                     ! terminates dbdo tidily. DON'T use ^C 
+
+
+This has created (if they didn't exist) 4 files 
+which constitute the dbdo database 'mysdvols'
+
+-rw-r--r--   1 das        249880 Nov 11 11:53 mysdvols.blk
+-rw-r--r--   1 das        333084 Nov 11 11:53 mysdvols.stn
+-rw-r--r--   1 das        146876 Nov 11 11:53 mysdvols.tsr
+-rw-r--r--   1 das          5460 Nov 11 11:53 mysdvols.vlm
+
+
+
+You don't really need to know what these are. You can interrogate them
+or retrieve data using dbdo as usual (in any directory). The data base
+contains the response information from the volumes and information
+about the data in the volumes. After incorporation into
+the data base the .bl file(s) are no longer needed, though if you
+learn how to read them they might be useful for trouble-shooting.
+Of course they can always be remade using seedblocks. Neither the
+.bl file(s) nor the database files contain the data themselves. The
+dbdo data base knows that the data reside in the seed volume(s)
+specified in the 'eat' command(s) (in this example, in
+/home/eeyore1/das/sdvols/mex95_geos.seed). So it is a mistake to
+subsequently delete or move the seed volume(s),
+since then dbdo will not be able to find the data. If you want
+the flexibility to move the seed volumes around (e.g. to different disks or
+directories) then use a symbolic link to point to the seed volume
+and give the name of the symbolic link in the 'eat' command.
+Then, provided the symbolic link is changed to point to the right file,
+the seed volume can be moved around or renamed.
+
+We can now use dbdo in the usual way to retrieve data.
+e.g. here is a script to get some data in 'ah' format:
+
+---------getsome.dbi----------
+sta *
+cha LH
+cmt 100995C
+df o-50 o+3600 > temp.req
+dg temp.req > temp.gram
+out -Xg temp.gram -n $cmtname -d 1.0
+------- end ----------
+
+To run this request do 
+
+
+% /home/eeyore_data3/john/eq/bin5/dbdo 'open /home/eeyore1/das/sdvols/mysdvols' < getsome.dbi
+
+
+

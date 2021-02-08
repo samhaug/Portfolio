@@ -1,0 +1,29 @@
+      subroutine tcoefs(iter,j,c,y)
+      common/tab3/ h1(2),h2(2),fil3(76),q1(3),q2(3),q3(3),
+     1q4(3),q5(3),q6(3),q7(3)
+      common/iap4/ b1st,a2st,b2ct,b2st,a3ct,a3st
+      common/ap1/ dum1(14),f1,f2,f3,f4,f5,f6,f2pf3,f2mf3,dum2(4)
+      dimension c(10),y(8)
+      call fvclr(c,1,10)
+      if(j.gt.2) go to 50
+      if(iter.ge.0) go to 21
+      c(1)=a2st*h1(j)-b1st*h2(j)
+      return
+   21 c(2)=y(6)*h1(j)
+      c(3)=-c(2)
+      c(4)=-y(4)*h2(j)
+      c(5)=y(3)*h2(j)
+      c(6)=-2.*y(5)*h1(j)
+      if(iter.eq.0) return
+   50 q41=q4(j)+q1(j)
+      f167=-f1*q1(j)+f2*q6(j)+f2pf3*q7(j)
+      f55=f5*q5(j)
+      q21=q2(j)-q1(j)
+      f66=f6*q6(j)
+      f45=f4*q5(j)
+      f176=f1*q1(j)-f2pf3*q7(j)-f3*q6(j)
+      c(7)=-b1st*q41-a2st*q1(j)
+      c(8)=y(1)*f55+y(4)*f167+b2st*q21-a3st*q3(j)-y(3)*f66
+      c(9)=-y(1)*f45+y(3)*f176-b2ct*q21+a3ct*q3(j)+y(4)*f66
+      return
+      end

@@ -1,0 +1,78 @@
+
+C$**********************************************************************
+      SUBROUTINE SOSFRS
+      COMMON/INTAP/ JSTAT,ITYPE,ICOMP,IFACT,ITER,NEIG,NPOINT,IDUM(9)
+      COMMON/IAP5/ SYNT(5140),ADDF(7710)
+      COMMON/AP1/ T0,DT,OMMAX,FILL(23)
+      COMMON/AP2/ XL(380),OMEGA(380),QBAR(380),GRV(380),ELP(380),
+     1U(2280),SP(4560)
+      COMMON/IAP3/ XTRACE(514),C(60),XMUL(10),CC(120),DUMM3(324)
+      COMMON/IAP1/ PSFER(16),PTORS(16)
+      COMMON/INTER/ KNT,XJ,ZZ1,ZZ2
+      COMPLEX A0,STEP
+      dimension yaux(514)
+      NC=6*IFACT
+      DO 100 NN=1,380
+      X=XL(NN)
+      IF(X.LT.0.) GO TO 99
+      OM=OMEGA(NN)
+      IF(OM.GT.OMMAX) GO TO 100
+      IF(X.EQ.XJ) GO TO 10
+      KNT=0
+      XJ=X
+      L=XJ+.001
+      CALL SPHARS(L,ICOMP)
+      CALL FVCLR(C,1,190)
+      K=1
+   20 INDP=(K-1)*8+1
+      INDC=(K-1)*60
+      CALL STABLS(XJ,PSFER(INDP))
+      DO 1 I=1,NEIG
+      CALL SCOEFS(ITER,I,XMUL,PSFER(INDP))
+      J=1
+   21 INDJ=INDC+I+(J-1)*6
+      CC(INDJ)=XMUL(J)
+      J=J+1
+      IF(J.LE.IFACT) GO TO 21
+    1 CONTINUE
+      K=K+1
+      IF(K.LE.2) GO TO 20
+   10 IF(KNT.EQ.0.AND.DT.LT.20.) GO TO 100
+      INDP=(NN-1)*12+1
+      INDU=(NN-1)*6+1
+      CALL ADJUSS(X,OM,GRV(NN),ELP(NN),SP(INDP),DTHETA)
+      QB=-.5*QBAR(NN)
+#if ( Machine == S )
+      ARG2=OM*T0
+      XMUL2=OM*DT
+      ARG2=ARG2-XMUL2
+      ARG1=ARG2*QB
+      XMUL1=XMUL2*QB
+      DO 2 I=1,NPOINT
+      XTRACE(I)=-0.95179*EXP(ARG1+XMUL1*I)*COS(ARG2+XMUL2*I)
+    2 CONTINUE
+c      call mtrace((-0.95179,0.),cmplx(om,-qb*om),t0,dt,npoint,8,xtrace,yaux)
+#else
+      ARG=OM*T0
+      A0=-CMPLX(.95179,0.)*CEXP(CMPLX(QB*ARG,ARG))
+      ARG=OM*DT
+      STEP=CEXP(CMPLX(QB*ARG,ARG))
+      DO 2 I=1,NPOINT
+      XTRACE(I)=REAL(A0)
+    2 A0=A0*STEP
+#endif
+      CALL FVSMA1(CC(61),DTHETA,CC,C,NC)
+      I1=-513
+      INDF=-5
+      I=1
+   30 I1=I1+514
+      INDF=INDF+6
+      CALL FDOTPR(C(INDF),1,U(INDU),1,FACT,NEIG)
+      CALL FVSMA2(XTRACE,FACT,SYNT(I1),NPOINT)
+      I=I+1
+      IF(I.LE.IFACT) GO TO 30
+  100 KNT=KNT+1
+      RETURN
+   99 JSTAT=-1
+      RETURN
+      END

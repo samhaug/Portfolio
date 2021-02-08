@@ -1,0 +1,23 @@
+      subroutine stabls(xl,xx)
+      dimension xx(8)
+      common/tab3/ fil1(8),z2(4),fil2(20),p3(6),
+     1p4(6),p5(6),p6(6),p7(6),fil3(39)
+      common/ap1/ dum1(17),f4,f5,f6,f2pf3,f2mf3,dum2(4)
+      common/iap2/ b1c,a2c,b2c,b2s,a3c,a3s
+      x=xl*(xl+1.)
+      p3(1)=-.5*x-1.
+      p3(3)=x
+      p5(3)=-.5*x
+      p5(4)=.5*x
+      p6(3)=.5*x
+      p7(3)=.25*(x+2.)
+      z2(3)=-.5*x
+      f62=2.*f6
+      b1c=f4*xx(3)+f5*xx(4)
+      a2c=f2mf3*xx(5)+f62*xx(6)
+      b2c=f4*xx(5)+f5*xx(6)
+      b2s=f4*xx(6)-f5*xx(5)
+      a3c=f2mf3*xx(7)+f62*xx(8)
+      a3s=f2mf3*xx(8)-f62*xx(7)
+      return
+      end

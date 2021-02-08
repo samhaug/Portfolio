@@ -1,0 +1,103 @@
+c---------------------------------------------------------------
+c evlphs evaluates a phase previously loaded into array using loadphs.
+c array and iarray refer to the SAME array.
+c
+c The value returned is the travel time at the given depth and delta.
+c Other interpolated parameters are returned in prm, depending upon the
+c value of nparm used in the call to loadphs. These are in the same order
+c as they appear on the lines of the phase file.
+c
+c istat is 0 if there was no problem. Other values indicate that the
+c depth or the delta was out of range.
+c
+c uses vlint and rsple from libgeo
+c
+
+      function evlphs(delta,dep,array,iarray,istat,prm)
+      dimension array(0:*),iarray(0:*),prm(*)
+      parameter (MXP=10)
+      dimension at1(MXP),at2(MXP)
+
+      include 'phases.h'
+
+      iadp1=0
+      iadp2=0
+      istat=0
+      evlphs=0.
+      ndep=iarray(LPNDEP)
+      nparm=iarray(LPLNPR)
+      if(nparm.gt.MXP) stop 'evlphs: too many parameters'
+      iad=iarray(LPADP0)
+      if(ndep.eq.1.and.array(iad+LPDEPT).eq.0.0) then
+        iadp1=iad
+        iadp2=iad
+      else
+        do idep=1,ndep-1
+          iad1=iarray(iad+LPADDP)
+          if(array(iad+LPDEPT).le.dep.and.array(iad1+LPDEPT).ge.dep) then
+            iadp1=iad
+            iadp2=iad1
+          endif
+          iad=iad1
+        enddo
+      endif
+      if(iadp1.eq.0.and.iadp2.eq.0) then
+        istat=1                       ! depth out of range
+        goto 99
+      endif
+      dep1=array(iadp1+LPDEPT)
+      ndelt1=iarray(iadp1+LPNDEL)
+      dmin1=array(iadp1+LPDMIN)
+      dmax1=array(iadp1+LPDMAX)
+      iasp1=iarray(iadp1+LPADSP)
+      dep2=array(iadp2+LPDEPT)
+      ndelt2=iarray(iadp2+LPNDEL)
+      dmin2=array(iadp2+LPDMIN)
+      dmax2=array(iadp2+LPDMAX)
+      iasp2=iarray(iadp2+LPADSP)
+      if(dep1.eq.dep2) then
+        dmin=dmin1
+      else
+        dmin=(dmin1*(dep2-dep)+dmin2*(dep-dep1))/(dep2-dep1)
+      endif
+      if(dep1.eq.dep2) then
+        dmax=dmax1
+      else
+        dmax=(dmax1*(dep2-dep)+dmax2*(dep-dep1))/(dep2-dep1)
+      endif
+      if(delta.gt.amax1(dmax,dmin)) then
+        istat=2                   ! delta too large
+        goto 99
+      endif
+      if(delta.lt.amin1(dmin,dmax)) then
+        istat=3                   ! delta too small
+        goto 99
+      endif
+      dd=(delta-dmin)/(dmax-dmin)
+c     write(6,'(f10.4,2i5)') dep1,ndelt1,iasp1
+c     write(6,'(10f8.2)') (array(iadp1+6+i-1),i=1,ndelt1)
+c     write(6,'(10f8.2)') (array(iadp1+6+ndelt1+i-1),i=1,ndelt1)
+c     write(6,'(3e12.4)') (array(iasp1+i-1),i=1,3*ndelt1)
+c     write(6,'(f10.4,2i5)') dep2,ndelt2,iasp2
+c     write(6,'(10f8.2)') (array(iadp2+6+i-1),i=1,ndelt2)
+c     write(6,'(10f8.2)') (array(iadp2+6+ndelt2+i-1),i=1,ndelt2)
+c     write(6,'(3e12.4)') (array(iasp2+i-1),i=1,3*ndelt2)
+
+      t1=rsple(1,ndelt1,array(iadp1+LPLNH1),array(iadp1+LPLNH1+ndelt1),array(iasp1),dd)
+      t2=rsple(1,ndelt2,array(iadp2+LPLNH1),array(iadp2+LPLNH1+ndelt2),array(iasp2),dd)
+
+      evlphs=(t1*(dep2-dep)+t2*(dep-dep1))/(dep2-dep1)
+
+      call vlint(ndelt1,array(iadp1+LPLNH1),array(iadp1+LPLNH1+2*ndelt1),nparm,dd,at1)
+      call vlint(ndelt2,array(iadp2+LPLNH1),array(iadp2+LPLNH1+2*ndelt2),nparm,dd,at2)
+      do i=1,nparm
+        prm(i)=(at1(i)*(dep2-dep)+at2(i)*(dep-dep1))/(dep2-dep1)
+      enddo
+      return
+   99 continue
+      do i=1,nparm
+        prm(i)=0.
+      enddo
+      return
+      end
+

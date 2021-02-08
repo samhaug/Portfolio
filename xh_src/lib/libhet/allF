@@ -1,0 +1,408 @@
+c---------------------------------------------------------------
+c output.F
+c---------------------------------------------------------------
+
+
+C$**********************************************************************
+      SUBROUTINE OUTPUT(LU,ITAPER)
+      save
+      COMMON/TAPE/ IB(1401),FILL(113)
+      DIMENSION B(536),INSTR(5),IADATE(3),IATIME(3),ISL(2),IDIP(2),
+     1IAZ(3),ISTR(2),IPL(3),YMD(6)
+      EQUIVALENCE (IB(1),B(1))
+      COMMON/DBLEC/ EPLA,EPLON,DEP,TORG,DURT
+      COMMON/DBLEM/ XMD(6),R0D
+      COMMON/OUTPAR/ ERRLA,ERRLO,ERRDEP,ERRTIM,
+     1ERRMOM(6),SCALAR,STRIKE(2),DIP(2),SLIP(2),
+     2EIVL(3),PLUNG(3),AZIM(3)
+      DATA INSTR/4HSRO ,4HASRO,4HIDA ,4HDWWS,4HRSTN/
+      NSOUR=1
+      CALL REWFL(7)
+      CALL BFFIN(7,1,B,1,J,M)
+      CALL BFFIN(7,1,B,13,J,M)
+    1 CALL BFFIN(7,1,B,1401,J,M)
+      IF(J.EQ.3) GO TO 10
+      IF(IB(22).NE.0) GO TO 1
+      CALL STATN(IB(1),NAME,IB(3),STLAT,STLONG,ILEV)
+      IFMT=2
+      CUTOFF=45.
+      IF(ITAPER.EQ.2) CUTOFF=32.
+      IF(B(4).GT.20.) CUTOFF=135.
+      T0=FLOAT(IB(16)+IB(17)-1)*B(4)
+      TL=FLOAT(IB(18)-IB(17))*B(4)
+      IN=IB(3)
+      WRITE(LU,1000) IFMT,NAME,IB(1),INSTR(IN),IB(2),STLAT,STLONG,
+     1ILEV,B(19),B(20),B(21),CUTOFF,T0,TL
+ 1000 FORMAT(I1,2X,A4,I4,1X,A4,I2,F7.2,F8.2,I5,F7.2,3F6.1,2F8.1)
+      GO TO 1
+   10 CONTINUE
+#if ( defined(MachineS) )
+      CALL IDATE(IADATE(2),IADATE(1),IADATE(3))
+#else
+      CALL IDATE(IADATE)
+#endif
+      IADATE(3)=MOD(IADATE(3),1900)
+      CALL ITIME(IATIME)
+      IFMT=3
+      N=1
+      WRITE(LU,1001) IFMT,NSOUR,N,EPLA,ERRLA,EPLON,ERRLO,
+     1DEP,ERRDEP,TORG,ERRTIM,DURT,IADATE(2),
+     2IADATE(1),IADATE(3),(IATIME(I),I=1,3)
+ 1001 FORMAT(I1,2X,2I1,F7.2,F6.2,F8.2,F6.2,5F6.1,1X,
+     12(I2,1H/),I2,1H,,2(I2,1H:),I2)
+      AMAX=0.
+      DO 21 I=1,6
+   21 AMAX=AMAX1(ABS(XMD(I)),AMAX)
+      DO 22 I=1,8
+      X=10.**(I-1)
+      IF(AMAX*X.LT.1.) GO TO 22
+      XNORM=X
+      IEXP=31-I
+      GO TO 23
+   22 CONTINUE
+      STOP 'EXPONENT OUT OF RANGE'
+   23 DO 24 I=1,6
+      YMD(I)=XMD(I)*XNORM
+   24 ERRMOM(I)=ERRMOM(I)*XNORM
+      IFMT=4
+      WRITE(LU,1002) IFMT,NSOUR,N,IEXP,(YMD(I),ERRMOM(I),I=1,6)
+ 1002 FORMAT(I1,2X,2I1,I3,6(F7.3,F5.3))
+      IFMT=5
+      DO 25 I=1,3
+      IPL(I)=PLUNG(I)+.499
+      EIVL(I)=EIVL(I)*XNORM
+   25 IAZ(I)=AMOD(AZIM(I)+.499,360.)
+      SCALAR=SCALAR*XNORM
+      DO 26 I=1,2
+      IDIP(I)=DIP(I)+.499
+      ISL(I)=SLIP(I)+SIGN(0.499,SLIP(I))
+      IF(ISL(I).LT.-180) ISL(I)=360+ISL(I)
+      IF(ISL(I).GT.180) ISL(I)=ISL(I)-360
+   26 ISTR(I)=AMOD(STRIKE(I)+.499,360.)
+      WRITE(LU,1003) IFMT,NSOUR,N,(EIVL(I),IPL(I),IAZ(I),I=1,3),
+     1SCALAR,(ISTR(I),IDIP(I),ISL(I),I=1,2)
+ 1003 FORMAT(I1,2X,2I1,3(F7.2,I3,I4),F6.2,2(I4,I3,I5))
+      CALL REWFL(7)
+      RETURN
+      END
+c---------------------------------------------------------------
+c sdomode.F
+c---------------------------------------------------------------
+       subroutine sdomode(nni,mm,cc,nc,xaux,yaux,npoint
+     1     ,fact,ifact,neig,t0,dt,c)
+      common/ap2/ xl(380),omega(380),qbar(380),grv(380),elp(380),
+     1  u(6,380),sp(12,380)
+      dimension xaux(514),yaux(514),cc(6,10,2),c(6,10),fact(10)
+      complex a0,step
+        nn=nni+mm-1
+        om=omega(nn)
+        x=xl(nn)
+        call adjuss(x,om,grv(nn),elp(nn),sp(1,nn),dtheta)
+        qb=-.5*qbar(nn)
+#if ( defined(MachineS) || defined(MachineT) )
+cc        arg2=om*t0
+cc        xmul2=om*dt
+cc        arg2=arg2-xmul2
+cc        arg1=arg2*qb
+cc        xmul1=xmul2*qb
+cc        do i=1,npoint
+cc          xaux(i)=-0.95179*exp(arg1+xmul1*i)*cos(arg2+xmul2*i)
+cc        enddo
+
+      call mtrace((-0.95179,0.),cmplx(om,-qb*om)
+     1     ,t0,dt,npoint,32,xaux,yaux)
+
+#else
+        arg=om*t0
+        a0=cmplx(-.95179,0.)*cexp(cmplx(qb*arg,arg))
+        arg=om*dt
+        step=cexp(cmplx(qb*arg,arg))
+        do i=1,npoint
+          xaux(i)=real(a0)
+          a0=a0*step
+        enddo
+#endif
+c       call fvsma(cc(1,1,2),1,dtheta,cc(1,1,1),1,c(1,1),1,nc)
+        call scopy(nc,cc(1,1,1),1,c(1,1),1)
+        call saxpy(nc,dtheta,cc(1,1,2),1,c(1,1),1)
+        do i=1,ifact
+c         call fdotpr(c(1,i),1,u(1,nn),1,fact(i),neig)
+          fact(i)=sdot(neig,c(1,i),1,u(1,nn),1)
+        enddo
+      return
+      end
+c---------------------------------------------------------------
+c sosfrs.F
+c---------------------------------------------------------------
+      subroutine sosfrs
+      save 
+      common/intap/ jstat,itype,icomp,ifact,jter,neig,npoint
+     1   ,jifdep,jnstr,jtrans,j1s,j1f,j2s,j2f,jnpar,jiftwo
+      common/iap5/ synt(514,10),addf(7710)
+      common/ap1/ t0,dt,ommax
+     1     ,theta,caz,saz,epc(2,4)
+     1     ,f(6),f2pf3,f2mf3,dum2(4)
+
+      common/ap2/ xl(380),omega(380),qbar(380),grv(380),elp(380),
+     1  u(6,380),sp(12,380)
+      common/inter/ knt,xj,zz1,zz2
+
+       common/tab3/h1(2),h2(2),z1(4),z2(4),z3(4),z4(4)
+     1 ,p1(6),p2(6),p3(6),p4(6),p5(6),p6(6),p7(6),p8(6),p9(6),p10(6)
+     1 ,q1(3),q2(3),q3(3),q4(3),q5(3),q6(3),q7(3)
+
+      common/iap2/ b1c,a2c,b2c,b2s,a3c,a3s
+
+      common/iap1/ psfer(8,2),ptors(8,2)
+
+cc#include "tab3.h"
+      complex a0,step
+      dimension xaux(514,4),yaux(514,4),c(6,10,4)
+     1     ,cc(6,10,2)
+     1   ,fact(10,4)
+      nc=6*ifact
+      nn2=0
+  600 nn=nn2+1
+      if(nn.gt.380) return
+      if(xl(nn).lt.0.) goto 99
+      if(omega(nn).gt.ommax) then
+        nn2=nn
+        goto 600
+      endif
+      nn2=nn
+      do while (nn2.le.380.and.omega(nn2).le.ommax
+     1     .and.xl(nn2).eq.xl(nn).and.nn2-nn.lt.4)
+        nn2=1+nn2
+      enddo
+      nn2=nn2-1
+      nnn=nn2-nn+1
+      if(xl(nn).lt.0.) go to 99
+      if(xl(nn).ne.xj) then
+        knt=0
+        xj=xl(nn)
+        l=xj+.001
+        call sphars(l,theta,caz,saz,epc,icomp,psfer,ptors)
+        call fvclr(c,1,3*20)
+        call fvclr(cc,1,3*20*2)
+        xj2=xj*(xj+1.)
+        p3(1)=-.5*xj2-1.
+        p3(3)=xj2
+        p5(3)=-.5*xj2
+        p5(4)=.5*xj2
+        p6(3)=.5*xj2
+        p7(3)=.25*(xj2+2.)
+        z2(3)=-.5*xj2
+        f62=2.*f(6)
+cC$DOIT PPROC SCCMAKE
+        do k=1,2
+          b1c=f(4)*psfer(3,k)+f(5)*psfer(4,k)
+          a2c=f2mf3*psfer(5,k)+f62*psfer(6,k)
+          b2c=f(4)*psfer(5,k)+f(5)*psfer(6,k)
+          b2s=f(4)*psfer(6,k)-f(5)*psfer(5,k)
+          a3c=f2mf3*psfer(7,k)+f62*psfer(8,k)
+          a3s=f2mf3*psfer(8,k)-f62*psfer(7,k)
+          do  i=1,neig
+            call sccmake(cc(1,1,k),psfer(1,k),i)
+          enddo
+
+        enddo
+        endif
+cC$DOIT PPROC SDOMODE
+        do mm=1,nnn
+          call sdomode(nn,mm,cc,nc,xaux(1,mm),yaux(1,mm)
+     1      ,npoint,fact(1,mm),ifact,neig,t0,dt,c(1,1,mm))
+        enddo
+  
+      do mm=1,nnn
+        if(knt.ne.0.or.mm.ne.1.or.dt.ge.20.) then
+          do i=1,ifact
+            call fvsma2(xaux(1,mm),1,fact(i,mm),synt(1,i),1,npoint)
+          enddo
+
+        endif
+      enddo
+
+      knt=knt+nnn
+      goto 600
+   99 jstat=-1
+      return
+      end
+
+c---------------------------------------------------------------
+c sotors.F
+c---------------------------------------------------------------
+      subroutine sotors
+      save
+      common/intap/ jstat,itype,icomp,ifact,jter,neig,npoint
+     1   ,jifdep,jnstr,jtrans,j1s,j1f,j2s,j2f,jnpar,jiftwo
+      common/iap5/ synt(514,10),addf(7710)
+      common/ap1/ t0,dt,ommax
+     1     ,theta,caz,saz,epc(2,4)
+     1     ,f(6),f2pf3,f2mf3,dum2(4)
+
+      common/ap2/ xl(437),omega(437),qbar(437),grv(437),elp(437),
+     1  u(3,437),sp(12,437)
+      common/iap1/ psfer(8,2),ptors(8,2)
+      common/inter/ knt,xj,zz1,zz2
+
+      common/tab3/h1(2),h2(2),z1(4),z2(4),z3(4),z4(4)
+     1 ,p1(6),p2(6),p3(6),p4(6),p5(6),p6(6),p7(6),p8(6),p9(6),p10(6)
+     1 ,q1(3),q2(3),q3(3),q4(3),q5(3),q6(3),q7(3)
+
+cc#include "tab3.h"
+
+c      common/iap4/ b1st,a2st,b2ct,b2st,a3ct,a3st
+
+
+      complex a0,step
+      dimension xaux(514,4),yaux(514,4),c(3,20,4)
+     1     ,xmul(10),cc(3,20,2)
+     1   ,fact(10,4)
+      nc=3*ifact
+      nn2=0
+  600 nn=nn2+1
+      if(nn.gt.437) return
+      if(xl(nn).lt.0.) goto 99
+      if(omega(nn).gt.ommax) then
+        nn2=nn
+        goto 600
+      endif
+      nn2=nn
+      do while (nn2.le.437.and.omega(nn2).le.ommax
+     1     .and.xl(nn2).eq.xl(nn).and.nn2-nn.lt.4)
+        nn2=1+nn2
+      enddo
+      nn2=nn2-1
+      nnn=nn2-nn+1
+      if(xl(nn).lt.0.) go to 99
+      if(xl(nn).ne.xj) then
+        knt=0
+        xj=xl(nn)
+        l=xj+.001
+        call sphars(l,theta,caz,saz,epc,icomp,psfer,ptors)
+        call fvclr(c,1,3*20)
+        call fvclr(xmul,1,10)
+        call fvclr(cc,1,3*20*2)
+        do k=1,2
+            xj2=xj*(xj+1.)
+            q5(1)=-5.*xj2
+            q5(2)=.5*xj2
+            q6(1)=.5*xj2
+            q7(1)=-.25*(xj2-2.)
+            f62=2.*f(6)
+            b1st=f(4)*ptors(4,k)-f(5)*ptors(3,k)
+            a2st=f2mf3*ptors(6,k)-f62*ptors(5,k)
+            b2ct=f(4)*ptors(5,k)+f(5)*ptors(6,k)
+            b2st=f(4)*ptors(6,k)-f(5)*ptors(5,k)
+            a3ct=f2mf3*ptors(7,k)+f62*ptors(8,k)
+            a3st=f2mf3*ptors(8,k)-f62*ptors(7,k)
+
+
+
+
+            do i=1,neig
+              call fvclr(xmul,1,10)
+              if(i.le.2) then
+
+                if(jter.lt.0) then
+                  xmul(1)=a2st*h1(i)-b1st*h2(i)
+                  goto 300
+                else
+                  xmul(2)=ptors(6,k)*h1(i)
+                  xmul(3)=-xmul(2)
+                  xmul(4)=-ptors(4,k)*h2(i)
+                  xmul(5)=ptors(3,k)*h2(i)
+                  xmul(6)=-2.*ptors(5,k)*h1(i)
+
+
+
+                  if(jter.eq.0) goto 300
+                endif
+              endif
+              q41=q4(i)+q1(i)
+              f167=-f(1)*q1(i)+f(2)*q6(i)+f2pf3*q7(i)
+              f55=f(5)*q5(i)
+              q21=q2(i)-q1(i)
+              f66=f(6)*q6(i)
+              f45=f(4)*q5(i)
+              f176=f(1)*q1(i)-f2pf3*q7(i)-f(3)*q6(i)
+              xmul(7)=-b1st*q41-a2st*q1(i)
+              xmul(8)=ptors(1,k)*f55+ptors(4,k)*f167
+     1            +b2st*q21-a3st*q3(i)-ptors(3,k)*f66
+              xmul(9)=-ptors(1,k)*f45+ptors(3,k)*f176
+     1            -b2ct*q21+a3ct*q3(i)+ptors(4,k)*f66
+
+ 300          continue
+              do j=1,ifact
+                cc(i,j,k)=xmul(j)
+              enddo
+            enddo
+          enddo
+        endif
+
+C$DIR PARALLEL
+        do mm=1,nnn
+          call tdomode(nn,mm,cc,nc,xaux(1,mm),yaux(1,mm)
+     1      ,npoint,fact(1,mm),ifact,neig,t0,dt,c(1,1,mm))
+        enddo
+
+      do mm=1,nnn
+        if(knt.ne.0.or.mm.ne.1.or.dt.ge.20.) then
+
+C$DIR PARALLEL
+          do i=1,ifact
+            call fvsma2(xaux(1,mm),1,fact(i,mm),synt(1,i),1,npoint)
+          enddo
+
+        endif
+      enddo
+
+      knt=knt+nnn
+      goto 600
+   99 jstat=-1
+      return
+      end
+c---------------------------------------------------------------
+c tdomode.F
+c---------------------------------------------------------------
+ 
+       subroutine tdomode(nni,mm,cc,nc,xaux,yaux,npoint
+     1     ,fact,ifact,neig,t0,dt,c)
+      common/ap2/ xl(437),omega(437),qbar(437),grv(437),elp(437),
+     1  u(3,437),sp(12,437)
+      dimension xaux(514),yaux(514),cc(3,20,2),c(3,20),fact(10)
+      complex a0,step
+        nn=nni+mm-1
+        om=omega(nn)
+        x=xl(nn)
+        call adjuss(x,om,grv(nn),elp(nn),sp(1,nn),dtheta)
+        qb=-.5*qbar(nn)
+#if ( defined(MachineS) )
+cc        arg2=om*t0
+cc        xmul2=om*dt
+cc        arg2=arg2-xmul2
+cc        arg1=arg2*qb
+cc        xmul1=xmul2*qb
+cc        do i=1,npoint
+cc          xaux(i)=-0.95179*exp(arg1+xmul1*i)*cos(arg2+xmul2*i)
+cc        enddo
+
+      call mtrace((-0.95179,0.),cmplx(om,-qb*om)
+     1     ,t0,dt,npoint,32,xaux,yaux)
+#else
+        arg=om*t0
+        a0=cmplx(-.95179,0.)*cexp(cmplx(qb*arg,arg))
+        arg=om*dt
+        step=cexp(cmplx(qb*arg,arg))
+        do i=1,npoint
+          xaux(i)=real(a0)
+          a0=a0*step
+        enddo
+#endif
+        call fvsma(cc(1,1,2),1,dtheta,cc(1,1,1),1,c(1,1),1,nc)
+        do i=1,ifact
+          call fdotpr(c(1,i),1,u(1,nn),1,fact(i),neig)
+        enddo
+      return
+      end
+

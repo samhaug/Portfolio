@@ -1,0 +1,123 @@
+      subroutine setup1(lu,lumes,ierr)
+      include "seedbuf.h"
+cc     integer*4 ibuf(8192)
+cc     integer*2 jbuf(16384)
+cc     equivalence (ibuf(1),jbuf(1))
+cc     common/buffer/lut,lrec,lrech,nlrblk,i2bias,i4bias,irec,ibyte
+cc    1 ,itype,icont,ibuf
+cc     common/gotrcs/igot1,igot2
+      common/plevel/iprtlv  
+      character*8 str8
+      character*4 test4
+      dimension iprecs(2),iseqs(2)
+      character*60 tpnm
+      common/tapenm/ltpnm,tpnm
+      character*80 str80
+      tpnm=' '
+      ltpnm=0
+      ifiend=0
+      lut=lu
+      igot1=0
+      igot2=0
+      mrec=32768
+      ierr=0
+c! maximum physical record length is 32768
+c! find phys record length and logical record length
+      ip=1
+      ifd=0
+      test4='0000'
+      knte=0
+      istart=1
+      do while(ifd.lt.2)
+  786   call bffi(lut,1,ibuf,mrec,j,m,ip)
+        if(j.eq.3.and.istart.eq.1) then
+          ierr=3
+          return
+        endif
+        istart=0
+        if(ifd.eq.0) lphys=m
+        if(j.eq.3.or.ifd.eq.1.and.m.ne.lphys) then
+          knte=0
+          call bffi(lut,1,ibuf,mrec,j,m,1)
+          if(j.eq.3.or.m.lt.128) then
+            ierr=1
+            return
+          endif
+          iof=0
+  651     write(str8,'(3a2)') (jbuf(iof+i),i=1,3)
+          if(iof.eq.0.and.str8(1:6).ne.'000001') then
+            ierr=2
+            return
+          else if(str8(1:6).eq.'000002') then
+            goto 652
+          else
+            if(iof.eq.0) iof=32
+            if(iof.ne.0) iof=iof*2
+            goto 651
+          endif
+  652     lrec=2*iof
+          write(6,'(''Setting lrec='',i6)') lrec
+          lphys=32768
+          nlrblk=32768/lrec
+          goto 301
+        endif
+        if(j.ne.2) then
+          write(6,*) 'setup1: read error in tape j=',j,' ip=',ip,' ifd=',ifd
+          knte=knte+1
+          if(knte.lt.4) goto 786
+          call exit(2)
+        endif
+        knte=0
+        write(str8,"(3a2)") (jbuf(i),i=1,3)
+        if(str8(1:1).eq.'{') then
+           lrec=0
+           ibyte=0
+           goto 300
+        else if(str8(1:1).eq.'[') then
+           write(str80,"(40a2)") (jbuf(i),i=1,40)
+           if(str80(2:6).ne.'Tape:') pause 'setup1: format error'
+           il=7
+           do while(il.le.80.and.str80(il:il).ne.']') 
+             il=il+1
+           enddo
+           if(il.gt.80) pause 'setup1: closing bracket not found'
+           tpnm=str80(7:il-1)
+           ltpnm=il-1-7+1
+           do while(il.le.80.and.str80(il:il).ne.'{') 
+             il=il+1
+           enddo
+           if(il.gt.80) pause 'setup1: opening brace not found'
+           lrec=0
+           ibyte=il-1
+           goto 300
+        endif
+        if(str8(1:4).eq.test4) then
+	  ifd=1+ifd
+	  iprecs(ifd)=ip
+          read(str8,"(i6)") iseqs(ifd)
+        endif
+        ip=1+ip
+      enddo
+      if(iseqs(2)-iseqs(1).ge.iprecs(2)-iprecs(1)) then
+        if(iprecs(2)-iprecs(1).ne.1) pause 'setup: error 1'
+        nlrblk=iseqs(2)-iseqs(1)
+        lrec=lphys/nlrblk
+        if(lrec*nlrblk.ne.lphys) pause 'setup: error 2'
+      else
+        if(iseqs(2)-iseqs(1).ne.1) pause 'setup: error 3'
+	nlrblk=-(iprecs(2)-iprecs(1))
+        lrec=-lphys*nlrblk
+        if(lrec.ne.-nlrblk*lphys) pause 'setup: error 4'
+      endif
+  301 continue
+      lrech=lrec/2
+      ibyte=lrec
+  300 irec=0
+      igot1=0
+      igot2=0
+      call rewfl(lu)
+      if(iprtlv.gt.0) write(lumes,"('Physical record length:',i6/
+     1          'Logical record length: ',i6)") lphys,lrec
+      return
+      end
+

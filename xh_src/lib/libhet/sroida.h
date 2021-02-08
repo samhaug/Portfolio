@@ -1,0 +1,6 @@
+      parameter (mxsta=3000)
+      parameter (mxida=30)
+      COMMON/STDATA/ NSTA,INDEX(mxsta),NAMEST(mxsta),STLAT(mxsta)
+     1  ,STLONG(mxsta),ELEV(mxsta)
+      COMMON/IDASTA/ NIDA,IDAIND(mxida),IDANAM(mxida),SLAIDA(mxida)
+     1  ,SLOIDA(mxida),ELVIDA(mxida)

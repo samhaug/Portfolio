@@ -1,0 +1,138 @@
+LIBDIR=$(HOME)/lib_caltech
+LIB =libdb
+
+include	$(HOME)/etc/Makerules
+
+$(LIBDIR)/$(LIB).a: \
+	$(LIBDIR)/$(LIB).a(trlink.o) \
+	$(LIBDIR)/$(LIB).a(trread3.o) \
+	$(LIBDIR)/$(LIB).a(ntalloc.o) \
+	$(LIBDIR)/$(LIB).a(ltalloc.o) \
+	$(LIBDIR)/$(LIB).a(gmatch.o) \
+	$(LIBDIR)/$(LIB).a(perform.o) \
+	$(LIBDIR)/$(LIB).a(matchrank.o) \
+	$(LIBDIR)/$(LIB).a(itextrm.o) \
+	$(LIBDIR)/$(LIB).a(nactive.o) \
+	$(LIBDIR)/$(LIB).a(scanintvl.o) \
+	$(LIBDIR)/$(LIB).a(maxrank.o) \
+	$(LIBDIR)/$(LIB).a(mtextnd.o) \
+	$(LIBDIR)/$(LIB).a(opncldr.o) \
+	$(LIBDIR)/$(LIB).a(getcldr.o) \
+	$(LIBDIR)/$(LIB).a(getcldr0.o) \
+	$(LIBDIR)/$(LIB).a(setcldr.o) \
+	$(LIBDIR)/$(LIB).a(itcmp.o) \
+	$(LIBDIR)/$(LIB).a(trqral.o) \
+	$(LIBDIR)/$(LIB).a(trqry.o) \
+	$(LIBDIR)/$(LIB).a(pmatcht.o) \
+	$(LIBDIR)/$(LIB).a(opnabr.o) \
+	$(LIBDIR)/$(LIB).a(setabr.o) \
+	$(LIBDIR)/$(LIB).a(setabrn.o) \
+	$(LIBDIR)/$(LIB).a(getabr.o) \
+	$(LIBDIR)/$(LIB).a(pmatch.o) \
+	$(LIBDIR)/$(LIB).a(chekli.o) \
+	$(LIBDIR)/$(LIB).a(getali.o) \
+	$(LIBDIR)/$(LIB).a(inli.o) \
+	$(LIBDIR)/$(LIB).a(getli.o) \
+	$(LIBDIR)/$(LIB).a(iargli.o) \
+	$(LIBDIR)/$(LIB).a(nargsu.o) \
+	$(LIBDIR)/$(LIB).a(trclal.o) \
+	$(LIBDIR)/$(LIB).a(trrenk.o) \
+	$(LIBDIR)/$(LIB).a(kyread.o) \
+	$(LIBDIR)/$(LIB).a(kywrit.o) \
+	$(LIBDIR)/$(LIB).a(gtawrd.o) \
+	$(LIBDIR)/$(LIB).a(trpatt.o) \
+	$(LIBDIR)/$(LIB).a(trdrnx.o) \
+	$(LIBDIR)/$(LIB).a(trcurr.o) \
+	$(LIBDIR)/$(LIB).a(tropnn.o) \
+	$(LIBDIR)/$(LIB).a(tropnk.o) \
+	$(LIBDIR)/$(LIB).a(trfadd.o) \
+	$(LIBDIR)/$(LIB).a(trapnd.o) \
+	$(LIBDIR)/$(LIB).a(trwrit.o) \
+	$(LIBDIR)/$(LIB).a(trwrit2.o) \
+	$(LIBDIR)/$(LIB).a(trread.o) \
+	$(LIBDIR)/$(LIB).a(trread2.o) \
+	$(LIBDIR)/$(LIB).a(trreadl.o) \
+	$(LIBDIR)/$(LIB).a(trrewd.o) \
+	$(LIBDIR)/$(LIB).a(trdelk.o) \
+	$(LIBDIR)/$(LIB).a(trrotk.o) \
+	$(LIBDIR)/$(LIB).a(trbmrg.o) \
+	$(LIBDIR)/$(LIB).a(trfind.o) \
+	$(LIBDIR)/$(LIB).a(trnext.o) \
+	$(LIBDIR)/$(LIB).a(traddk.o) \
+	$(LIBDIR)/$(LIB).a(trtuch.o) \
+	$(LIBDIR)/$(LIB).a(trclos.o) \
+	$(LIBDIR)/$(LIB).a(trreop.o) \
+	$(LIBDIR)/$(LIB).a(stakcr.o) \
+	$(LIBDIR)/$(LIB).a(stakgt.o) \
+	$(LIBDIR)/$(LIB).a(stakap.o) \
+	$(LIBDIR)/$(LIB).a(staksn.o) \
+	$(LIBDIR)/$(LIB).a(staktc.o) \
+	$(LIBDIR)/$(LIB).a(stakfl.o) \
+	$(LIBDIR)/$(LIB).a(stakcl.o) \
+	$(LIBDIR)/$(LIB).a(stakst.o) \
+	$(LIBDIR)/$(LIB).a(lenst.o) \
+	$(LIBDIR)/$(LIB).a(balloc.o) \
+	$(LIBDIR)/$(LIB).a(dalloc.o) \
+	$(LIBDIR)/$(LIB).a(csubs.o)
+
+
+$(LIBDIR)/$(LIB).a(chekli.o): $(HOME)/src_caltech/libio/getgnl.h getli.h
+$(LIBDIR)/$(LIB).a(getli.o):  $(HOME)/src_caltech/libio/getgnl.h getli.h
+$(LIBDIR)/$(LIB).a(getali.o): iargli.h
+$(LIBDIR)/$(LIB).a(iargli.o): iargli.h
+$(LIBDIR)/$(LIB).a(nargsu.o): iargli.h
+
+$(LIBDIR)/$(LIB).a(balloc.o): dblib.h
+$(LIBDIR)/$(LIB).a(dalloc.o): dblib.h
+$(LIBDIR)/$(LIB).a(getabr.o): dblib.h
+$(LIBDIR)/$(LIB).a(getcldr.o): dblib.h
+$(LIBDIR)/$(LIB).a(getcldr0.o): dblib.h
+$(LIBDIR)/$(LIB).a(kyread.o): dblib.h
+$(LIBDIR)/$(LIB).a(kywrit.o): dblib.h
+$(LIBDIR)/$(LIB).a(ltalloc.o): dblib.h
+$(LIBDIR)/$(LIB).a(matchrank.o): dblib.h
+$(LIBDIR)/$(LIB).a(maxrank.o): dblib.h
+$(LIBDIR)/$(LIB).a(mtextnd.o): dblib.h
+$(LIBDIR)/$(LIB).a(nactive.o): dblib.h
+$(LIBDIR)/$(LIB).a(opnabr.f.o): dblib.h
+$(LIBDIR)/$(LIB).a(opncldr.o): dblib.h
+$(LIBDIR)/$(LIB).a(scanintvl.o): dblib.h
+$(LIBDIR)/$(LIB).a(setabr.o): dblib.h
+$(LIBDIR)/$(LIB).a(setabrn.o): dblib.h
+$(LIBDIR)/$(LIB).a(setcldr.o): dblib.h
+$(LIBDIR)/$(LIB).a(stakap.o): dblib.h
+$(LIBDIR)/$(LIB).a(stakcl.o): dblib.h
+$(LIBDIR)/$(LIB).a(stakcr.o): dblib.h
+$(LIBDIR)/$(LIB).a(stakfl.o): dblib.h
+$(LIBDIR)/$(LIB).a(stakgt.o): dblib.h
+$(LIBDIR)/$(LIB).a(staksn.o): dblib.h
+$(LIBDIR)/$(LIB).a(stakst.o): dblib.h
+$(LIBDIR)/$(LIB).a(staktc.o): dblib.h
+$(LIBDIR)/$(LIB).a(traddk.o): dblib.h
+$(LIBDIR)/$(LIB).a(trapnd.o): dblib.h
+$(LIBDIR)/$(LIB).a(trbmrg.o): dblib.h
+$(LIBDIR)/$(LIB).a(trclal.o): dblib.h
+$(LIBDIR)/$(LIB).a(trclos.o): dblib.h
+$(LIBDIR)/$(LIB).a(trcurr.o): dblib.h
+$(LIBDIR)/$(LIB).a(trdelk.o): dblib.h
+$(LIBDIR)/$(LIB).a(trdrnx.o): dblib.h
+$(LIBDIR)/$(LIB).a(trfadd.o): dblib.h
+$(LIBDIR)/$(LIB).a(trfind.o): dblib.h
+$(LIBDIR)/$(LIB).a(trnext.o): dblib.h
+$(LIBDIR)/$(LIB).a(tropnk.o): dblib.h
+$(LIBDIR)/$(LIB).a(tropnn.o): dblib.h
+$(LIBDIR)/$(LIB).a(trpatt.o): dblib.h
+$(LIBDIR)/$(LIB).a(trqral.o): dblib.h
+$(LIBDIR)/$(LIB).a(trqry.o): dblib.h
+$(LIBDIR)/$(LIB).a(trread.o): dblib.h
+$(LIBDIR)/$(LIB).a(trread2.o): dblib.h
+$(LIBDIR)/$(LIB).a(trreadl.o): dblib.h
+$(LIBDIR)/$(LIB).a(trrenk.o): dblib.h
+$(LIBDIR)/$(LIB).a(trreop.o): dblib.h
+$(LIBDIR)/$(LIB).a(trrewd.o): dblib.h
+$(LIBDIR)/$(LIB).a(trrotk.o): dblib.h
+$(LIBDIR)/$(LIB).a(trtuch.o): dblib.h
+$(LIBDIR)/$(LIB).a(trwrit.o): dblib.h
+$(LIBDIR)/$(LIB).a(trwrit2.o): dblib.h
+
+include	$(HOME)/etc/Makeranlib

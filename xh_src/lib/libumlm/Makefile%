@@ -1,0 +1,136 @@
+LIBDIR=$(HOME)/lib$(MS)
+LIB =libumlm
+
+include	$(HOME)/etc/Makerules.${MS}
+
+$(LIBDIR)/$(LIB).a: \
+	$(LIBDIR)/$(LIB).a(cntrack.o) \
+	$(LIBDIR)/$(LIB).a(ylmv4.o) \
+	$(LIBDIR)/$(LIB).a(ylmavv4.o) \
+	$(LIBDIR)/$(LIB).a(ylmv.o) \
+	$(LIBDIR)/$(LIB).a(ylmavv.o) \
+	$(LIBDIR)/$(LIB).a(heread.o) \
+	$(LIBDIR)/$(LIB).a(mskmdl.o) \
+	$(LIBDIR)/$(LIB).a(rdmdl.o) \
+	$(LIBDIR)/$(LIB).a(splhsetup.o) \
+	$(LIBDIR)/$(LIB).a(splh.o) \
+	$(LIBDIR)/$(LIB).a(splksetup.o) \
+	$(LIBDIR)/$(LIB).a(splk.o) \
+	$(LIBDIR)/$(LIB).a(tn.o) \
+	$(LIBDIR)/$(LIB).a(spln.o) \
+	$(LIBDIR)/$(LIB).a(hecntconfig.o) \
+	$(LIBDIR)/$(LIB).a(joicntconfig.o) \
+	$(LIBDIR)/$(LIB).a(heccell.o) \
+	$(LIBDIR)/$(LIB).a(dodec.o) \
+	$(LIBDIR)/$(LIB).a(gcircl.o) \
+	$(LIBDIR)/$(LIB).a(mapcnt.o) \
+	$(LIBDIR)/$(LIB).a(grdylma.o) \
+	$(LIBDIR)/$(LIB).a(pltmpsp.o) \
+	$(LIBDIR)/$(LIB).a(drawc.o) \
+	$(LIBDIR)/$(LIB).a(drcpolyline.o) \
+	$(LIBDIR)/$(LIB).a(drcpolyfill.o) \
+	$(LIBDIR)/$(LIB).a(ellipse.o) \
+	$(LIBDIR)/$(LIB).a(jsegs.o) \
+	$(LIBDIR)/$(LIB).a(sortri.o) \
+	$(LIBDIR)/$(LIB).a(filrect.o) \
+	$(LIBDIR)/$(LIB).a(hecnti.o) \
+	$(LIBDIR)/$(LIB).a(drawcir.o) \
+	$(LIBDIR)/$(LIB).a(aitoff.o) \
+	$(LIBDIR)/$(LIB).a(askcap.o) \
+	$(LIBDIR)/$(LIB).a(askscl.o) \
+	$(LIBDIR)/$(LIB).a(cmat1.o) \
+	$(LIBDIR)/$(LIB).a(cmat2.o) \
+	$(LIBDIR)/$(LIB).a(cntorg.o) \
+	$(LIBDIR)/$(LIB).a(cntour.o) \
+	$(LIBDIR)/$(LIB).a(ctable.o) \
+	$(LIBDIR)/$(LIB).a(delaz.o) \
+	$(LIBDIR)/$(LIB).a(ekern.o) \
+	$(LIBDIR)/$(LIB).a(evlint.o) \
+	$(LIBDIR)/$(LIB).a(evltv.o) \
+	$(LIBDIR)/$(LIB).a(evpclm.o) \
+	$(LIBDIR)/$(LIB).a(evpcum.o) \
+	$(LIBDIR)/$(LIB).a(evprem.o) \
+	$(LIBDIR)/$(LIB).a(frame.o) \
+	$(LIBDIR)/$(LIB).a(frame0.o) \
+	$(LIBDIR)/$(LIB).a(frame1.o) \
+	$(LIBDIR)/$(LIB).a(frame2.o) \
+	$(LIBDIR)/$(LIB).a(getker.o) \
+	$(LIBDIR)/$(LIB).a(grdlm.o) \
+	$(LIBDIR)/$(LIB).a(grdlmp.o) \
+	$(LIBDIR)/$(LIB).a(grdmpip.o) \
+	$(LIBDIR)/$(LIB).a(grdmpl.o) \
+	$(LIBDIR)/$(LIB).a(grdmplp.o) \
+	$(LIBDIR)/$(LIB).a(grdmpn.o) \
+	$(LIBDIR)/$(LIB).a(grdmpnp.o) \
+	$(LIBDIR)/$(LIB).a(grdnmdl.o) \
+	$(LIBDIR)/$(LIB).a(grdnmdlp.o) \
+	$(LIBDIR)/$(LIB).a(grdmmdl.o) \
+	$(LIBDIR)/$(LIB).a(grdscl.o) \
+	$(LIBDIR)/$(LIB).a(grdylm.o) \
+	$(LIBDIR)/$(LIB).a(hammer.o) \
+	$(LIBDIR)/$(LIB).a(hecntc.o) \
+	$(LIBDIR)/$(LIB).a(hecntg.o) \
+	$(LIBDIR)/$(LIB).a(hecnts.o) \
+	$(LIBDIR)/$(LIB).a(hecntw.o) \
+	$(LIBDIR)/$(LIB).a(hewrite.o) \
+	$(LIBDIR)/$(LIB).a(isoinc.o) \
+	$(LIBDIR)/$(LIB).a(krunge.o) \
+	$(LIBDIR)/$(LIB).a(mapfun.o) \
+	$(LIBDIR)/$(LIB).a(mapprj.o) \
+	$(LIBDIR)/$(LIB).a(modl.o) \
+	$(LIBDIR)/$(LIB).a(mollw.o) \
+	$(LIBDIR)/$(LIB).a(multv2.o) \
+	$(LIBDIR)/$(LIB).a(multv.o) \
+	$(LIBDIR)/$(LIB).a(number.o) \
+	$(LIBDIR)/$(LIB).a(pdaz.o) \
+	$(LIBDIR)/$(LIB).a(pecntg.o) \
+	$(LIBDIR)/$(LIB).a(pecntr.o) \
+	$(LIBDIR)/$(LIB).a(phsmdl.o) \
+	$(LIBDIR)/$(LIB).a(plot.o) \
+	$(LIBDIR)/$(LIB).a(pltmps.o) \
+	$(LIBDIR)/$(LIB).a(pn.o) \
+	$(LIBDIR)/$(LIB).a(pole.o) \
+	$(LIBDIR)/$(LIB).a(rdcmb.o) \
+	$(LIBDIR)/$(LIB).a(rdgrd.o) \
+	$(LIBDIR)/$(LIB).a(rddivc.o) \
+	$(LIBDIR)/$(LIB).a(rdmdll.o) \
+	$(LIBDIR)/$(LIB).a(rdmdli.o) \
+	$(LIBDIR)/$(LIB).a(rdrjo.o) \
+	$(LIBDIR)/$(LIB).a(rgeoid.o) \
+	$(LIBDIR)/$(LIB).a(relph.o) \
+	$(LIBDIR)/$(LIB).a(rotll.o) \
+	$(LIBDIR)/$(LIB).a(rotmx2.o) \
+	$(LIBDIR)/$(LIB).a(rotvc.o) \
+	$(LIBDIR)/$(LIB).a(rtoi.o) \
+	$(LIBDIR)/$(LIB).a(setker.o) \
+	$(LIBDIR)/$(LIB).a(setrot.o) \
+	$(LIBDIR)/$(LIB).a(setup.o) \
+	$(LIBDIR)/$(LIB).a(setupa.o) \
+	$(LIBDIR)/$(LIB).a(setupg.o) \
+	$(LIBDIR)/$(LIB).a(shfmdl.o) \
+	$(LIBDIR)/$(LIB).a(smooth.o) \
+	$(LIBDIR)/$(LIB).a(smoothr.o) \
+	$(LIBDIR)/$(LIB).a(spharmap.o) \
+	$(LIBDIR)/$(LIB).a(splexp.o) \
+	$(LIBDIR)/$(LIB).a(splgrd.o) \
+	$(LIBDIR)/$(LIB).a(stipl1.o) \
+	$(LIBDIR)/$(LIB).a(stiplr.o) \
+	$(LIBDIR)/$(LIB).a(stloca.o) \
+	$(LIBDIR)/$(LIB).a(stupr.o) \
+	$(LIBDIR)/$(LIB).a(stuprn.o) \
+	$(LIBDIR)/$(LIB).a(symbl1.o) \
+	$(LIBDIR)/$(LIB).a(bcoff1.o) \
+	$(LIBDIR)/$(LIB).a(wig0.o) \
+	$(LIBDIR)/$(LIB).a(wig2.o) \
+	$(LIBDIR)/$(LIB).a(wrtgrd.o) \
+	$(LIBDIR)/$(LIB).a(ylm.o) \
+	$(LIBDIR)/$(LIB).a(ylmav.o) \
+	$(LIBDIR)/$(LIB).a(ylmint.o)
+
+
+
+$(LIBDIR)/$(LIB).a(ekern.o): modl.h 
+$(LIBDIR)/$(LIB).a(modl.o): modl.h 
+
+
+include	$(HOME)/etc/Makeranlib.${MS}

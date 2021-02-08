@@ -1,0 +1,88 @@
+c--------------------------------------------------------------------
+      subroutine savesegs()
+      include 'seedparam.h'
+      include 'seedcommun.h'
+      include 'seedtrees.h'
+      include '~/eq/src/libdb/dblib.h'
+      character*16 ckey
+      integer*4 key(4)
+      integer*2 jkey(8)
+      equivalence (key,jkey,ckey)
+      character*23 time1,time2
+      if(nmsegs.eq.0) return
+
+      call closechn()
+      call openstn(stncall,netid,4)
+
+      ckey(1:8)=chnlocid//chnname//'   '
+      ckey(4:4)=char(255-ichar(ckey(4:4)))
+      ckey(5:5)=char(255-ichar(ckey(5:5)))
+      key(3)=-1
+      jkey(7)=-1
+
+      nstak=5
+      maxlev=7
+      mord=71
+      linfo=3
+      mschpcl=1 00000
+
+
+      do iseg=1,nmsegs
+
+        if(lfmtseg(iseg).eq.-1) then
+
+          call timeint(itimseg(1,iseg),time1,ltime1)
+          call timeint(itimseg(3,iseg),time2,ltime2)
+          write(6,*) '*** Warning *** No valid channel id; data piece not stored.'
+          write(6,*) stncall//chnlocid//chnname//' '//time1(1:ltime1-1)//' '//time2(1:ltime2-1)
+          goto 100
+
+        else if(key(3).ne.ichrseg(iseg).or.jkey(7).ne.lfmtseg(iseg)) then
+          if(jkey(7).ne.-1) then
+            write(6,*) 'savesegs: rate or format change within the volume'
+            call trclos(itchpcl)
+            jkey(7)=-1
+          endif
+          key(3)=ichrseg(iseg)
+          jkey(7)=lfmtseg(iseg)
+
+          nstak=5
+          maxlev=7
+          mord=71
+          linfo=3
+          mschpcl=1 00000
+
+
+          call opncldr(itsttsr,ckey(1:14),STOLD,4,ierr
+     1     ,nstak,maxlev,itchpcl,mschpcl,mtchpcl
+     1     ,mord,linfo)
+          if(ierr.ne.0) pause 'savesegs: Time ser. calendar not found on reopen'
+        endif
+        it=itcmp(itimseg(1,iseg),itimseg(3,iseg))
+        if(it.eq.1) then
+          write(6,*) 'savesegs: *** Warning *** ',stncall//chnlocid//chnname
+     1        ,' --- Invalid times'
+        else if(it.eq.0) then
+          call inctim(itimseg(3,iseg))
+          inrank=-2
+          call setcldr(itchpcl,mschpcl,mtchpcl
+     1       ,itimseg(1,iseg),itimseg(3,iseg),itimseg(5,iseg),3,inrank)
+        else
+          inrank=-2
+          call setcldr(itchpcl,mschpcl,mtchpcl
+     1       ,itimseg(1,iseg),itimseg(3,iseg),itimseg(5,iseg),3,inrank)
+        endif
+  100   continue
+      enddo
+
+      if(jkey(7).ne.-1) then
+        call trclos(itchpcl)
+        jkey(7)=-1
+      endif
+      nmsegs=0
+
+
+
+
+      return
+      end

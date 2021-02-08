@@ -1,0 +1,9 @@
+
+
+c-------------------------------------------------------------------
+
+      integer function ltalloc()
+      include '~/eq/src/libdb/dblib.h'
+      ltalloc=bigsize-nexbig
+      return
+      end

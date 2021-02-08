@@ -1,0 +1,61 @@
+      subroutine schkdiff(phin,hdep,delta,phout)
+
+      character*(*) phin,phout
+
+      common/delmxS/delmxsdep(50),delmxsdel(50),delmxsspl(50),
+     1              delmnsels,delmxsels,ndelmxs
+      common/delmxP/delmxpdep(50),delmxpdel(50),delmxpspl(50),
+     1              delmnselp,delmxselp,ndelmxp
+      common/iinitdelmx/iinitdelmxpar
+
+      if(hdep.gt.725) stop 'schkdiff: event depth > 725'
+
+      if(iinitdelmxpar.ne.999) then
+c      write(6,*) 'initialising table for distinguishing direct and diff. waves'
+       call sinitdelmx()
+       iinitdelmxpar=999
+      endif
+
+      lphin=istlen(phin)
+      if(lphin.ne.1.or.(phin(1:1).ne.'S'.and.phin(1:1).ne.'P')) then
+       phout=phin
+       return
+      endif
+
+      if(phin(1:1).eq.'S') then
+       if(delta.lt.delmnsels) then
+        phout='S'
+       else if(delta.gt.delmxsels) then
+        phout='Sdiff'
+       else
+        call splint(delmxsdep,delmxsdel,delmxsspl,ndelmxs,hdep,delcrit)
+        write(6,*) 'maximum delta for direct wave for source at this depth: ',delcrit
+        if(delta.gt.delcrit) then
+         phout='Sdiff'
+        else
+         phout='S'
+        endif
+       endif
+       if(phout.eq.'Sdiff') write(6,*) 'phase identified as Sdiff'
+       return
+      endif
+
+      if(phin(1:1).eq.'P') then
+       if(delta.lt.delmnselp) then
+        phout='P'
+       else if(delta.gt.delmxselp) then
+        phout='Pdiff'
+       else
+        call splint(delmxpdep,delmxpdel,delmxpspl,ndelmxp,hdep,delcrit)
+        write(6,*) 'maximum delta for direct wave for source at this depth: ',delcrit
+        if(delta.gt.delcrit) then
+         phout='Pdiff'
+        else
+         phout='P'
+        endif
+       if(phout.eq.'Pdiff') write(6,*) 'phase identified as Pdiff'
+       endif
+      endif
+
+      end
+

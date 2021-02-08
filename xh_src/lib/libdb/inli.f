@@ -1,0 +1,14 @@
+
+c---------------------------------------------------------------
+      integer*4 function inli(id,seq,nbyts)
+      character*(*) id
+      character*80 string,getli
+      string=getli(id,iseq,nbyts)
+      if(nbyts.gt.0) then
+        read(string,*) itemp
+      else
+        itemp=0
+      endif
+      inli=itemp
+      return
+      end

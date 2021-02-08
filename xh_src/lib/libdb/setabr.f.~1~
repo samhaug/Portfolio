@@ -1,0 +1,62 @@
+
+      subroutine setabr(itrabr,itrhash,lastuid,id,txt,tmp,ifound)
+      include 'dblib.h'
+      logical trfind,trnext,getabr
+      character*(*) txt,tmp
+      common/perfmce/nhash
+      integer*4 hash(2)
+      hash(1)=0
+      hash(2)=z'80000000'
+c      hash(2)=z'7fffffff'
+      ltxt=len(txt)
+      do i=1,ltxt
+        hash(1)=hash(1)+ichar(txt(i:i))
+      enddo
+      if(trfind(itrhash,hash,2,iok,ioi)) pause 'setabr: small found'
+c      if(trfind(itrhash,hash,2,iok,ioi)) pause 'setabr: large found'
+      ifound=0
+      nhash=0
+      do while(trnext(itrhash,1,iok,ioi))
+c      do while(trnext(itrhash,-1,iok,ioi))
+c      write(6,*) txt(1:ltxt)
+        if(ibig(iok).ne.hash(1)) goto 101
+        nhash=nhash+1
+        id=ibig(iok+1)
+        if(getabr(itrabr,id,tmp,ltmp)) then
+c          write(6,*) 'lengths:',ltxt,ltmp
+c          write(6,*) tmp(1:ltmp)
+c          read(5,"(a1)") idummy
+          if(ltmp.eq.ltxt.and.tmp(1:ltmp).eq.txt(1:ltxt)) then
+            ifound=1
+            goto 101
+          endif
+        else
+          pause 'setabr: abbreviation not found'
+        endif
+      enddo
+  101 continue
+      if(ifound.eq.0) then
+        lastuid=1+lastuid
+        id=lastuid
+        hash(2)=id
+        if(trfind(itrhash,hash,2,iok,ioi)) pause 'setabr: new key found'
+        call traddk(itrhash,hash,2,indummy,0)
+        if(trfind(itrabr,id,1,iok,ioi)) pause 'setabr: new key found'
+        call traddk(itrabr,id,1,ltxt,1)
+        lw=(ltxt+3)/4
+        call balloc(lw,io)
+        do i=1,ltxt
+          cbig(io*4+i-1)=txt(i:i)
+        enddo
+        do i=ltxt+1,4*(ltxt+3)/4
+          cbig(io*4+i-1)=' '
+        enddo
+        if(trfind(itrabr,id,1,iok,ioi)) then
+          call trwrit(itrabr,ibig(io),lw)
+        else
+          pause 'setabr: new key not found'
+        endif
+        call dalloc(lw,io)
+      endif
+      return
+      end 

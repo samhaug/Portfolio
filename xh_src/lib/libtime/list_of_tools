@@ -1,0 +1,20 @@
+dat2jday(yr, mo, day, jday):
+	converts date to julian day
+
+isleap(YYYY):
+	check whether (=1) or not (=0) YYYY is a leap year
+
+jday2dat(yr, jday, mo, day):
+	get calendar day from julian day number
+
+sec2time(tm,tsec):
+	Converting SECONDS SINCE 1970 to TM
+
+timadd((tm1, ts, tm2):
+	adds TS seconds to TM1 and puts result in TM2
+
+timdif(tm1, tm2, ts):
+	finds the difference in SECONDS between TM1 and TM2
+
+time2sec(tm, ts):
+	Converting TM to amount in SECONDS SINCE 1970

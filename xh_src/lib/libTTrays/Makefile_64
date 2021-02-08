@@ -1,0 +1,85 @@
+include $(HOME)/etc/Makerules
+
+LIB =librays
+LIBDIR = $(HOME)/lib_caltech
+
+$(LIBDIR)/$(LIB).a: \
+	$(LIBDIR)/$(LIB).a(cxyz.o) \
+	$(LIBDIR)/$(LIB).a(ctp.o) \
+	$(LIBDIR)/$(LIB).a(readin.o) \
+	$(LIBDIR)/$(LIB).a(readmod.o) \
+	$(LIBDIR)/$(LIB).a(readiniso.o) \
+	$(LIBDIR)/$(LIB).a(readinaniso.o) \
+	$(LIBDIR)/$(LIB).a(getv.o) \
+	$(LIBDIR)/$(LIB).a(getiwave.o) \
+	$(LIBDIR)/$(LIB).a(findbranch.o) \
+	$(LIBDIR)/$(LIB).a(findray1.o) \
+	$(LIBDIR)/$(LIB).a(findrayprem.o) \
+	$(LIBDIR)/$(LIB).a(findraypremup.o) \
+	$(LIBDIR)/$(LIB).a(findraypremup1.o) \
+	$(LIBDIR)/$(LIB).a(findraypremund.o) \
+	$(LIBDIR)/$(LIB).a(findraypremdiff.o) \
+	$(LIBDIR)/$(LIB).a(findraypremd1d2.o) \
+	$(LIBDIR)/$(LIB).a(findraypremupdiff.o) \
+	$(LIBDIR)/$(LIB).a(findraypremmixed.o) \
+	$(LIBDIR)/$(LIB).a(findraypremdirect.o) \
+	$(LIBDIR)/$(LIB).a(findraypremupcorebnc.o) \
+	$(LIBDIR)/$(LIB).a(findraypremcorebounce.o) \
+	$(LIBDIR)/$(LIB).a(initphslist.o) \
+	$(LIBDIR)/$(LIB).a(phs2ttcd.o) \
+	$(LIBDIR)/$(LIB).a(chan2ttcd.o) \
+	$(LIBDIR)/$(LIB).a(pgradipcp.o) \
+	$(LIBDIR)/$(LIB).a(pgradipcptripl.o) \
+	$(LIBDIR)/$(LIB).a(getpt.o) \
+	$(LIBDIR)/$(LIB).a(getnbnc.o) \
+	$(LIBDIR)/$(LIB).a(inelcor.o) \
+	$(LIBDIR)/$(LIB).a(splitphs.o) \
+	$(LIBDIR)/$(LIB).a(ellip.o) \
+	$(LIBDIR)/$(LIB).a(getellip.o) \
+	$(LIBDIR)/$(LIB).a(getcrcor.o) \
+	$(LIBDIR)/$(LIB).a(getlocpd.o) \
+	$(LIBDIR)/$(LIB).a(getvlin.o) \
+	$(LIBDIR)/$(LIB).a(readlinmd.o) \
+	$(LIBDIR)/$(LIB).a(readphs.o) \
+	$(LIBDIR)/$(LIB).a(readbnc.o) \
+	$(LIBDIR)/$(LIB).a(getbnclatlon.o) \
+	$(LIBDIR)/$(LIB).a(cgrcgivedel.o) \
+	$(LIBDIR)/$(LIB).a(scgrcgivedel.o) \
+	$(LIBDIR)/$(LIB).a(getray.o) \
+	$(LIBDIR)/$(LIB).a(getrayup.o) \
+	$(LIBDIR)/$(LIB).a(getraycore.o) \
+	$(LIBDIR)/$(LIB).a(getraydirect.o) \
+	$(LIBDIR)/$(LIB).a(getraymixed.o) \
+	$(LIBDIR)/$(LIB).a(getraycorebounce.o) \
+	$(LIBDIR)/$(LIB).a(getray3d.o) \
+	$(LIBDIR)/$(LIB).a(getraydiff.o) \
+	$(LIBDIR)/$(LIB).a(ttharmpd.o) \
+	$(LIBDIR)/$(LIB).a(ttylmpd.o) \
+	$(LIBDIR)/$(LIB).a(grstns.o) \
+	$(LIBDIR)/$(LIB).a(sinitdelmx.o) \
+	$(LIBDIR)/$(LIB).a(dinitdelmx.o) \
+	$(LIBDIR)/$(LIB).a(schkdiff.o) \
+	$(LIBDIR)/$(LIB).a(dchkdiff.o) \
+	$(LIBDIR)/$(LIB).a(delaz.o) \
+	$(LIBDIR)/$(LIB).a(dsplhsetup.o) \
+	$(LIBDIR)/$(LIB).a(dsplh.o) \
+	$(LIBDIR)/$(LIB).a(drsple.o) \
+	$(LIBDIR)/$(LIB).a(drspln.o) \
+	$(LIBDIR)/$(LIB).a(splhsetup.o) \
+	$(LIBDIR)/$(LIB).a(splh.o) \
+	$(LIBDIR)/$(LIB).a(dspesetup.o) \
+	$(LIBDIR)/$(LIB).a(dspe.o) \
+	$(LIBDIR)/$(LIB).a(spesetup.o) \
+	$(LIBDIR)/$(LIB).a(spe.o) \
+	$(LIBDIR)/$(LIB).a(rsple.o) \
+	$(LIBDIR)/$(LIB).a(rspln.o) \
+	$(LIBDIR)/$(LIB).a(dctp.o) \
+	$(LIBDIR)/$(LIB).a(dcxyz.o) \
+	$(LIBDIR)/$(LIB).a(dxphi.o) \
+	$(LIBDIR)/$(LIB).a(dythe.o) \
+	$(LIBDIR)/$(LIB).a(dsplintsph.o) \
+	$(LIBDIR)/$(LIB).a(ddelaz.o) \
+	$(LIBDIR)/$(LIB).a(rofint.o) \
+	$(LIBDIR)/$(LIB).a(drofint.o)
+
+include	$(HOME)/etc/Makeranlib

@@ -1,0 +1,270 @@
+
+c--------------------------------------------------------------------
+      subroutine dfind(lu,gflag,ierr)
+      include 'seeddefs.h'
+      include 'seedtrees.h'
+      include '../libdb/dblib.h'
+      include 'phstable.h'
+      character*60 site
+      character*30 comment
+      character*50 inst
+      character*26 flags
+      character*14 chnlast
+      integer*4 ichnlast(4)
+      equivalence (chnlast,ichnlast)
+      character*2 gflag
+      include 'dbdocm.h'
+      include 'cbufcm.h'
+      logical getabr
+      integer trread
+      double precision dsmpin
+      character*14 ckey
+      character*23 timea,timeb
+
+c     parameter(MXDFVOL=15)
+c     character*80 dfvols
+c     character*60 dfnames
+c     common/cmdfvols/ndfvol,idfvols(MXDFVOL),dfvols(MXDFVOL),dfnames(MXDFVOL)
+
+      integer*4 START,STOP,CONTINUE
+      parameter(STOP=z'00004000',START=z'00008000',CONTINUE=z'0000c000')
+      double precision difl1,difk2
+      character*200 line,linel,stline,stlinel,chline,chlinel
+
+      dimension itim1(2),itim2(2),ltim(2),ktim(2)
+
+      character*60 name
+      integer*4 iname(15)
+      equivalence (iname,name)
+      stlinel='XXXXXXXXXX'
+      lstlinel=10
+      chlinel='XXXXXXXXXX'
+      lchlinel=10
+      
+
+c     ndfvol=0
+      if(kntstno.le.0) then
+        write(6,*) 'No stations selected'
+        ierr=9
+        return
+      endif
+c     call inttime(timelor,itim1)
+c     call inttime(timehir,itim2)
+
+      iphsw=0
+c     ic1=ichar(timelor(1:1))
+c     if(ic1.lt.'30'x.or.ic1.gt.'39'x) iphsw=1
+c     ic2=ichar(timehir(1:1))
+c     if(ic2.lt.'30'x.or.ic2.gt.'39'x) iphsw=1
+      if(timelor(1:1).lt.'0'.or.timelor(1:1).gt.'9') iphsw=1
+      if(timehir(1:1).lt.'0'.or.timehir(1:1).gt.'9') iphsw=1
+
+      if(iphsw.ne.0) then
+        if(nevt.le.0) then
+          write(6,'(a)') 'dfind: no events specified'
+          ierr=9
+          return
+        endif
+      endif
+
+      do ievt=1,max0(1,nevt)
+      do istno=1,kntstno
+        if(iphsw.ne.0) then
+          itim1(1)=itimevs(1,ievt)
+          itim1(2)=itimevs(2,ievt)
+        else
+          call inttime(timelor,itim1)
+        endif
+        if(kntchno(istno).gt.0) then
+          call openstn(stnopnd(istno),inetopnd(istno),4)
+          call getsti(itim1,irefsi,flat,flon,felv,site,lsite,ifvax,ierri)
+          if(ierri.eq.0) then
+             write(stline,"('#Station: ',a5,'  ',f10.5,'  ',f11.5,a)") stnopen,flat,flon
+     1           ,'  '//netopen(1:lnetopen)//'  '//site(1:lsite)
+          else
+             write(stline,'(a)') '#Station: '//stnopen//' '//netopen(1:lnetopen)//' '//'Undefined'
+          endif
+          lstline=istlen(stline)
+c         write(6,*) 'ierri=',ierri,' '//stline(1:lstline)
+          if(iphsw.ne.0) then
+            call phstim(timelor,flat,flon,ievt,timea,ltimea,istat1)
+            call phstim(timehir,flat,flon,ievt,timeb,ltimeb,istat2)
+          else
+            timea=timelor
+            timeb=timehir
+          endif
+          write(6,'(''dfind: times selected:'',4f7.2,2a23,2x,2i2)')
+     1     flat,flon,xlatevs(ievt),xlonevs(ievt),timea,timeb,istat1,istat2
+
+          if(istat1.ne.0.or.istat2.ne.0) goto 88
+          call inttime(timea,itim1)
+          call inttime(timeb,itim2)
+
+
+          chnlast='xxxxx'
+          do ichno=1,kntchno(istno)
+            iach=ichno+iofchno(istno)
+            if(chnopnd(iach)(1:14).eq.chnlast) goto 100
+            chnlast=chnopnd(iach)(1:14)
+
+              call chnldcd(chnlast,hertz,isub,lfmt)
+
+              if(nrates.eq.0) goto 200
+              do i=1,nrates
+                if(hertz.eq.rates(i)) goto 200
+                if(hertz.ne.0.) then
+                  if(abs(1.-rates(i)/hertz).lt.1.e-2) goto 200
+                endif
+              enddo
+              goto 100
+
+  200       continue
+            write(chline,'(a,f11.5)') '#Channel: '//stnopnd(istno)//chnopnd(iach)(1:5)
+     1                 ,hertz
+            lchline=istlen(chline)
+c           if(line(1:lline).ne.linel(1:llinel)) write(lu,'(a)') line(1:lline)
+c           linel=line
+c           llinel=lline
+
+            nstak=5
+            maxlev=7
+            mord=71
+            linfo=3
+            mschpcl=1 00000
+            ckey=chnopnd(iach)(1:14)
+            ckey(4:4)=char(255-ichar(ckey(4:4)))
+            ckey(5:5)=char(255-ichar(ckey(5:5)))
+            call opncldr(itsttsr,ckey,STOLD,4,ierr
+     1         ,nstak,maxlev,itchpcl,mschpcl,mtchpcl
+     1         ,mord,linfo)
+ 
+
+
+            linfo=ibig(itchpcl+OTRLI)
+            call scanintvl(itchpcl,mschpcl,mtchpcl,itim1,itim2,-2,iadnseen)
+            nseen=ibig(iadnseen)
+            call balloc(1+nseen*(linfo+2),ia)
+            call balloc(1,iadnseen1)
+            nseen1=ibig(iadnseen1)
+            call balloc(nseen1*(linfo+2),ia)
+            ntot=nseen+nseen1
+            do l=1,ntot
+              if(l.le.nseen) then
+                lad=iadnseen+(nseen-l)*(linfo+2)+1
+               else
+                lad=iadnseen1+(l-nseen-1)*(linfo+2)+1
+              endif
+              lstat=and(ibig(lad+1),CONTINUE)
+              lrank=and(ibig(lad+1),z'00000fff')
+              if(lstat.eq.START) then
+                ltim(1)=ibig(lad)
+                ltim(2)=and(ibig(lad+1),z'ffff0000')
+                k1=max0(1,l-nseen+1)
+                do k=k1,nseen1
+                  kad=iadnseen1+(k-1)*(linfo+2)+1
+                  kstat=and(ibig(kad+1),CONTINUE)
+                  krank=and(ibig(kad+1),z'00000fff')
+                  if(krank.eq.lrank.and.kstat.eq.STOP) then
+                    ktim(1)=ibig(kad)
+                    ktim(2)=and(ibig(kad+1),z'ffff0000')
+                    goto 101
+                  endif
+                enddo
+                ktim(1)=itim2(1)
+                ktim(2)=itim2(2)
+  101           continue
+                ivol=ibig(lad+2)
+                ifil=ishft(ibig(lad+3),-23)
+                irec=and(ibig(lad+3),z'007fffff')
+                nrecs=ibig(lad+4)
+                call sectim(ltim(1),jyl,jdl,ihl,iml,fsecl)
+                fsecl=fsecl+ishft(ltim(2),-16)/10000.
+                call sectim(ktim(1),jyk,jdk,ihk,imk,fseck)
+                fseck=fseck+ishft(ktim(2),-16)/10000.
+                call sectim(itim1(1),jyi1,jdi1,ihi1,imi1,fseci1)
+                fseci1=fseci1+ishft(itim1(2),-16)/10000.
+                call sectim(itim2(1),jyi2,jdi2,ihi2,imi2,fseci2)
+                fseci2=fseci2+ishft(itim2(2),-16)/10000.
+                call tdif(jyl,jdl,ihl,iml,fsecl,jyi1,jdi1,ihi1,imi1,fseci1,difl1)
+                call tdif(jyk,jdk,ihk,imk,fseck,jyi2,jdi2,ihi2,imi2,fseci2,difk2)
+c               write(line,*) '# '//stnopnd(istno)//chnopnd(iach)(1:5)
+c    1                     ,hertz
+c               lline=istlen(line)
+c               if(line(1:lline).ne.linel(1:llinel)) write(lu,"(200a1)") (line(i:i),i=1,lline)
+c               linel=line
+c               llinel=lline
+
+                write(line,"(a2,1x,i6,'(',i3,':',i6,':',i6,')',1x
+     1           ,i3,1x,a5,1x,'''',a5,''''
+     1           ,1x,1pe10.4,1x,i2
+     1           ,1x,i4,',',i3,',',i2,':',i2,':',0pf6.3
+     1           ,1x,'[',i4,',',i3,',',i2,':',i2,':',f6.3
+     1           ,1x,i4,',',i3,',',i2,':',i2,':',f6.3,']'
+     1           ,1x,i4,',',i3,',',i2,':',i2,':',f6.3
+     1           )")
+     1            gflag
+     1           ,ivol,ifil,irec,nrecs
+     1           ,inetopnd(istno),stnopnd(istno),chnopnd(iach)(1:5),hertz,lfmt
+     1           ,jyl,jdl,ihl,iml,fsecl
+     1           ,jyi1,jdi1,ihi1,imi1,fseci1
+     1           ,jyi2,jdi2,ihi2,imi2,fseci2
+     1           ,jyk,jdk,ihk,imk,fseck
+                lline=istlen(line)
+                do ii=4,28
+                  if(line(ii:ii).eq.' ') line(ii:ii)='0'
+                enddo
+                do it=1,4
+                  ls=61+(it-1)*22
+                  if(it.gt.1) ls=ls+1
+                  if(it.gt.3) ls=ls+1
+                  do ii=ls+1,ls+21
+                    if(line(ii:ii).eq.' ') line(ii:ii)='0'
+                  enddo
+                enddo
+c               isaw=0
+c               i=0
+c               do while(isaw.eq.0.and.i.lt.ndfvol)
+c                 i=i+1
+c                 if(ivol.eq.idfvols(i)) isaw=1
+c               enddo
+c               if(isaw.eq.0) then
+c                 ndfvol=ndfvol+1
+c                 if(ndfvol.gt.MXDFVOL) pause 'dfind: too many volumes'
+c                 idfvols(ndfvol)=ivol
+c                 if(.not.getabr(itvlabr,ivol,cbuf,lcbuf)) pause 'volume not found'
+c                 nw=trread(itvlabr,iname,15)
+c                 if(nw.le.0) pause 'dfind: volume not found'
+c                 lname=istlen(name(1:4*nw))
+c
+c                 write(lu,'(a)') '#Volume : '//line(4:9)
+c    1                //' '''//cbuf(1:lcbuf)//''' '''//name(1:lname)//''''
+c               endif
+
+                if(stline(1:lstline).ne.stlinel(1:lstlinel)) then
+                  write(lu,'(a)') stline(1:lstline)
+                  stlinel=stline
+                  lstlinel=lstline
+                endif
+                if(chline(1:lchline).ne.chlinel(1:lchlinel)) then
+                  write(lu,'(a)') chline(1:lchline)
+                  chlinel=chline
+                  lchlinel=lchline
+                endif
+                 
+                write(lu,'(a)') line(1:lline)
+
+              endif
+            enddo
+
+
+            call dalloc(1+nseen1*(linfo+2),iadnseen1)
+            call dalloc(1+nseen*(linfo+2),iadnseen)
+            call trclos(itchpcl)
+  100       continue
+          enddo
+        endif
+   88 continue
+      enddo
+      enddo
+      return
+      end

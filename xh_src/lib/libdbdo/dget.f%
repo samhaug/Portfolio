@@ -1,0 +1,231 @@
+      subroutine dget(req,gflag,gram,ifstat,iflap,ierr)
+      character*2 gflag
+      character*(*) gram,req
+      include 'seedparam.h'
+      include 'seedtrees.h'
+      include '~/eq/src/libdb/dblib.h'
+C     dimension rbig(0:1)
+C     equivalence (ibig,rbig)
+      character*200 line
+
+      parameter(MXDFVOL=15)
+      character*80 dfvols,sitel,getenv,seedv
+      character*60 dfnames
+C     character*3 site
+      common/cmdfvols/ndfvol,idfvols(MXDFVOL),dfvols(MXDFVOL),dfnames(MXDFVOL)
+      parameter (MXSITES=4)
+      dimension lusite(MXSITES),iwsite(MXSITES)
+      character*3 site(MXSITES)
+
+      parameter (MXVOL=500)
+      character*20 vname(MXVOL)
+      character*3 vsite(MXVOL),thsite
+      character*1 vstat(MXVOL)
+
+      character*60 name,sname
+      integer*4 iname(15)
+      equivalence (iname,name)
+      character*80 blfile
+
+      logical getabr,trfind
+      integer trread,system
+
+      lreq=istlen(req)
+      lgram=istlen(gram)
+      lu=77
+      open(lu,file=req(1:lreq),status='old',iostat=ioerr)
+      if(ioerr.ne.0) then
+        write(6,*) 'Unable to open request file'
+        ierr=9
+        return
+      endif
+      rewind lu
+   
+      sitel=getenv('SITE_LIST',lsitel)
+      thsite=getenv('THIS_SITE',lthsite)
+      if(lthsite.le.0) stop 'dget: Environment variable THIS_SITE not set'
+      iflocl=0
+      if(lsitel.le.0) then
+        write(6,'(a)') 'dget: Local, non-batch operation'
+        iflocl=1
+        sitel=thsite
+        lsitel=lthsite
+      endif
+      sitel(lsitel+1:lsitel+4)=':NAV'
+      lsitel=lsitel+4
+
+      ips=0
+      nsite=0
+      ithiss=0
+      do while(ips.lt.lsitel)
+        nsite=nsite+1
+        if(nsite.gt.MXSITES) stop 'dget: too many sites'
+        site(nsite)=sitel(ips+1:ips+3)
+        lusite(nsite)=lu+nsite
+        open(lusite(nsite),file=req(1:lreq)//':'//site(nsite))
+        iwsite(nsite)=0
+        if(thsite.eq.site(nsite)) ithiss=nsite
+        ips=ips+4
+      enddo
+
+      luvol=lu+nsite+1
+      open(luvol,file='/home/eeyore1/john/dta/.oasvolumes',status='old')
+      nvol=0
+   70 read(luvol,'(a)',end=71) line
+      lline=istlen(line)
+      if(lline.ge.5.and.line(1:5).eq.'Site:') then
+      else
+        nvol=nvol+1
+        read(line,"(a20,53x,a1,2x,a3)")
+     1        vname(nvol),vstat(nvol),vsite(nvol)
+      endif
+      goto 70
+   71 close(luvol)
+
+
+
+      call balloc(1,ioff)
+      numr=0
+      ndfvol=0
+  100 read(lu,"(a200)",end=99) line
+      if(line(1:2).eq.gflag) then
+        read(line,"(2x,1x,i6,1x,i3,1x,i6
+     1           )",end=99)
+     1            ivol,ifil,irec
+
+        call balloc(53,ia)
+        ibig(ia)=ivol
+        ibig(ia+1)=ifil
+        ibig(ia+2)=irec
+        read(line,"(50a4)") (ibig(ia+k),k=3,52)
+        numr=numr+1
+      endif
+      goto 100
+   99 continue
+      call balloc(numr,iind)
+      call balloc(53,iwrk)
+      call alphabr(ibig(ioff+1),53,numr,1,3,53,ibig(iind),ibig(iwrk))
+      io=ioff+1
+      ivoll=-1
+      do i=1,numr
+        ivol=ibig(io)
+        write(line,"(50a4)") (ibig(io+j),j=3,52)
+        lline=istlen(line)
+        if(ivol.ne.ivoll) then
+          if(.not.getabr(itvlabr,ivol,seedv,lseedv)) pause 'volume not found'
+          if(.not.trfind(itvlbl,ivol,1,iok,ioi)) pause 'bl reference not found'
+          idblf=ibig(ioi)
+          if(.not.getabr(itblabr,idblf,blfile,lblfile)) pause 'blfile not found'
+          isite=nsite
+  123     nw=trread(itblabr,iname,15)
+          if(nw.le.0) goto 122
+          lname=istlen(name(1:4*nw))
+          if(name(1:5).eq.'/opt/') then
+            isl=2
+            do while(name(isl:isl).ne.'/')
+              isl=isl+1
+            enddo
+            isl=isl+1
+            i1=isl
+            do while(name(isl:isl).ne.'/')
+              isl=isl+1
+            enddo
+            i2=isl-1
+            if(i2.gt.lname) stop 'dget: Problem with volume copy name'
+            do iv=1,nvol
+              if(name(i1:i2).eq.vname(iv).and.vstat(iv).eq.'I') then
+                do j=1,nsite
+                  if(vsite(iv).eq.site(j).and.j.lt.isite)  then
+                    isite=j
+                    sname(1:lname)=name(1:lname)
+                    lsname=lname
+                  endif
+                enddo
+              endif
+            enddo
+            if(isite.eq.nsite) then
+              sname(1:lname)=name(1:lname)
+              lsname=lname
+            endif
+          else
+            lu=-1
+            call openfl(lu,name(1:lname),1,0,0,ifex,-1)
+            if(ifex.eq.0) then
+              call closfl(lu,kdum)
+              isite=ithiss
+            else
+              isite=nsite
+            endif
+            sname(1:lname)=name(1:lname)
+            lsname=lname
+          endif
+          goto 123
+  122     continue
+          write(6,*) '122 isite=',isite, lusite(isite)
+          lus=lusite(isite)
+          write(lus,'(a)') '#Volume : '//line(4:9)
+     1                //' '''//seedv(1:lseedv)//''' '''//sname(1:lsname)//''''
+          iwsite(isite)=1
+          ivoll=ivol
+        endif
+        write(lusite(isite),'(a)') line(1:lline)
+        io=io+53
+      enddo
+      call dalloc(53,iwrk)
+      call dalloc(numr,iind)
+      call dalloc(53*numr+1,ioff)
+
+      do isite=1,nsite
+        close(lusite(isite))
+        if(iwsite(isite).eq.0) then
+          call cunlink(req(1:lreq)//':'//site(isite)//'\0',ires,ierrno)
+        endif
+      enddo
+
+      if(iflocl.ne.0.and.iwsite(1).ne.0) then
+        call ldget(req(1:lreq)//':'//site(ithiss),gflag,gram,ifstat,iflap,ierr)
+      else
+        do isite=1,nsite-1
+          if(iwsite(isite).ne.0) then
+             call cunlink(gram(1:lgram)//':'//site(isite)//'\0',ires,ierrno)
+             call cunlink(gram(1:lgram)//':'//site(isite)//'.Z\0',ires,ierrno)
+             write(6,'(a)') site(isite)//'.dget '
+     1                      //req(1:lreq)//':'//site(isite)//' '
+     1                      //gram(1:lgram)//':'//site(isite)
+     1                      //' < /dev/null'
+             isys=system(  'csh -c '''//site(isite)//'.dget '
+     1                      //req(1:lreq)//':'//site(isite)//' '
+     1                      //gram(1:lgram)//':'//site(isite)
+     1                      //' < /dev/null '''  )
+             if(isys.ne.0) call check('dget: system')
+          endif
+        enddo
+
+        ifs=ifstat
+        do isite=1,nsite-1
+          if(iwsite(isite).ne.0) then
+             isys=system(  'csh -c ''( await '//gram(1:lgram)//':'//site(isite)//' ) < /dev/null'' ' )
+             if(ifs.ne.2) then
+               call cpgram(gram(1:lgram)//':'//site(isite),gram(1:lgram),ifs,iflap,ierr)
+               if(ierr.ne.0) then
+                 write(6,*) 'dget: error in copying gram file'
+                 goto 88
+               endif
+               call cunlink(gram(1:lgram)//':'//site(isite)//'\0',ires,ierrno)
+             else
+               isys=system(  '( rm -f '//gram(1:lgram)//' ; mv '
+     1     //gram(1:lgram)//':'//site(isite)//' '//gram(1:lgram)
+     1     //' ) < /dev/null' )
+             endif
+             ifs=3
+          endif
+        enddo
+        
+
+
+      endif
+   88 continue
+      close(lu)
+      return
+      end
+

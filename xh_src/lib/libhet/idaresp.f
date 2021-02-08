@@ -1,0 +1,16 @@
+
+C**********************************************************************
+C     COMPLEX FUNCTION RSPIDA(IDAY,IYEAR,NAME,OMEGA,I)
+      SUBROUTINE IDARESP(ANSWER,IDAY,IYEAR,NAME,OMEGA,I)
+      save
+      COMPLEX ANSWER
+      COMPLEX RESIDA
+      INTEGER*2 JDAY,JYEAR
+      IF(I.GT.1) GO TO 10
+      ANSWER=(0.,0.)
+      RETURN
+   10 JDAY=IDAY
+      JYEAR=IYEAR
+      ANSWER=-RESIDA(OMEGA,NAME,JYEAR,JDAY)*CMPLX(0.01,0.)
+      RETURN
+      END

@@ -1,0 +1,118 @@
+c-------------------------------------------------------------
+c loadphs reads a phase file produced by rayi1 and sets up 
+c a table for subsequently evaluating the phase and associated parameters
+
+c Arguments:
+c lu               logical unit
+c array and iarray refer to the SAME array, in which the table is to be stored
+c delim            loadphs quits if it finds a line consisting of this character
+c                  otherwise it proceeds to EOF. Using delim, a number of
+c                  phases may be stored in the same file. loadphs needs to
+c                  be called several times to load each of them individually
+c mxsp             Maximum amount of space in array. loadphs will quit if it
+c                  needs more than this
+c nparm            The phase file is assumed to consist of lines containing
+c                  delta time parm1 parm2 parm3 ..
+c                  parm1 parm2 parm3 may be ddeldp, p, tstar.
+c                  The value of nparm tells loadphs how many of these parameters
+c                  to load. Subsequent calls to evlphs will interpolate these
+c                  parameters and put their values into the prm array.
+
+
+      integer function loadphs(lu,array,iarray,delim,mxsp,nparm)
+      dimension array(0:*),iarray(0:*)
+      character*1 delim
+      character*80 line
+      character*32 str32
+
+      include 'phases.h'
+
+      ianext=0
+      ia=0
+      nl=0
+   10 read(lu,'(a)',end=100) line
+      if(line.eq.delim) goto 100
+      nl=nl+1
+      if(nl.eq.1) then
+        ip=0
+        do while(line(ip+1:ip+1).eq.' '.and.ip.lt.80)
+          ip=ip+1
+        enddo
+        ip1=ip
+        do while(line(ip1+1:ip1+1).ne.' '.and.ip1.lt.80)
+          ip1=ip1+1
+        enddo
+        str32=line(ip+1:ip1)
+        read(str32,'(8a4)') (iarray(i),i=0,LPNDEP-1)
+        iarray(LPNDEP)=0         ! number of depths
+        iarray(LPADP0)=0         ! address of depth
+        iarray(LPLNPR)=nparm     ! number of extra parameters
+        ianext=LPADP0
+        ia=LPLNHD
+      else
+        if(line(1:5).eq.'depth') then
+          iarray(LPNDEP)=iarray(LPNDEP)+1
+          read(line(7:80),*) array(ia+LPDEPT)
+          iarray(ianext)=ia
+          ianext=ia+LPADDP
+          iarray(ianext)=0     ! address of next depth
+          iandelt=ia+LPNDEL
+          iarray(iandelt)=0     ! number of deltas
+          iaadsp=ia+LPADSP
+          iarray(iaadsp)=0  ! address of spline coefficients
+          array(ia+LPDMIN)=0.   ! delmin
+          array(ia+LPDMAX)=0.   ! delmax
+          ia=ia+LPLNH1
+        else if(line(1:6).eq.'branch') then
+          read(line(8:80),*) ibranch
+          if(ibranch.ne.1) stop 'loadphs: multiple branches not supported'
+        else
+c         read(line,*) array(ia),array(ia+1),(array(ia+1+i),i=1,nparm)
+          read(line,*) dist,array(ia+1),(array(ia+1+i),i=1,nparm)
+          if(dist.gt.180.) dist=360.-dist
+          array(ia)=dist
+c         write(6,*) 'dist=',dist
+          ia=ia+2+nparm
+          iarray(iandelt)=iarray(iandelt)+1
+       endif
+      endif
+      loadphs=ia
+      if(loadphs.gt.mxsp) stop 'loadphs: insufficient space'
+
+
+      goto 10
+
+  100 continue
+
+      iad=iarray(LPADP0)
+
+      do idep=1,iarray(LPNDEP)
+        dep=array(iad+LPDEPT)
+        ndelt=iarray(iad+LPNDEL)
+        need=max0(6,2+nparm)
+        if(ia+need*ndelt.gt.mxsp) stop 'loadphs: insufficient space'
+        la=2+nparm
+        do i=0,ndelt-1
+          do j=1,2+nparm
+            array(ia+(j-1)*ndelt+i)=array(iad+LPLNH1+la*i+j-1)
+          enddo
+        enddo
+        do i=0,ndelt-1
+          do j=1,2+nparm
+            array(iad+i+LPLNH1+(j-1)*ndelt)=array(ia+i+(j-1)*ndelt)
+          enddo
+        enddo
+        delmin=array(iad+LPLNH1)
+        delmax=array(iad+LPLNH1+ndelt-1)
+        array(iad+LPDMIN)=delmin
+        array(iad+LPDMAX)=delmax
+        do i=0,ndelt-1
+          array(iad+LPLNH1+i)=(array(iad+LPLNH1+i)-delmin)/(delmax-delmin)
+        enddo
+        iarray(iad+LPADSP)=ia
+        call rspln(1,ndelt,array(iad+LPLNH1),array(iad+LPLNH1+ndelt),array(ia),array(ia+3*ndelt))
+        ia=ia+3*ndelt
+        iad=iarray(iad+LPADDP)
+      enddo
+      loadphs=ia
+      end

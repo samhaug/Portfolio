@@ -1,0 +1,10 @@
+#!/bin/tcsh
+
+#-- ScSScS --> ScS2
+
+
+foreach cprog ( measure_*.c )
+   sed 's/%8s/%-8s/' $cprog > $cprog.nw
+   echo mv $cprog.nw $cprog
+        mv $cprog.nw $cprog
+end

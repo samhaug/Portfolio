@@ -1,0 +1,101 @@
+      subroutine interpcr(xla,xlo,p,typ,dt,dh)
+
+      parameter(MXL=36)
+      parameter(MXLENY=(MXL+1)**2)
+      parameter(MXP=11)
+      parameter(MXWORK=(MXL+1)*4)
+
+      character*1 typ
+
+      dimension wk1(MXWORK),wk2(MXWORK),wk3(MXWORK)
+      dimension y(MXLENY)
+      dimension tp(MXP),tpspln(MXP)
+
+      common/intcrust/lmax,parr(MXP,2),ctt(MXLENY,MXP,2),topo(MXLENY)
+
+      write(6,*) xla,xlo,p,typ,dt
+      if(typ.eq.'s'.or.typ.eq.'S') then
+       itp=1
+      else if(typ.eq.'p'.or.typ.eq.'P') then
+       itp=2
+      else
+       stop 'interpcr: unknown typ'
+      endif
+
+      call ylm(xla,xlo,lmax,y,wk1,wk2,wk3)
+    
+      leny=(lmax+1)**2
+      do i=1,MXP
+       tp(i)=sdot(leny,ctt(1,i,itp),1,y,1)
+       write(6,*) tp(i),parr(i,itp)
+      enddo
+
+c     interpolate to find dt for rayparameter p
+      call spline(parr(1,itp),tp,MXP,1e32,1e32,tpspln)
+      call splint(parr(1,itp),tp,tpspln,MXP,p,dt)
+
+c     now find dh and add in 3 km for difference between 6371 and 
+c     solid surface in PREM at 6368
+      dh=sdot(leny,ctt(1,i,itp),1,y,1)+3.
+
+      end
+
+c ----------------------------------------------------------------
+
+      subroutine setupinterpcr()
+
+      character*120 ifl
+
+      parameter(MXL=36)
+      parameter(MXLENY=(MXL+1)**2)
+      parameter(MXP=7)
+
+      common/intcrust/lmax,parr(MXP,2),ctt(MXLENY,MXP,2),topo(MXLENY)
+
+      character*3 inpps(MXP),inppp(MXP)
+      data inpps/'22','35','50','65','80','95','102'/
+      data inppp/'24','36','49','61','73','85','98'/
+
+c     read in S tt anomaly maps
+      do i=1,MXP
+       istore=MXP-i+1
+       li=istlen(inpps(i))
+       ifl='/home/hendrik1/dta/crust/crusttt.S.'//inpps(i)(1:li)//'.raw'
+       open(31,file=ifl,status='old')
+       read(31,*) lmax,parr(istore,1)
+       if(lmax.ne.36) stop 'interpcrust: lmax.ne.36'
+       if(lmax.gt.MXL) stop 'interpcrust: lmax.gt.MXL'
+       leny=(lmax+1)**2
+       read(31,'(5e16.8)') (ctt(k,istore,1),k=1,leny)
+       close(31)
+      enddo
+
+c     read in P tt anomaly maps
+      do i=1,MXP
+       istore=MXP-i+1
+       li=istlen(inppp(i))
+       ifl='/home/hendrik1/dta/crust/crusttt.P.'//inppp(i)(1:li)//'.raw'
+       open(31,file=ifl,status='old')
+       read(31,*) lmax,parr(istore,2)
+       if(lmax.ne.36) stop 'interpcrust: lmax.ne.36'
+       if(lmax.gt.MXL) stop 'interpcrust: lmax.gt.MXL'
+       leny=(lmax+1)**2
+       read(31,'(5e16.8)') (ctt(k,istore,2),k=1,leny)
+       close(31)
+      enddo
+
+c     read in topography
+      ifl='/home/hendrik1/dta/crust/topo.raw'
+      open(31,file=ifl,status='old')
+      read(31,*) lmax
+      if(lmax.ne.36) stop 'interpcrust: lmax.ne.36'
+      if(lmax.gt.MXL) stop 'interpcrust: lmax.gt.MXL'
+      leny=(lmax+1)**2
+      read(31,'(5e16.8)') (topo(k),k=1,leny)
+      close(31)
+
+
+
+      end
+
+      

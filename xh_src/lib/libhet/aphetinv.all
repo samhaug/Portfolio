@@ -1,0 +1,5851 @@
+C$**********************************************************************
+      program aphetinv
+      INTEGER*2 I2_10,I2_12,I2_1,I2_20,I2_13
+      CHARACTER*1 NHTMDL(12)
+      INTEGER*4 IHTMDL(3)
+      DIMENSION KFIL(4),KFILAN(4)
+      INTEGER*2 IHETINV(24),IHESINV(24)
+      COMMON/DBLEC/ EPLA,EPLON,DEP,TORG,DURT
+      COMMON/DBLEM/ XMD(6),R0D
+      COMMON/PARAM/ NOTRCE,NOM4M5,NODEP,NOEPIC
+      COMMON/SCAN/ PATH(204)
+     1  ,IHTMDL,IFANM,LMAXM,LENY,NPRMM,PERTM(588),IFCC,MFIL(4),MFILAN(4)
+C
+      DATA IHETINV/'HE','TI','NV','.A','LM','  ',18*'  '/
+
+      DATA IHESINV/'HE','SI','NV','.A','LM','  ',18*'  '/
+      DATA I2_10,I2_12,I2_1,I2_20,I2_13/10,12,1,20,13/
+
+c     OPEN(5,FILE='lu_5',IOINTENT='OUTPUT',FORM='FORMATTED'
+c    1   ,RECFM='DATASENSITIVE')
+      open(5,file='/dev/tty')
+
+c     OPEN(15,FILE='lu_15',IOINTENT='INPUT',FORM='FORMATTED'
+c    1   ,RECFM='DATASENSITIVE',PAD='YES')
+      open(15,file='lu_15',status='old')
+c     OPEN(8,FILE='lu_8',IOINTENT='OUTPUT',FORM='FORMATTED'
+c    1   ,RECFM='DATASENSITIVE',POSITION='END')
+      open(8,file='lu_8',status='old',access='append',fileopt='eof')
+c     OPEN(16,FILE='lu_16',IOINTENT='OUTPUT',FORM='FORMATTED'
+c    1   ,RECFM='DATASENSITIVE',CARRIAGECONTROL='FORTRAN'
+c    1   ,POSITION='END')
+      open(16,file='lu_16',status='unknown',access='append'
+     1 ,fileopt='eof')
+C
+      CALL SELECT(IFEXST,IFPSTR,NSTRSO,IFANI,ITRSTR,ITAPER,MXITER
+     1  ,IFINV,IFOMIT,IFCCN,NHTMDL,KFIL,KFILAN)
+      CALL OPENFL(7,'lu_7',4,0,0,ISTAT,5604)
+
+C IFINV SHOULD BE 1
+C  -- OTHERWISE PROGRAM NEEDS TO READ FILES WHICH
+C     DO NOT EXIST IN THIS IMPLEMENTATION.
+C     IF(IFINV.EQ.0) CALL OPENFL(1,'lu_1',4,0,0,ISTAT)
+C     IF(IFINV.EQ.0.AND.IFEXST.NE.0) CALL OPENFL(2,'lu_2',4,0,0,ISTAT)
+      IF(IFINV.NE.1) THEN
+        WRITE(5,"(' THE ANSWER TO THE QUESTION: INV FILE EXISTS?  IN'/
+     1     'APCORDEK OR APHETDEK SHOULD BE 1 IN THIS IMPLEMANTATION')")
+        PAUSE
+      ENDIF
+C IFINV SHOULD BE 1
+
+      IF(IFINV.EQ.0) CALL ISCAN(IFEXST,ITAPER)
+      CALL REWFL(7)
+      CALL BFFIN(7,1,PATH,808,J,M)
+      IF(IFPSTR.EQ.0) CALL GETMDL(18,NHTMDL,IFCCN,KFIL,KFILAN)
+      CALL REWFL(7)
+      DO 80 I=1,4
+C     IF(KFIL(I).NE.MFIL(I)) STOP 'INCOMPATIBLE MODE CATALOGUES'
+C     IF(KFILAN(I).NE.MFILAN(I)) STOP 'INCOMPATIBLE KERNEL FILES'
+   80 CONTINUE
+      KPAR=7
+      IF(IFANI.NE.0) KPAR=12
+C     CALL APMODE(0)
+C     CALL APINIT(0,0,ISTAT)
+C     CALL SETPRI
+C     CALL APLLI(IHETINV,I2_10,I2_12,I2_1,I2_20)
+C     CALL APLLI(IHESINV,I2_10,I2_13,I2_1,I2_10)
+      WRITE(5,"('CALLING EIGPAR')")
+      WRITE(5,988) IFPSTR
+  988 FORMAT('IFPSTR = ',I2)
+      WRITE(5,889) DEP,NODEP
+  889 FORMAT('DEP = ',F10.1,' NODEP = ',I2)
+      CALL EIGPAR(DEP,ITAPER,IFANI)
+      DO 100 NN=1,NSTRSO
+      IF(NN.EQ.1.AND.IFEXST.EQ.0) GO TO 50
+      CALL APSTRC(ITAPER,ITRSTR,IFPSTR,KPAR)
+      WRITE(5,988) IFPSTR
+      IFPSTR=1
+      IF(IFOMIT.NE.0.AND.NN.EQ.NSTRSO) GOTO 100
+   50 ITER=0
+      CALL APSOUR(ITAPER,IFPSTR,ITER,NODEP,KPAR)
+      WRITE(5,"('MAIN AFTER APSOUR',2I4)")ITAPER,IFPSTR
+    1 R0D=1.-DEP/6371.
+      IF(NODEP.GT.0) GO TO 30
+      IF(ITER.EQ.0.OR.ITER.EQ.1) GO TO 30
+      CALL EIGPAR(DEP,ITAPER,IFANI)
+   30 IF(ITER.GE.0) CALL SNGINV(ITAPER,ITER)
+      CALL APSYNT(ITAPER,IFPSTR,ITER,NODEP,KPAR)
+      WRITE(5,"('MAIN AFTER APSYNT',6I4)")IFPSTR,ITER,NODEP,KPAR,NN,NSTRSO
+
+      IF(ITER.LT.0.AND.NN.EQ.NSTRSO) THEN
+      WRITE(5,"('CALLING OUTPUT')")
+      CALL OUTPUT(8,ITAPER)
+      ENDIF
+
+      IF(ITER.LT.0) GO TO 100
+      CALL RESULT(IERR)
+      IF(IERR.NE.0) GO TO 30
+      ITER=ITER+1
+      IF(ITER.LE.MXITER) GO TO 1
+      ITER=-1
+      GO TO 1
+  100 CONTINUE
+      CALL REWFL(7)
+      CALL BFFOUT(7,1,PATH,808,J,M)
+      STOP
+      END
+
+C$**********************************************************************
+      SUBROUTINE ADJUSS(XL,OM,GRV,ELP,PART,DTH)
+      DIMENSION PART(1)
+      COMMON/AP3/ DELTA,FACTT,FACTO,PERT(24)
+      COMMON/INTAP/ IDUM(14),NEQ,IFACT
+      FU=0.
+      IF(GRV.GT.0.) FU=6371./(GRV*(XL+0.5))
+      DTH=FU*FACTT*OM*ELP
+      OM=OM*(1.+ELP*FACTO)
+      FU=FU*DELTA
+      CALL FDOTPR(PART,1,PERT,1,DT,NEQ)
+      IF(IFACT.EQ.0) GO TO 2
+      NQ1=NEQ+1
+      CALL FDOTPR(PART,1,PERT(NQ1),1,DOM,NEQ)
+      OM=OM+DOM
+      DTH=DTH+FU*(DOM-DT)
+      RETURN
+    2 OM=OM+DT
+      RETURN
+      END
+
+C$**********************************************************************
+CPROG EIGEN
+CXREF
+      SUBROUTINE EIGEN(Q,V,N,JVEC)
+C
+C     COMPUTES EIGENVALUES AND EIGENVECTORS OF A REAL SYMMETRIC MATRIX
+C         USING JACOBI DIAGONALIZATION
+C
+C     Q=SYMMETRIC MATRIX - DESTROYED DURING COMPUTATION AND REPLACED BY
+C        A MATRIX WITH EIGENVALUES ALONG DIAGONAL
+C     V=MATRIX OF EIGENVECTORS -  ORDER CORRESPONDS TO EIGENVALUES ALONG
+C        DIAGONAL OF Q
+C     N=ORDER OF Q AND V, N  GREATER OR EQUAL 2
+C     JVEC=0 TO COMPUTE EIGENVALUES ONLY
+C         =NON-ZERO INTEGER TO COMPUTE EIGENVALUES AND EIGENVECTORS
+C
+      DIMENSION Q(3,3),V(3,3),X(3),IH(3)
+C
+C      SET INITIAL VALUES OF V
+C
+      IF(JVEC) 10,15,10
+   10 DO 14 I=1,N
+      DO 14 J=1,N
+      IF(I-J) 12,11,12
+   11 V(I,J)=1.0
+      GOTO 14
+   12 V(I,J)=0.0
+   14 CONTINUE
+   15 M=0
+C
+C     SCAN FOR LARGEST OFF DIAGONAL ELEMENT IN EACH ROW
+C     X(I) CONTAINS LARGEST ELEMENT IN ITH ROW
+C     IH(I) HOLDS SECOND SUBSCRIPT DEFINING POSITION OF ELEMENT
+C
+      MI=N-1
+      DO 30 I=1,MI
+      X(I)=0.0
+      MJ=I+1
+      DO 30 J=MJ,N
+      IF(X(I)-ABS(Q(I,J))) 20,20,30
+   20 X(I)=ABS(Q(I,J))
+      IH(I)=J
+   30 CONTINUE
+C
+C     SEARCH FOR MAXIMUM OF X(I)'S FOR PIVOT ELEMENT
+C
+   40 DO 70 I=1,MI
+      IF(I-1) 60,60,45
+   45 IF(XMAX-X(I)) 60,70,70
+   60 XMAX=X(I)
+      IP=I
+      JP=IH(I)
+   70 CONTINUE
+C
+C     TEST FOR XMAX, IF LESS THAN 10**-8 GOTO 1000
+C
+      EPSI=1.0E-8
+      IF(XMAX-EPSI) 1000,1000,148
+  148 M=M+1
+C
+C     COMPUTE TANG,SIN,COS,Q(I,I),Q(J,J)
+C
+      IF(Q(IP,IP)-Q(JP,JP)) 150,151,151
+  150 TANG=-2.*Q(IP,JP)/(ABS(Q(IP,IP)-Q(JP,JP))+SQRT((Q(IP,IP)-Q(JP,JP
+     1))**2+4.*Q(IP,JP)**2))
+      GOTO 160
+  151 TANG=+2.*Q(IP,JP)/(ABS(Q(IP,IP)-Q(JP,JP))+SQRT((Q(IP,IP)-Q(JP,JP
+     1))**2+4.*Q(IP,JP)**2))
+  160 COSN=1.0/SQRT(1.0+TANG**2)
+      SINE=TANG*COSN
+      QII=Q(IP,IP)
+      Q(IP,IP)=COSN**2*(QII+TANG*(2.*Q(IP,JP)+TANG*Q(JP,JP)))
+      Q(JP,JP)=COSN**2*(Q(JP,JP)-TANG*(2.*Q(IP,JP)-TANG*QII))
+      Q(IP,JP)=0.0
+C
+C     PSEUDO RANK THE EIGENVALUES
+C
+      IF(Q(IP,IP)-Q(JP,JP)) 152,153,153
+  152 TEMP=Q(IP,IP)
+      Q(IP,IP)=Q(JP,JP)
+      Q(JP,JP)=TEMP
+C
+C     ADJUST SIN AND COS FOR COMPUTATION OF Q(I,K) AND V(I,K)
+C
+      IF(SINE) 154,155,155
+  154 TEMP=COSN
+      GOTO 170
+  155 TEMP=-COSN
+  170 COSN=ABS(SINE)
+      SINE=TEMP
+C
+C     INSPECT THE IH'S BETWEEN I+1 AND N-1 TO DETERMINE WHETHER A NEW MAXIMUM
+C     VALUE SUOULD BE COMPUTED SINCE THE PRESENT MAXIMUM IS IN THE I OR J ROW
+C
+  153 DO 350 I=1,MI
+      IF(I-IP) 210,350,200
+  200 IF (I-JP) 210,350,210
+  210 IF(IH(I)-IP) 230,240,230
+  230 IF(IH(I)-JP) 350,240,350
+  240 K=IH(I)
+      TEMP=Q(I,K)
+      Q(I,K)=0.0
+      MJ=I+1
+      X(I)=0.0
+C
+C     SEARCH FOR NEW MAXIMUM IN DEPLETED ROW
+C
+      DO 320 J=MJ,N
+      IF(X(I)-ABS(Q(I,J))) 300,300,320
+  300 X(I)=ABS(Q(I,J))
+      IH(I)=J
+  320 CONTINUE
+      Q(I,K)=TEMP
+  350 CONTINUE
+      X(IP)=0.0
+      X(JP)=0.0
+C
+C     CHANGE THE OTHER ELEMENTS OF Q
+C
+      DO 530 I=1,N
+      IF(I-IP) 370,530,420
+  370 TEMP=Q(I,IP)
+      Q(I,IP)=COSN*TEMP+SINE*Q(I,JP)
+      IF(X(I)-ABS(Q(I,IP))) 380,390,390
+  380 X(I)=ABS(Q(I,IP))
+      IH(I)=IP
+  390 Q(I,JP)=-SINE*TEMP+COSN*Q(I,JP)
+      IF(X(I)-ABS(Q(I,JP))) 400,530,530
+  400 X(I)=ABS(Q(I,JP))
+      IH(I)=JP
+      GOTO 530
+  420 IF(I-JP) 430,530,480
+  430 TEMP=Q(IP,I)
+      Q(IP,I)=COSN*TEMP+SINE*Q(I,JP)
+      IF(X(IP)-ABS(Q(IP,I))) 440,450,450
+  440 X(IP)=ABS(Q(IP,I))
+      IH(IP)=I
+  450 Q(I,JP)=-SINE*TEMP+COSN*Q(I,JP)
+      IF(X(I)-ABS(Q(I,JP))) 400,530,530
+  480 TEMP=Q(IP,I)
+      Q(IP,I)=COSN*TEMP+SINE*Q(JP,I)
+      IF(X(IP)-ABS(Q(IP,I))) 490,500,500
+  490 X(IP)=ABS(Q(IP,I))
+      IH(IP)=I
+  500 Q(JP,I)=-SINE*TEMP+COSN*Q(JP,I)
+      IF(X(JP)-ABS(Q(JP,I))) 510,530,530
+  510 X(JP)=ABS(Q(JP,I))
+      IH(JP)=I
+  530 CONTINUE
+C
+C     TEST FOR COMPUTATION OF EIGENVECTORS
+C
+      IF(JVEC) 540,40,540
+  540 DO 550 I=1,N
+      TEMP=V(I,IP)
+      V(I,IP)=COSN*TEMP+SINE*V(I,JP)
+  550 V(I,JP)=-SINE*TEMP+COSN*V(I,JP)
+      GOTO 40
+ 1000 RETURN
+      END
+
+C$**********************************************************************
+      SUBROUTINE FSVESQ(A,I,C,N)
+      DIMENSION A(I*N)
+      C=0.
+      IK=1
+      DO 1 K=1,N
+      C=C+A(IK)*A(IK)
+      IK=IK+I
+    1 CONTINUE
+      RETURN
+      END
+
+C$**********************************************************************
+      SUBROUTINE FVCLR(A,I,N)
+      DIMENSION A(I*N)
+      IK=1
+      DO 1 K=1,N
+      A(IK)=0.
+      IK=IK+I
+    1 CONTINUE
+      RETURN
+      END
+
+C$**********************************************************************
+      SUBROUTINE FVSMA(A,I,B,C,K,D,L,N)
+      DIMENSION A(I*N),C(K*N),D(L*N)
+      IK=1
+      KK=1
+      LK=1
+      DO 1 M=1,N
+      D(LK)=A(IK)*B+C(KK)
+      IK=IK+I
+      KK=KK+K
+      LK=LK+L
+    1 CONTINUE
+      RETURN
+      END
+
+C$**********************************************************************
+CPROG GETPAR
+CXREF
+      SUBROUTINE GETPAR(I,LU1,LU2,B1,B2,B3,B4,B5,IRLST,IR1,NS)
+      DIMENSION B1(1),B2(1),B3(1),B4(1),B5(1)
+      COMMON/TAPE/ FILL(1513),NBATCH
+      JREC=(I+255)/256
+      IRLST=JREC
+      CALL BFFI(LU1,1,B1,4096,J,M,JREC+3)
+      CALL BFFI(LU1,1,B2,4096,J,M,JREC+NBATCH+3)
+      IREC=NBATCH*(2+IR1)+JREC+3
+      CALL BFFI(LU1,1,B3,4096,J,M,IREC)
+      CALL BFFI(LU1,1,B4,4096,J,M,IREC+NBATCH)
+      NR=1024*NS
+      CALL BFFI(LU2,1,B5,NR,J,M,JREC)
+      RETURN
+      END
+
+C$**********************************************************************
+C      SUBROUTINE LEGNDR
+C$PROG LEGNDR
+      SUBROUTINE LEGNDR(THETA,L,M,X,XP,XCOSEC)
+      DIMENSION X(2),XP(2),XCOSEC(2)
+      DOUBLE PRECISION SMALL,SUM,COMPAR,CT,ST,FCT,COT,FPI,X1,X2,X3,
+     1F1,F2,XM,TH,DFLOAT
+      DATA FPI/12.56637062D0/
+      DFLOAT(I)=FLOAT(I)
+      SUM=0.D0
+      LP1=L+1
+      TH=THETA
+      CT=DCOS(TH)
+      ST=DSIN(TH)
+      MP1=M+1
+      FCT=DSQRT(DFLOAT(2*L+1)/FPI)
+      SFL3=SQRT(FLOAT(L*(L+1)))
+      COMPAR=DFLOAT(2*L+1)/FPI
+      DSFL3=SFL3
+      SMALL=1.D-16*COMPAR
+      DO 1 I=1,MP1
+      X(I)=0.
+      XCOSEC(I)=0.
+    1 XP(I)=0.
+      IF(L.GT.1.AND.ABS(THETA).GT.1.E-5) GO TO 3
+      X(1)=FCT
+      IF(L.EQ.0) RETURN
+      X(1)=CT*FCT
+      X(2)=-ST*FCT/DSFL3
+      XP(1)=-ST*FCT
+      XP(2)=-.5D0*CT*FCT*DSFL3
+      IF(ABS(THETA).LT.1.E-5) XCOSEC(2)=XP(2)
+      IF(ABS(THETA).GE.1.E-5) XCOSEC(2)=X(2)/ST
+      RETURN
+    3 X1=1.D0
+      X2=CT
+      DO 4 I=2,L
+      X3=(DFLOAT(2*I-1)*CT*X2-DFLOAT(I-1)*X1)/DFLOAT(I)
+      X1=X2
+    4 X2=X3
+      COT=CT/ST
+      COSEC=1./ST
+      X3=X2*FCT
+      X2=DFLOAT(L)*(X1-CT*X2)*FCT/ST
+      X(1)=X3
+      X(2)=X2
+      SUM=X3*X3
+      XP(1)=-X2
+      XP(2)=DFLOAT(L*(L+1))*X3-COT*X2
+      X(2)=-X(2)/SFL3
+      XCOSEC(2)=X(2)*COSEC
+      XP(2)=-XP(2)/SFL3
+      SUM=SUM+2.D0*X(2)*X(2)
+      IF(SUM-COMPAR.GT.SMALL) RETURN
+      X1=X3
+      X2=-X2/DSQRT(DFLOAT(L*(L+1)))
+      DO 5 I=3,MP1
+      K=I-1
+      F1=DSQRT(DFLOAT((L+I-1)*(L-I+2)))
+      F2=DSQRT(DFLOAT((L+I-2)*(L-I+3)))
+      XM=K
+      X3=-(2.D0*COT*(XM-1.D0)*X2+F2*X1)/F1
+      SUM=SUM+2.D0*X3*X3
+      IF(SUM-COMPAR.GT.SMALL.AND.I.NE.LP1) RETURN
+      X(I)=X3
+      XCOSEC(I)=X(I)*COSEC
+      X1=X2
+      XP(I)=-(F1*X2+XM*COT*X3)
+    5 X2=X3
+      RETURN
+      END
+
+C$**********************************************************************
+      SUBROUTINE MSFER
+      COMMON/INTAP/ JSTAT,IDUM(15)
+      COMMON/AP2/ T(380),O(380),Q(380),G(380),E(380),U(2280),P(4560)
+      NN=1
+  100 IND=(NN-1)*6+1
+      IND1=(NN-1)*12+1
+      CALL PROCES(T(NN),O(NN),Q(NN),G(NN),E(NN),U(IND),P(IND1))
+      IF(JSTAT.NE.0) RETURN
+      NN=NN+1
+      IF(NN.LE.380) GO TO 100
+      RETURN
+      END
+
+C$**********************************************************************
+CPROG OCAV
+CXREF
+      SUBROUTINE OCAV(EPLAT,EPLON,STLAT,STLON,OCH,OCT,PHT,IDX)
+      DIMENSION PHT(150),IDX(150)
+      DATA PI/3.141592653589/
+      DTH=PI/36.
+      PI2=PI*2.
+      FORPI=4.*PI
+      DPH=PI2/72.
+      RADIAN=180./PI
+      NTH1=37
+      NPH1=36
+      TH1=(90.-EPLAT)/RADIAN
+      PH1=EPLON/RADIAN
+      TH2=(90.-STLAT)/RADIAN
+      PH2=STLON/RADIAN
+      STH1=SIN(TH1)
+      STH2=SIN(TH2)
+      CTH1=COS(TH1)
+      CTH2=COS(TH2)
+      SPH1=SIN(PH1)
+      SPH2=SIN(PH2)
+      CPH1=COS(PH1)
+      CPH2=COS(PH2)
+      CPH21= CPH1*CPH2+SPH1*SPH2
+      SPH21=SPH2*CPH1-SPH1*CPH2
+      CDEL=STH1*STH2*CPH21+CTH1*CTH2
+      CCAPTH=STH1*STH2*SPH21/SQRT(1.-CDEL*CDEL)
+      SCAPTH=SQRT(1.-CCAPTH*CCAPTH)
+      SCAPPH=CTH1*STH2*CPH2-CTH2*STH1*CPH1
+      CCAPPH=STH1*CTH2*SPH1-STH2*CTH1*SPH2
+      CAPPH=ATAN2(SCAPPH,CCAPPH)
+      SCAPPH=SIN(CAPPH)
+      CCAPPH=COS(CAPPH)
+C
+      DEL=ATAN2(SQRT(1.-CDEL*CDEL),CDEL)
+      CPHSP=CCAPTH*STH1*(CPH1*CCAPPH+SPH1*SCAPPH)-SCAPTH*CTH1
+      SPHSP=STH1*(SPH1*CCAPPH-CPH1*SCAPPH)
+      PHSP=ATAN2(SPHSP,CPHSP)
+      IENT=0
+      IF(SCAPTH.EQ.0) GOTO 10
+      DO 20 I=1,NTH1
+      TH=FLOAT(I-1)*DTH
+      CTH=COS(TH)
+      CPHT=-CTH/SCAPTH
+      CPHT2=CPHT*CPHT
+      IF(CPHT2.GT.1.) GOTO 20
+      IENT=1+IENT
+      PHT(IENT)=ATAN2(SQRT(1.-CPHT2),CPHT)
+      IENT=1+IENT
+      PHT(IENT)=-PHT(IENT-1)
+   20 CONTINUE
+   10 CONTINUE
+      DO 40 I=1,NPH1
+      PH=FLOAT(I-1)*DPH
+      SPH=SIN(PH)
+      CPH=COS(PH)
+      IENT=IENT+1
+      PHT(IENT)=ATAN2(CCAPTH*(SPH*CCAPPH-CPH*SCAPPH),
+     1     CPH*CCAPPH+SPH*SCAPPH)
+      IENT=1+IENT
+      PHT(IENT)=PI+PHT(IENT-1)
+      IF(PHT(IENT).GT.PI) PHT(IENT)=PHT(IENT)-PI2
+   40 CONTINUE
+C
+      DO 60 I=1,IENT
+   60 PHT(I)=AMOD(PHT(I)-PHSP+FORPI,PI2)
+      IENT=IENT+1
+      PHT(IENT)=0.
+      IENT=IENT+1
+      PHT(IENT)=DEL
+C
+      CALL RSOINC(PHT,IENT,IDX)
+C
+      PHT(IENT+1)=PI2
+      SUMH=0.
+      SUMT=0.
+      TESTH=0.
+      TESTT=0.
+      DO 50 I=1,IENT
+      I1=1+I
+      PHTT=.5*(PHT(I)+PHT(I1))+PHSP
+      CPHT=COS(PHTT)
+      SPHT=SIN(PHTT)
+      CTH=-CPHT*SCAPTH
+      TH=ATAN2(SQRT(1.-CTH*CTH),CTH)
+      CPH=CPHT*CCAPTH*CCAPPH-SPHT*SCAPPH
+      SPH=CPHT*CCAPTH*SCAPPH+SPHT*CCAPPH
+      IF(SPH.EQ.0..AND.CPH.EQ.0.) GOTO 9873
+      PH=ATAN2(SPH,CPH)
+      GOTO 9874
+ 9873 PH=0.
+ 9874 CONTINUE
+      XLAT=90.-TH*RADIAN
+      XLON=PH*RADIAN
+      VALUE=OCFUN(XLAT,XLON)
+      RD=(PHT(I1)-PHT(I))
+      IF(PHT(I1).LE.DEL) TESTT=TESTT+RD
+      TESTH=TESTH+RD
+      IF(PHT(I1).LE.DEL) SUMT=SUMT+RD*VALUE
+      SUMH=SUMH+RD*VALUE
+   50 CONTINUE
+      TESTT=TESTT/DEL
+      TESTH=TESTH/PI2
+      WRITE(5,12) TESTT,TESTH
+   12 FORMAT(' TESTT,TESTH =',2F10.6)
+      OCT=SUMT/DEL
+      OCH=SUMH/PI2
+      RETURN
+      END
+
+C$**********************************************************************
+CPROG POLE
+CXREF
+      SUBROUTINE POLE(EPLAT,EPLONG,STLAT,STLONG,XLATP,XLONGP,AZMP
+     1  ,DELTA)
+      DATA RADIAN/57.2957795/
+C
+      TH1=(90.-EPLAT)/RADIAN
+      TH2=(90.-STLAT)/RADIAN
+      PH1=EPLONG/RADIAN
+      PH2=STLONG/RADIAN
+C
+      CTH1=COS(TH1)
+      CTH2=COS(TH2)
+      STH1=SIN(TH1)
+      STH2=SIN(TH2)
+      CPH1=COS(PH1)
+      CPH2=COS(PH2)
+      SPH1=SIN(PH1)
+      SPH2=SIN(PH2)
+C
+      CPH21=CPH1*CPH2+SPH1*SPH2
+      SPH21=SPH2*CPH1-SPH1*CPH2
+C
+      CDEL=STH1*STH2*CPH21+CTH1*CTH2
+      SDEL=SQRT(1.-CDEL**2)
+      DELTA=ATAN2(SDEL,CDEL)*RADIAN
+C
+      CCTH=STH1*STH2*SPH21/SDEL
+      SCTH=SQRT(1.-CCTH**2)
+C
+      CTH=ATAN2(SCTH,CCTH)
+C
+      COCO=1./(SDEL*SCTH)
+      SCPH=COCO*(CTH1*STH2*CPH2-CTH2*STH1*CPH1)
+      CCPH=COCO*(STH1*CTH2*SPH1-STH2*CTH1*SPH2)
+C
+      CPH=ATAN2(SCPH,CCPH)
+C
+      XLATP=90.-CTH*RADIAN
+      XLONGP=CPH*RADIAN
+C
+      V1=STH1*CPH1+STH2*CPH2
+      V2=STH1*SPH1+STH2*SPH2
+      V3=CTH1+CTH2
+      VN=SQRT(V1**2+V2**2+V3**2)
+      V1=V1/VN
+      V2=V2/VN
+      V3=V3/VN
+      CTHM=V3
+      STHM=SQRT(1.-V3**2)
+      CPHM=V1/STHM
+      SPHM=V2/STHM
+C
+      CPHMP=CCTH*STHM*(CPHM*CCPH+SPHM*SCPH)-SCTH*CTHM
+      SPHMP=STHM*(SPHM*CCPH-CPHM*SCPH)
+C
+      PHMP=ATAN2(SPHMP,CPHMP)
+C
+      AZMP=180.-PHMP*RADIAN
+      RETURN
+      END
+
+C$**********************************************************************
+CPROG RDSOUR
+CXREF
+      SUBROUTINE RDSOUR(LU)
+      COMMON/TAPE/ F(6),X,Y,D,T,DU,DUM,FILT(1502)
+      COMMON/DBLEM/ XMD(6),R0D
+      COMMON/DBLEC/ EPLA,EPLON,DEP,TORG,DURT
+      CHARACTER*10 LUNIT
+      WRITE(LUNIT,11) LU
+   11 FORMAT('lu_',I1)
+      CALL OPENFL(LU,LUNIT,4,0,0,ISTAT,5604)
+      CALL BFFI(LU,1,NSOUR,4,J,M,1)
+      CALL BFFI(LU,1,F,48,J,M,2)
+      CALL CLOSFL(LU,ISTAT)
+      DO 1 I=1,6
+    1 XMD(I)=F(I)
+      R0D=1.-D/6371.
+      EPLA=X
+      EPLON=Y
+      DEP=D
+      TORG=T
+      DURT=DU
+      RETURN
+      END
+
+C$**********************************************************************
+CPROG RSPIDA
+CXREF
+      COMPLEX FUNCTION RSPIDA(IDAY,IYEAR,NAME,OMEGA,I)
+      COMPLEX RESIDA
+      INTEGER*2 JDAY,JYEAR
+      WRITE(5,"('RSPIDA ENTERED')")
+      IF(I.GT.1) GO TO 10
+      RSPIDA=(0.,0.)
+      RETURN
+   10 JDAY=IDAY
+      JYEAR=IYEAR
+      WRITE(5,"('CALLING RESIDA')")
+      RSPIDA=-RESIDA(OMEGA,NAME,JYEAR,JDAY)*CMPLX(0.01,0.)
+      WRITE(5,"('RESIDA THROUGH')")
+      RETURN
+      END
+
+C$**********************************************************************
+      SUBROUTINE SCOEFS(ITER,J,C,X)
+      COMMON/TAB3/ FIL1(4),Z1(4),Z2(4),Z3(4),Z4(4),P1(6),P2(6),P3(6),
+     1P4(6),P5(6),P6(6),P7(6),P8(6),P9(6),P10(6),FIL2(21)
+      COMMON/IAP2/ B1C,A2C,B2C,B2S,A3C,A3S
+      COMMON/AP1/ DUM1(14),F(6),F2PF3,F2MF3,DUM2(4)
+      DIMENSION C(10),X(8)
+      CALL FVCLR(C,1,10)
+      IF(J.GT.4) GO TO 50
+      F0F=Z1(J)*F(1)+Z2(J)*F2PF3
+      IF(ITER.GE.0) GO TO 21
+      C(1)=X(1)*F0F-B1C*Z3(J)+A2C*Z4(J)
+      RETURN
+   21 C(1)=X(1)*Z1(J)
+      C(2)=X(1)*Z2(J)
+      X0S=X(5)*Z4(J)
+      C(3)=C(2)-X0S
+      C(2)=C(2)+X0S
+      C(4)=-X(3)*Z3(J)
+      C(5)=-X(4)*Z3(J)
+      C(6)=2.*X(6)*Z4(J)
+      IF(ITER.EQ.0) RETURN
+   50 F85=P8(J)*F(1)-P5(J)*F2PF3
+      P91=P9(J)+P1(J)
+      F435=F(4)*(P3(J)-P5(J))
+      F1667=-F(1)*P1(J)+F(2)*(P6(J)+P7(J))+F(3)*P7(J)
+      F66=F(6)*P6(J)
+      P24=P2(J)+P4(J)
+      F535=F(5)*(P3(J)-P5(J))
+      F1767=-F(1)*P1(J)+F(2)*P7(J)+F(3)*(P6(J)+P7(J))
+      C(7)=X(1)*F85-B1C*P91+A2C*P4(J)
+      C(8)=X(1)*F435+X(3)*F1667+X(4)*F66+B2C*P24-A3C*P10(J)
+      C(9)=X(1)*F535+X(4)*F1767+X(3)*F66+B2S*P24-A3S*P10(J)
+      RETURN
+      END
+
+C$**********************************************************************
+      SUBROUTINE SPHARS(L,ICOMP)
+      COMPLEX EPC,X,Y,XX,YY
+      COMMON/AP1/ DUM1(3),THETA,CAZ,SAZ,EPC(4),DUM2(12)
+      COMMON/IAP1/ X(8),Y(8)
+      COMMON/INTER/ KNT,XJ,ZZ1,ZZ2
+      DIMENSION Z(4),ZP(4),ZPP(4),X1(12),X2(8)
+      EQUIVALENCE (Z(1),X1(1)),(ZP(1),X1(5)),(ZPP(1),X1(9)),(X1(5),
+     1X2(1))
+      DATA FPI/12.5663706/
+      CALL FVCLR(X1,1,12)
+      CT=COS(THETA)
+      ST=SIN(THETA)
+      COSEC=1./ST
+      M=MIN0(L,3)
+      LP1=L+1
+      MP1=M+1
+      ZL=L
+      FCT=(2.*ZL+1.)/FPI
+      FL3=ZL*(ZL+1.)
+      COT=CT/ST
+      IF(L.GT.2) GO TO 20
+      GO TO(22,23,24),LP1
+   22 Z(1)=FCT
+      GO TO 28
+   23 Z(1)=CT*FCT
+      ZP(1)=-ST*FCT
+      Z(2)=ZP(1)
+      ZP(2)=-.5*Z(1)*FL3
+      IF(L.EQ.1) GO TO 27
+   24 ZZ1=1.
+      ZZ2=CT
+   20 Z3=((2.*ZL-1.)*CT*ZZ2-(ZL-1.)*ZZ1)/ZL
+      ZZ1=ZZ2
+      ZZ2=Z3
+      Z3=ZZ2*FCT
+      Z(1)=Z3
+      Z2=ZL*(ZZ1-CT*ZZ2)*FCT*COSEC
+      ZP(1)=-Z2
+      ZP(2)=COT*Z2-FL3*Z3
+      Z(2)=-Z2
+      Z2=-Z2
+      Z1=Z3
+      FCT=1.
+      DO 25 I=3,MP1
+      FCT=0.5*FCT
+      ZM=I-1
+      Z3=-(2.*(ZM-1.)*COT*Z2+(ZL-ZM+2.)*(ZL+ZM-1.)*Z1)
+      Z(I)=Z3*FCT
+      ZP(I)=-FCT*((ZL+ZM)*(ZL-ZM+1.)*Z2+ZM*COT*Z3)
+      Z1=Z2
+   25 Z2=Z3
+   27 DO 26 I=1,MP1
+   26 ZPP(I)=COT*ZP(I)-(FL3-(FLOAT(I-1)*COSEC)**2)*Z(I)
+   28 DO 1 I=1,8
+      K=MOD(I-1,4)+1
+      IF(ICOMP.GT.1) GO TO 2
+      X(I)=X1(I)*EPC(K)
+      Y(I)=(0.,0.)
+      GO TO 1
+    2 XM=K-1
+      XX=X2(I)*EPC(K)
+      YY=EPC(K)*CMPLX(0.,XM*X1(I)*COSEC)
+      X(I)=-CAZ*XX-SAZ*YY
+      Y(I)=SAZ*XX-CAZ*YY
+    1 CONTINUE
+      RETURN
+      END
+
+C$**********************************************************************
+CXREF
+      SUBROUTINE STRINV(NPAR,NSOL,NEVUS)
+      IMPLICIT DOUBLE PRECISION (A-H,O-Z)
+      REAL CONTR
+      COMMON/BIGSPA/ IFL1(11310),CONTR(24),COLVEC(24),PRDMTX(300),
+     1IFL2(350),JCOL(24),A(300),B(24),EVAL(24),W1(24),W2(24),
+     2W3(24),W4(24),W5(24),W6(24),W7(24),W8(24),EVEC(24,24),
+     3AINV(24,24),DIAG(24),C(24),IFL3(1840)
+      COMMON/INVPAR/ ICOL(12),GAMMA
+      DIMENSION SCALE(24)
+      DATA SCALE/10.D0,11*1.D0,10.D0,11*1.D0/
+      NEVUS=0
+      DO 13 I=1,24
+      CONTR(I)=0.
+   13 JCOL(I)=0
+      DO 1 I=1,NPAR
+      IF(NSOL.GT.NPAR) JCOL(I+NPAR)=ICOL(I)
+    1 JCOL(I)=ICOL(I)
+      KNT=0
+      NEQ=0
+      DO 2 I=1,NSOL
+      IF(JCOL(I).EQ.0) GO TO 2
+      NEQ=NEQ+1
+      B(NEQ)=COLVEC(I)
+      DIAG(NEQ)=SCALE(I)
+      I1=((2*NSOL-I)*(I-1))/2
+      DO 3 J=I,NSOL
+      IF(JCOL(J).EQ.0) GO TO 3
+      KNT=KNT+1
+      K=I1+J
+      A(KNT)=PRDMTX(K)
+    3 CONTINUE
+    2 CONTINUE
+      KNT=0
+      FACTR=0.D0
+      DO 5 I=1,NEQ
+      DO 5 J=I,NEQ
+      KNT=KNT+1
+      A(KNT)=A(KNT)*DIAG(I)*DIAG(J)
+      IF(I.EQ.J) FACTR=FACTR+A(KNT)
+    5 CONTINUE
+      KNT=0
+      FACTR=DFLOAT(NEQ)/FACTR
+      DO 20 I=1,NEQ
+      DO 20 J=I,NEQ
+      KNT=KNT+1
+   20 A(KNT)=A(KNT)*FACTR
+      CALL AHOUSE(NEQ,A,EVAL,EVEC,W1,W2,W3,W4,W5,W6,W7,W8,24)
+      DO 6 I=1,NEQ
+      DO 6 J=1,NEQ
+    6 AINV(I,J)=0.D0
+      EMIN=EVAL(1)*GAMMA
+      DO 7 I=1,NEQ
+      IF(EVAL(I).LT.EMIN) GO TO 17
+      NEVUS=NEVUS+1
+      ONEOV=1.D0/EVAL(I)
+      DO 8 J=1,NEQ
+      FACT=ONEOV*EVEC(I,J)
+      DO 8 K=1,NEQ
+    8 AINV(K,J)=AINV(K,J)+FACT*EVEC(I,K)
+    7 CONTINUE
+   17 DO 9 I=1,NEQ
+      DO 9 J=1,NEQ
+    9 AINV(I,J)=AINV(I,J)*DIAG(I)*DIAG(J)*FACTR
+      DO 10 I=1,NEQ
+      C(I)=0.D0
+      DO 10 J=1,NEQ
+   10 C(I)=C(I)+AINV(I,J)*B(J)
+      DO 11 I=1,NSOL
+   11 CONTR(I)=0.
+      KNT=0
+      DO 12 I=1,NSOL
+      IF(JCOL(I).EQ.0) GO TO 12
+      KNT=KNT+1
+      CONTR(I)=C(KNT)
+   12 CONTINUE
+      RETURN
+      END
+
+C$**********************************************************************
+      SUBROUTINE TAPCLA(ARR1,ARR2,NF,NE,IT1,IT2)
+      DIMENSION ARR1(1),ARR2(1)
+      ARG=3.14159265/FLOAT(IT2-IT1)
+      CALL RFOUR(ARR1,8,-1)
+      CALL FVCLR(ARR2,1,514)
+      SUM2=0.
+      DO 2 I=NF,NE
+      SUM2=SUM2+ARR1(I)
+    2 ARR2(I)=ARR1(I)
+      SUM2=SUM2/FLOAT(NE-NF+1)
+      DO 3 I=NF,NE
+    3 ARR2(I)=ARR2(I)-SUM2
+      CALL RFOUR(ARR2,8,1)
+      DO 4 I=2,257
+      IF(I.LE.IT1) SUM2=1.
+      IF(I.GE.IT2) SUM2=0.
+      IF(I.GT.IT1.AND.I.LT.IT2) SUM2=0.5*(1.+COS(ARG*FLOAT(I-IT1)))
+      J=2*I-1
+      ARR2(J)=ARR2(J)*SUM2
+      ARR2(J+1)=ARR2(J+1)*SUM2
+    4 CONTINUE
+      CALL RFOUR(ARR2,8,-1)
+      RETURN
+      END
+
+C$**********************************************************************
+CPROG TORPAR
+CXREF
+      SUBROUTINE TORPAR(NMIN,OMMAX,R0,NSHEAR,LU1,LU2)
+      COMMON/BIGSPA/ B1(1024),B2(1024),B3(1024),B4(1024)
+     1  ,B5(256,10),
+     1YL(437),OM(437),QB(437),GRV(437),EL(437),EH(3,437),PT(12,437),
+     2FILLB(2280)
+      DIMENSION B(8740)
+      COMMON/TAPE/ FILT(250),INDSFR(330),INDTOR(300),KNTSFR(330),
+     1KNTTOR(300),KNTS,KNTT,IU1,NBATCH
+      COMMON/SPLIN/ FILS(5),IR1
+      EQUIVALENCE (YL(1),B(1))
+      IU1=LU1
+      IRLST=0
+      XL=1.
+      KNT=0
+      DO 100 NN=1,KNTT
+      NT=KNTTOR(NN)-NMIN
+      IF(NT.EQ.0) GO TO 99
+      IT1=INDTOR(NN)+NMIN
+      IT2=IT1+KNTTOR(NN)-1
+      DO 1 I=IT1,IT2
+      IREC=(I+255)/256
+      IF(IREC.NE.IRLST) CALL GETPAR(I,LU1,LU2,B1,B2,B3,B4,B5,IRLST,
+     1IR1,NSHEAR)
+      IF(NN.EQ.1.AND.I.EQ.IT1) GO TO 1
+      IP=MOD(I-1,256)+1
+      IP256=IP+256
+      IP512=IP256+256
+      IP768=IP512+256
+      OMEGA=B1(IP)
+      IF(I.EQ.IT1.AND.OMEGA.GT.OMMAX) GO TO 99
+      IF(OMEGA.GT.OMMAX) GO TO 100
+      KNT=KNT+1
+      OM(KNT)=OMEGA
+      QB(KNT)=B1(IP256)
+      AH=B1(IP768)
+      YL(KNT)=XL
+      GRV(KNT)=B2(IP)
+      EL(KNT)=B2(IP256)
+      PT(1,KNT)=B2(IP512)
+      PT(2,KNT)=B2(IP768)
+      DO 70 K=1,NSHEAR
+      K2=K+2
+   70 PT(K2,KNT)=B5(IP,K)
+      V1=B3(IP512)
+      VP1=B3(IP768)
+      V2=B4(IP512)
+      VP2=B4(IP768)
+      CALL SPLINE(V1,VP1,V2,VP2,VS,VPS,VPPS)
+      EH(1,KNT)=AH*VS/R0
+      EH(2,KNT)=AH*VPS
+      EH(3,KNT)=AH*R0*VPPS
+      IF(KNT.LT.437) GO TO 1
+      CALL BFFOUT(4,1,B,8740,J)
+      KNT=0
+    1 CONTINUE
+  100 XL=XL+1.
+   99 KNT=KNT+1
+      YL(KNT)=-1.
+      CALL BFFOUT(4,1,B,8740,J)
+C     END FILE 4
+      CALL REWFL(4)
+      RETURN
+      END
+
+C$**********************************************************************
+      SUBROUTINE TTABLS(XL,Y)
+      DIMENSION Y(2,4)
+      COMMON/TAB3/ FIL3(92),QQ5(3),QQ6(3),QQ7(3)
+      COMMON/AP1/ DUM1(17),F4,F5,F6,F2PF3,F2MF3,DUM2(4)
+      COMMON/IAP4/ B1ST,A2ST,B2CT,B2ST,A3CT,A3ST
+      X=XL*(XL+1.)
+      QQ5(1)=-5.*X
+      QQ5(2)=.5*X
+      QQ6(1)=.5*X
+      QQ7(1)=-.25*(X-2.)
+      F62=2.*F6
+      B1ST=F4*Y(2,2)-F5*Y(1,2)
+      A2ST=F2MF3*Y(2,3)-F62*Y(1,3)
+      B2CT=F4*Y(1,3)+F5*Y(2,3)
+      B2ST=F4*Y(2,3)-F5*Y(1,3)
+      A3CT=F2MF3*Y(1,4)+F62*Y(2,4)
+      A3ST=F2MF3*Y(2,4)-F62*Y(1,4)
+      RETURN
+      END
+
+C$**********************************************************************
+      SUBROUTINE ADJUST(XL,OM,GRV,ELP,PART,DTH,FU)
+      DIMENSION PART(1)
+      COMMON/AP3/ DELTA,FACTT,FACTO,PERT(24)
+      COMMON/INTAP/ IDUM(14),NEQ,IFACT
+      FU=0.
+      IF(GRV.GT.0.) FU=6371./(GRV*(XL+0.5))
+      DTH=FU*FACTT*OM*ELP
+      OM=OM*(1.+ELP*FACTO)
+      FU=FU*DELTA
+      CALL FDOTPR(PART,1,PERT,1,DT,NEQ)
+      IF(IFACT.EQ.0) GO TO 2
+      NQ1=NEQ+1
+      CALL FDOTPR(PART,1,PERT(NQ1),1,DOM,NEQ)
+      OM=OM+DOM
+      DTH=DTH+FU*(DOM-DT)
+      RETURN
+    2 OM=OM+DT
+      RETURN
+      END
+
+C$**********************************************************************
+C      SUBROUTINE FIXRL
+C$PROG FIXRL
+      SUBROUTINE FIXRL (DATA,N,NREM,ISIGN,IFORM)
+C     FOR IFORM = 0, CONVERT THE TRANSFORM OF A DOUBLED-UP REAL ARRAY,
+C     CONSIDERED COMPLEX, INTO ITS TRUE TRANSFORM.  SUPPLY ONLY THE
+C     FIRST HALF OF THE COMPLEX TRANSFORM, AS THE SECOND HALF HAS
+C     CONJUGATE SYMMETRY.  FOR IFORM = -1, CONVERT THE FIRST HALF
+C     OF THE TRUE TRANSFORM INTO THE TRANSFORM OF A DOUBLED-UP REAL
+C     ARRAY.  N MUST BE EVEN.
+C     USING COMPLEX NOTATION AND SUBSCRIPTS STARTING AT ZERO, THE
+C     TRANSFORMATION IS--
+C     DIMENSION DATA(N,NREM)
+C     ZSTP = EXP(ISIGN*2*PI*I/N)
+C     DO 10 I2=0,NREM-1
+C     DATA(0,I2) = CONJ(DATA(0,I2))*(1+I)
+C     DO 10 I1=1,N/4
+C     Z = (1+(2*IFORM+1)*I*ZSTP**I1)/2
+C     I1CNJ = N/2-I1
+C     DIF = DATA(I1,I2)-CONJ(DATA(I1CNJ,I2))
+C     TEMP = Z*DIF
+C     DATA(I1,I2) = (DATA(I1,I2)-TEMP)*(1-IFORM)
+C 10  DATA(I1CNJ,I2) = (DATA(I1CNJ,I2)+CONJ(TEMP))*(1-IFORM)
+C     IF I1=I1CNJ, THE CALCULATION FOR THAT VALUE COLLAPSES INTO
+C     A SIMPLE CONJUGATION OF DATA(I1,I2).
+      DIMENSION DATA(3)
+      TWOPI=6.283185307*FLOAT(ISIGN)
+      IP0=2
+      IP1=IP0*(N/2)
+      IP2=IP1*NREM
+      IF (IFORM) 10,70,70
+C     PACK THE REAL INPUT VALUES (TWO PER COLUMN)
+ 10   J1=IP1+1
+      DATA(2)=DATA(J1)
+      IF (NREM-1) 70,70,20
+ 20   J1=J1+IP0
+      I2MIN=IP1+1
+      DO 60 I2=I2MIN,IP2,IP1
+      DATA(I2)=DATA(J1)
+      J1=J1+IP0
+      IF (N-2) 50,50,30
+ 30   I1MIN=I2+IP0
+      I1MAX=I2+IP1-IP0
+      DO 40 I1=I1MIN,I1MAX,IP0
+      DATA(I1)=DATA(J1)
+      DATA(I1+1)=DATA(J1+1)
+ 40   J1=J1+IP0
+ 50   DATA(I2+1)=DATA(J1)
+ 60   J1=J1+IP0
+ 70   DO 80 I2=1,IP2,IP1
+      TEMPR=DATA(I2)
+      DATA(I2)=DATA(I2)+DATA(I2+1)
+ 80   DATA(I2+1)=TEMPR-DATA(I2+1)
+      IF (N-2) 200,200,90
+ 90   THETA=TWOPI/FLOAT(N)
+      SINTH=SIN(THETA/2.)
+      ZSTPR=-2.*SINTH*SINTH
+      ZSTPI=SIN(THETA)
+      ZR=(1.-ZSTPI)/2.
+      ZI=(1.+ZSTPR)/2.
+      IF (IFORM) 100,110,110
+ 100  ZR=1.-ZR
+      ZI=-ZI
+ 110  I1MIN=IP0+1
+      I1MAX=IP0*(N/4)+1
+      DO 190 I1=I1MIN,I1MAX,IP0
+      DO 180 I2=I1,IP2,IP1
+      I2CNJ=IP0*(N/2+1)-2*I1+I2
+      IF (I2-I2CNJ) 150,120,120
+  120 IF (ISIGN*(2*IFORM+1)) 130,140,140
+ 130  DATA(I2+1)=-DATA(I2+1)
+ 140  IF (IFORM) 170,180,180
+ 150  DIFR=DATA(I2)-DATA(I2CNJ)
+      DIFI=DATA(I2+1)+DATA(I2CNJ+1)
+      TEMPR=DIFR*ZR-DIFI*ZI
+      TEMPI=DIFR*ZI+DIFI*ZR
+      DATA(I2)=DATA(I2)-TEMPR
+      DATA(I2+1)=DATA(I2+1)-TEMPI
+      DATA(I2CNJ)=DATA(I2CNJ)+TEMPR
+      DATA(I2CNJ+1)=DATA(I2CNJ+1)-TEMPI
+      IF (IFORM) 160,180,180
+ 160  DATA(I2CNJ)=DATA(I2CNJ)+DATA(I2CNJ)
+      DATA(I2CNJ+1)=DATA(I2CNJ+1)+DATA(I2CNJ+1)
+ 170  DATA(I2)=DATA(I2)+DATA(I2)
+      DATA(I2+1)=DATA(I2+1)+DATA(I2+1)
+ 180  CONTINUE
+      TEMPR=ZR-.5
+      ZR=ZSTPR*TEMPR-ZSTPI*ZI+ZR
+ 190  ZI=ZSTPR*ZI+ZSTPI*TEMPR+ZI
+C     RECURSION SAVES TIME, AT A SLIGHT LOSS IN ACCURACY.  IF AVAILABLE,
+C     USE DOUBLE PRECISION TO COMPUTE ZR AND ZI.
+ 200  IF (IFORM) 270,210,210
+C     UNPACK THE REAL TRANSFORM VALUES (TWO PER COLUMN)
+ 210  I2=IP2+1
+      I1=I2
+      J1=IP0*(N/2+1)*NREM+1
+      GO TO 250
+ 220  DATA(J1)=DATA(I1)
+      DATA(J1+1)=DATA(I1+1)
+      I1=I1-IP0
+      J1=J1-IP0
+ 230  IF (I2-I1) 220,240,240
+ 240  DATA(J1)=DATA(I1)
+      DATA(J1+1)=0.
+ 250  I2=I2-IP1
+      J1=J1-IP0
+      DATA(J1)=DATA(I2+1)
+      DATA(J1+1)=0.
+      I1=I1-IP0
+      J1=J1-IP0
+      IF (I2-1) 260,260,230
+ 260  DATA(2)=0.
+ 270  RETURN
+      END
+
+C$**********************************************************************
+      SUBROUTINE GETMDL(LUHMDL,NHTMDL,IFCCN,KFIL,KFILAN)
+      CHARACTER*1 NHTMDL(12)
+      CHARACTER*12 HETMDL
+      INTEGER*4 IHTMDL(3)
+      DIMENSION KFIL(4),KFILAN(4)
+      COMMON/SCAN/ PATH(204)
+     1  ,IHTMDL,IFANI,LMAXM,LENY,NPMM,PERTM(588),IFCC,MFIL(4),MFILAN(4)
+      DATA MAXLEN/588/
+      IFCC=IFCCN
+      DO 80 I=1,4
+      MFIL(I)=KFIL(I)
+   80 MFILAN(I)=KFILAN(I)
+      IF(NHTMDL(1).NE.' ') GOTO 90
+      HETMDL='            '
+      READ(HETMDL,111) IHTMDL
+  111 FORMAT(3A4)
+      IFANI=0
+      LMAXM=0
+      LENY=0
+      NPMM=0
+      DO 92 I=1,MAXLEN
+   92 PERTM(I)=0.
+      RETURN
+C
+   90 WRITE(HETMDL,97) (NHTMDL(I),I=1,12)
+   97 FORMAT(12A1)
+      READ(HETMDL,111) IHTMDL
+      CLOSE(UNIT=LUHMDL)
+c     OPEN(UNIT=LUHMDL,FILE=HETMDL,STATUS='OLD',FORM='FORMATTED'
+c    1  ,RECFM='DATASENSITIVE',IOINTENT='INPUT',PAD='YES')
+      open(luhmdl,file=hetmdl,status='old')
+      READ(LUHMDL,702) IFANI,IFMINO,LMAXM
+  702 FORMAT(3I5)
+      LMAXM1=LMAXM+1
+      LENY=LMAXM1**2
+      NPMM=12+(IFANI-1)*5
+      DO 703 IP=1,NPMM
+      IND=1+(IP-1)*LENY
+      DO 704 L1=1,LMAXM1
+      IND1=IND+2*(L1-1)
+      IF(IND1.GT.MAXLEN) STOP 'MODEL HAS TOO MANY PARAMETERS'
+      READ(LUHMDL,705) (PERTM(I),I=IND,IND1)
+  705 FORMAT(11E12.5)
+  704 IND=IND1+1
+  703 CONTINUE
+      CLOSE(UNIT=LUHMDL)
+      RETURN
+      END
+
+C$**********************************************************************
+CPROG REINIT
+CXREF
+      SUBROUTINE REINIT(PPERT,KPAR)
+      DOUBLE PRECISION Z1(1)
+      INTEGER*4 IHTMDL(3)
+      COMMON/SCAN/ PATH(204)
+     1  ,IHTMDL,IFANM,LMAXM,LENY,NPRMM,PERTM(588),IFCC,MFIL(4),MFILAN(4)
+      DIMENSION PPERT(24)
+      COMMON/TAPE/ B(536),COMP(514),NPAR,NSOL,PERT(24),PRDMTX(300),
+     1COLVEC(24),VAR2,FILLT(112),NBATCH
+      EQUIVALENCE (ID,B(1)),(INST,B(3))
+      COMMON/DBLEC/ EPLA,EPLON,DEP,TORG,DURT
+      COMMON/BIGSPA/  X1(8740),X2(257,10),X3(24),X4(48),
+     1X5(600),X6(300),X7(24),X8,X9,X10(24),X11(5344)
+      EQUIVALENCE (X1(1),Z1(1))
+      CALL STATN(ID,NAME,INST,STLAT,STLON,ILEV)
+      DO 10 I=1,24
+   10 PPERT(I)=0.
+      IF(IFCC.EQ.0) GOTO 20
+      CALL OCAV(EPLA,EPLON,STLAT,STLON,OCH,OCT,X1(1),X1(151))
+      PPERT(1)=17.5329*((1.-OCT)-.62827*OCT)
+      PPERT(KPAR+1)=17.5329*((1.-OCH)-.62827*OCH)
+   20 IF(NPRMM.EQ.0) RETURN
+      IH=1+2*(2*LMAXM+1)**2
+      IT=IH+LENY
+      IW1=IT+LENY
+      IW2=IW1+LMAXM+3
+      IW3=IW2+LMAXM+3
+      ISAR=IW3+LMAXM+3
+      CALL YLMAV(EPLA,EPLON,STLAT,STLON,LMAXM,X1(IH),X1(IT)
+     1   ,X1(IW1),X1(IW2),X1(IW3),X1(ISAR),Z1)
+      NP=MIN0(KPAR,NPRMM)
+      DO 40 IP=1,NP
+      IPK=IP+KPAR
+      I1=LENY*(IP-1)
+      KH=IH-1
+      KT=IT-1
+      DO 50 J1=1,LENY
+      KH=1+KH
+      KT=1+KT
+      I1=1+I1
+      PPERT(IP)=PPERT(IP)+X1(KT)*PERTM(I1)
+      PPERT(IPK)=PPERT(IPK)+X1(KH)*PERTM(I1)
+   50 CONTINUE
+   40 CONTINUE
+      RETURN
+      END
+
+C$**********************************************************************
+      SUBROUTINE SOSFRS
+      COMMON/INTAP/ JSTAT,ITYPE,ICOMP,IFACT,ITER,NEIG,NPOINT,IDUM(9)
+      COMMON/IAP5/ SYNT(5140),ADDF(7710)
+      COMMON/AP1/ T0,DT,OMMAX,FILL(23)
+      COMMON/AP2/ XL(380),OMEGA(380),QBAR(380),GRV(380),ELP(380),
+     1U(2280),SP(4560)
+      COMMON/IAP3/ XTRACE(514),C(60),XMUL(10),CC(120),DUMM3(324)
+      COMMON/IAP1/ PSFER(16),PTORS(16)
+      COMMON/INTER/ KNT,XJ,ZZ1,ZZ2
+      COMPLEX A0,STEP
+      NC=6*IFACT
+      DO 100 NN=1,380
+      X=XL(NN)
+      IF(X.LT.0.) GO TO 99
+      OM=OMEGA(NN)
+      IF(OM.GT.OMMAX) GO TO 100
+      IF(X.EQ.XJ) GO TO 10
+      KNT=0
+      XJ=X
+      L=XJ+.001
+      CALL SPHARS(L,ICOMP)
+      CALL FVCLR(C,1,190)
+      K=1
+   20 INDP=(K-1)*8+1
+      INDC=(K-1)*60
+      CALL STABLS(XJ,PSFER(INDP))
+      DO 1 I=1,NEIG
+      CALL SCOEFS(ITER,I,XMUL,PSFER(INDP))
+      J=1
+   21 INDJ=INDC+I+(J-1)*6
+      CC(INDJ)=XMUL(J)
+      J=J+1
+      IF(J.LE.IFACT) GO TO 21
+    1 CONTINUE
+      K=K+1
+      IF(K.LE.2) GO TO 20
+   10 IF(KNT.EQ.0.AND.DT.LT.20.) GO TO 100
+      INDP=(NN-1)*12+1
+      INDU=(NN-1)*6+1
+      CALL ADJUSS(X,OM,GRV(NN),ELP(NN),SP(INDP),DTHETA)
+      QB=-.5*QBAR(NN)
+      ARG=OM*T0
+      A0=-CMPLX(.95179,0.)*CEXP(CMPLX(QB*ARG,ARG))
+      ARG=OM*DT
+      STEP=CEXP(CMPLX(QB*ARG,ARG))
+      DO 2 I=1,NPOINT
+      XTRACE(I)=REAL(A0)
+    2 A0=A0*STEP
+      CALL FVSMA(CC(61),1,DTHETA,CC,1,C,1,NC)
+      I1=-513
+      INDF=-5
+      I=1
+   30 I1=I1+514
+      INDF=INDF+6
+      CALL FDOTPR(C(INDF),1,U(INDU),1,FACT,NEIG)
+      CALL FVSMA(XTRACE,1,FACT,SYNT(I1),1,SYNT(I1),1,NPOINT)
+      I=I+1
+      IF(I.LE.IFACT) GO TO 30
+  100 KNT=KNT+1
+      RETURN
+   99 JSTAT=-1
+      RETURN
+      END
+
+C$**********************************************************************
+CPROG SPLINE
+CXREF
+      SUBROUTINE SPLINE(F1,FP1,F2,FP2,V,VP,VPP)
+      COMMON/SPLIN/ Y,HN,HN2,HN3,RHN,IR1
+      A=HN3*(HN*(FP1+FP2)+2.*(F1-F2))
+      B=HN2*(3.*(F2-F1)-HN*(FP2+2.*FP1))
+      V=F1+Y*(FP1+Y*(B+Y*A))
+      VP=FP1+Y*(2.*B+3.*Y*A)
+      VPP=2.*B+6.*Y*A
+      RETURN
+      END
+
+C$**********************************************************************
+      SUBROUTINE STRNSF
+      COMMON/INTAP/ IDUM1(3),IFACT,ITER,JK,IT1,IT2,INSTR,NTRANS,I1S,
+     1I1F,I2S,I2F,IDUM3(2)
+      COMPLEX BRESP,RESP,CSYNT,CSEI
+      DIMENSION CSYNT(257),CSEI(257)
+      COMMON/AP1/ DUM1(14),F(6),DUM2(2),R0,DOM,DTORG,DURTN
+      COMMON/IAP5/ SYNT(5140),ADD5(7710)
+      COMMON/IAP6/ BRESP(257,5)
+      COMMON/IAP3/ TRACE(514),F31(514)
+      COMMON/AP2/ SSEI(514),RESP(257),F32(7712)
+      EQUIVALENCE (CSYNT(1),TRACE(1)),(CSEI(1),SSEI(1))
+      NPTC=2**NTRANS+1
+      DO 5 I=1,NPTC
+      OM=DOM*FLOAT(I-1)
+      ARG=OM*DURTN
+      FACT=1.
+      IF(ARG.NE.0.) FACT=SIN(ARG)/ARG
+      ARG=-OM*DTORG
+      CA=COS(ARG)*FACT
+      SA=SIN(ARG)*FACT
+    5 RESP(I)=BRESP(I,INSTR)*CMPLX(CA,SA)
+      N=1
+   10 IND=(N-1)*514-I1S+1
+      CALL FVCLR(TRACE,1,514)
+      DO 1 I=I1S,I2S
+    1 TRACE(I)=SYNT(IND+I)
+      CALL RFOUR(TRACE,NTRANS,1)
+      DO 2 I=1,NPTC
+      FACT=1.
+      IF(N.GT.6) FACT=1./R0
+    2 CSYNT(I)=CSYNT(I)*RESP(I)*CMPLX(FACT,0.)
+      IND=(N-1)*514+1
+      CALL STAPCL(TRACE,SYNT(IND),I1F,I2F,IT1,IT2)
+      N=N+1
+      IF(N.LE.IFACT) GO TO 10
+      IF(ITER.LE.0) RETURN
+      CALL FVCLR(SSEI,1,514)
+      NPTR=2*NPTC
+      N=1
+   21 I=(N-1)*514+1
+      CALL FVSMA(SYNT(I),1,F(N),SSEI,1,SSEI,1,NPTR)
+      N=N+1
+      IF(N.LE.6) GO TO 21
+      DO 22 I=1,NPTC
+      OM=FLOAT(I-1)*DOM
+      CSYNT(I)=CSEI(I)*CMPLX(0.,-OM)
+   22 CONTINUE
+      CALL FVMOV(TRACE,1,SYNT(4627),1,514)
+      RETURN
+      END
+
+C$**********************************************************************
+      SUBROUTINE TCOEFS(ITER,J,C,Y)
+      COMMON/TAB3/ H1(2),H2(2),FIL3(76),Q1(3),Q2(3),Q3(3),
+     1Q4(3),Q5(3),Q6(3),Q7(3)
+      COMMON/IAP4/ B1ST,A2ST,B2CT,B2ST,A3CT,A3ST
+      COMMON/AP1/ DUM1(14),F1,F2,F3,F4,F5,F6,F2PF3,F2MF3,DUM2(4)
+      DIMENSION C(10),Y(8)
+      CALL FVCLR(C,1,10)
+      IF(J.GT.2) GO TO 50
+      IF(ITER.GE.0) GO TO 21
+      C(1)=A2ST*H1(J)-B1ST*H2(J)
+      RETURN
+   21 C(2)=Y(6)*H1(J)
+      C(3)=-C(2)
+      C(4)=-Y(4)*H2(J)
+      C(5)=Y(3)*H2(J)
+      C(6)=-2.*Y(5)*H1(J)
+      IF(ITER.EQ.0) RETURN
+   50 Q41=Q4(J)+Q1(J)
+      F167=-F1*Q1(J)+F2*Q6(J)+F2PF3*Q7(J)
+      F55=F5*Q5(J)
+      Q21=Q2(J)-Q1(J)
+      F66=F6*Q6(J)
+      F45=F4*Q5(J)
+      F176=F1*Q1(J)-F2PF3*Q7(J)-F3*Q6(J)
+      C(7)=-B1ST*Q41-A2ST*Q1(J)
+      C(8)=Y(1)*F55+Y(4)*F167+B2ST*Q21-A3ST*Q3(J)-Y(3)*F66
+      C(9)=-Y(1)*F45+Y(3)*F176-B2CT*Q21+A3CT*Q3(J)+Y(4)*F66
+      RETURN
+      END
+
+C$**********************************************************************
+CPROG AHOUSE
+CXREF
+      SUBROUTINE AHOUSE(N,C,EV,EVEC,Y,A,B,P,TA,TB,W,V,MDIM)
+      IMPLICIT DOUBLE PRECISION(A-H,O-Z)
+C   SCM VERSION
+      DIMENSION A(24),B(24),P(24),TA(24),TB(24),W(24),Y(24),V(24)
+      DIMENSION C(300),EV(24),EVEC(24,24)
+      EPS=1.D-14
+      UMEPS=1.D0-EPS
+      TOL=1.D-70
+      JSKIP=0
+      KSKIP=1
+      NM1=N-1
+      I=1
+      IDM1=0
+      P(1)=0.D0
+      V(1)=0.D0
+      W(1)=0.D0
+      IF(N.LE.0) RETURN
+      IF(N.GT.2) GO TO 4
+      IF(N.EQ.2) GO TO 3
+      EV(1)=C(1)
+      EVEC(1,1)=1.D0
+      RETURN
+    3 A(1)=C(1)
+      B(1)=-C(2)
+      CKJ=C(3)
+      IP1=2
+      GO TO 215
+    4 IP1=I+1
+      NMI=N-I
+      KJ=IDM1
+      J=I
+    5 JP1=J+1
+      VJ=V(J)
+      K=J
+      LJ=N-J+1
+      JD=KJ+1
+      IF(KSKIP.EQ.1) GO TO 6
+      PJ=P(J)
+      WJ=W(J)
+    6 KJ=KJ+1
+      CKJ=C(KJ)
+      IF(KSKIP.EQ.1) GO TO 7
+      DC=-(PJ*W(K)+WJ*P(K))
+      CKJ=DC+CKJ
+      C(KJ)=CKJ
+    7 IF(J.GT.I) GO TO 14
+      IF(K.GT.J) GO TO 8
+      A(I)=CKJ
+      K=K+1
+      GO TO 6
+    8 Y(K)=0.D0
+      V(K)=CKJ
+      K=K+1
+      IF(K.LE.N) GO TO 6
+      JSKIP=0
+      SUM=DOT(V(JP1),1,V(JP1),1,LJ-1)
+      IF(SUM.LE.TOL) GO TO 10
+      S=DSQRT(SUM)
+      CSD=V(JP1)
+      IF(CSD.LT.0.D0) S=-S
+      V(JP1)=CSD+S
+      C(JD+1)=V(JP1)
+      H=SUM+CSD*S
+      B(I)=-S
+      GO TO 12
+   10 B(I)=0.D0
+      JSKIP=1
+   12 IDM1=KJ
+      IF(JSKIP.EQ.1.AND.KSKIP.EQ.1) GO TO 215
+      J=JP1
+      GO TO 5
+   14 IF(JSKIP.EQ.0) GO TO 15
+      K=K+1
+      IF(K.LE.N) GO TO 6
+      J=JP1
+      IF(J.LE.N) GO TO 5
+      GO TO 215
+   15 Y(K)=Y(K)+CKJ*VJ
+      K=K+1
+      IF(K.LE.N) GO TO 6
+      IF(J.EQ.N) GO TO 17
+      Y(J)=Y(J)+DOT(C(JD+1),1,V(JP1),1,LJ-1)
+      J=JP1
+      GO TO 5
+   17 SP=DOT(V(IP1),1,Y(IP1),1,NMI)/(H+H)
+      DO 21 J=IP1,N
+      W(J)=V(J)
+   21 P(J)=(Y(J)-SP*V(J))/H
+  215 KSKIP=JSKIP
+      I=IP1
+      IF(I.LE.NM1) GO TO 4
+      A(N)=CKJ
+      B(NM1)=-B(NM1)
+      B(N)=0.D0
+      U=DABS(A(1))+DABS(B(1))
+      DO 22 I=2,N
+      U=DMAX1(U,DABS(A(I))+DABS(B(I))+DABS(B(I-1)))
+   22 CONTINUE
+      BD=U
+      RBD=1.D0/U
+      DO 23 I=1,N
+      W(I)=B(I)
+      B(I)=(B(I)/U)**2
+      A(I)=A(I)/U
+      V(I)=0.D0
+   23 EV(I)=-1.D0
+      U=1.D0
+      IK=1
+      NDIM=KJ
+ 1000 K=IK
+      EL=EV(K)
+   24 ELAM=.5D0*(U+EL)
+      DU=(4.D0*DABS(ELAM)+RBD)*EPS
+      IF(DABS(U-EL).LE.DU) GO TO 42
+      IAG=0
+      Q=A(1)-ELAM
+      IF(Q.GE.0.D0) IAG=IAG+1
+      DO 38 I=2,N
+      IF(Q.EQ.0.D0) X=DABS(W(I-1)/BD)/EPS
+      IF(Q.NE.0.D0) X=B(I-1)/Q
+      Q=A(I)-ELAM-X
+      IF( Q.GE.0.D0) IAG=IAG+1
+   38 CONTINUE
+      IF(IAG.GE.K) GO TO 39
+      U=ELAM
+      GO TO 24
+   39 IF(IAG.EQ.K) GO TO 41
+      M=K+1
+      DO 40 MM=M,IAG
+   40 EV(MM)=ELAM
+   41 EL=ELAM
+      GO TO 24
+   42 ELAM=BD*ELAM
+      EV(K)=ELAM
+      IF(IK.EQ.1) GO TO 44
+      IF(ELAM.GE.EV(IK-1)) EV(IK)=UMEPS*EV(IK-1)
+   44 I=IK
+      II=1
+      L=N-1
+      DO 49 J=1,N
+   49 Y(J)=1.D0
+   50 DO 51 K=1,N
+      P(K)=0.D0
+      TB(K)=W(K)
+   51 TA(K)=BD*A(K)-EV(I)
+      J=1
+      DO 57 JP1=2,N
+      IF(DABS(TA(J)).LT.DABS(W(J))) GO TO 53
+      IF(TA(J).EQ.0.D0) TA(J)=EPS
+      F=W(J)/TA(J)
+      GO TO 55
+   53 F=TA(J)/W(J)
+      TA(J)=W(J)
+      T=TA(JP1)
+      TA(JP1)=TB(J)
+      TB(J)=T
+      P(J)=TB(JP1)
+      TB(JP1)=0.D0
+      T=Y(J)
+      Y(J)=Y(JP1)
+      Y(JP1)=T
+   55 TB(JP1)=TB(JP1)-F*P(J)
+      TA(JP1)=TA(JP1)-F*TB(J)
+      Y(JP1)=Y(JP1)-F*Y(J)
+      J=JP1
+   57 CONTINUE
+      IF(TA(N).EQ.0.D0) TA(N)=EPS
+      IF(TA(L).EQ.0.D0) TA(L)=EPS
+      Y(N)=Y(N)/TA(N)
+      Y(L)=(Y(L)-Y(N)*TB(L))/TA(L)
+      DO 62 J=2,L
+      K=N-J
+      IF(TA(K).EQ.0.D0) TA(K)=EPS
+   62 Y(K)=(Y(K)-Y(K+1)*TB(K)-Y(K+2)*P(K))/TA(K)
+      AY=DABS(Y(1))
+      DO 63 J=2,N
+      AY=DMAX1(AY,DABS(Y(J)))
+   63 CONTINUE
+      DO 64 J=1,N
+   64 Y(J)=Y(J)/AY
+      II=II+1
+      IF(II.LE.2) GO TO 50
+      ID=NDIM-2
+      L=N-2
+      DO 68 J=1,L
+      ID=ID-J-2
+      M=N-J
+      H=W(M-1)
+      IF(H.EQ.0.D0) GO TO 68
+      JP1=J+1
+      T=DOT(C(ID+1),1,Y(M),1,JP1)/(H*C(ID+1))
+      KJ=ID
+      DO 67 K=M,N
+      KJ=KJ+1
+   67 Y(K)=Y(K)+T*C(KJ)
+   68 CONTINUE
+      XNORM=DSQRT(DOT(Y,1,Y,1,N))
+      DO 70 J=1,N
+   70 EVEC(IK,J)=Y(J)/XNORM
+      IK=IK+1
+      IF(IK.LE.N) GO TO 1000
+      RETURN
+      END
+CBEND
+
+C$**********************************************************************
+      SUBROUTINE APSOUR(ITAPER,IFPSTR,ITER,NODEP,KPAR)
+      REAL KERBUF
+      INTEGER*4 IHTMDL(3)
+      COMPLEX EPTRYG,RESP,ASRINS,SROINS,RSPIDA
+C     INTEGER*2 JSTAT,JTYPE,JCOMP,JFACT,JTER,JNEIG,JPOINT,JIFDEP,
+C    1JNSTR,JTRANS,J1S,J1F,J2S,J2F,JNPAR,JIFTWO
+      INTEGER*4 JSTAT,JTYPE,JCOMP,JFACT,JTER,JNEIG,JPOINT,JIFDEP,
+     1JNSTR,JTRANS,J1S,J1F,J2S,J2F,JNPAR,JIFTWO
+      COMMON/INTAP/ JSTAT,JTYPE,JCOMP,JFACT,JTER,JNEIG,JPOINT,JIFDEP,
+     1JNSTR,JTRANS,J1S,J1F,J2S,J2F,JNPAR,JIFTWO
+      COMMON/AP1/ T0,DT,OMMAX,DELTA,CAZ,SAZ,EPTRYG(4),F(6),F2PF3,
+     1F2MF3,R0,DOM,DTORG,DURTN
+      COMPLEX RESP5
+      COMMON/IAP6/ RESP5(257,5)
+      COMMON/AP2/ BKERN(8740)
+      COMMON/IAP5/ SKERN(12850)
+      COMMON/BIGSPA/  KERBUF(8740),RESP(257,5),FILLB(6366)
+      COMMON/AP3/ DELT1,FACTT,FACTO,PPERT(24)
+      COMMON/TAPE/ B(536),COMP(514),NPAR,NSOL,PERT(24),SAVE(325),
+     1FILLT(112),NBATCH
+      COMMON/DBLEM/ XMD(6),R0D
+      COMMON/DBLEC/ EPLA,EPLON,DEP,TORG,DURT
+      DIMENSION IT1(2),IT2(2),SYNT(5140),TAPERD(514)
+      COMMON/SCAN/ NSOUR,NPATH,NPREC(3,50),NOGOOD(50),RATIOI,RATIOM
+     1  ,IHTMDL,IFANM,LMAXM,LENY,NPRMM,PERTM(588),IFCC,MFIL(4),MFILAN(4)
+      EQUIVALENCE (B(1),ID),(B(2),LCOMP),(B(3),INST),(B(4),RATE),
+     1(B(7),IYEAR),(B(15),IDAY),(B(16),IDELAY),(B(17),NFIRST),
+     2(B(18),NEND),(B(22),IFLAG),(KERBUF(1),SYNT(1)),(KERBUF(5141),
+     3TAPERD(1))
+      COMMON/TAB3/ VALUE(101)
+C     INTEGER*2 IAINT,IATAB3,IAIAP6,IAAP1,IAAP3,IAAP2,IAIAP5
+C     INTEGER*2 I2_1,I2_101,I2_2,I2_2570,I2_514,I2_26,I2_27
+C    1   ,I2_16,I2_8740,I2_5140
+      SAVE ITAPERI
+C     DATA I2_1,I2_101,I2_2,I2_2570,I2_514,I2_26,I2_27
+C    1   ,I2_16,I2_8740,I2_5140/
+C    1  1,101,2,2570,514,26,27,16,8740,5140/
+      DATA IT1,IT2,DOMIDA,DOMSRO/135,205,183,257,0.0001917476,
+     10.0007669904/
+C
+      WRITE(5,"('APSOUR 1 - ',2I4)") ITAPER,IFPSTR
+      ITAPERI=ITAPER
+C
+C      AP ADDRESS OF INTEGER ARRAY /APINT/
+C
+C     IAINT=50
+C
+C      AP ADDRESS OF COMMON WITH THE F.P. MAIN PARAMETERS /AP1/
+C
+C     IAAP1=66
+C
+C      AP ADDRESS OF COMMON WITH MODAL PARAMETERS /AP2/
+C
+C     IAAP2=92
+C
+C      AP ADDRESS OF COMMON WITH PATH PERURBATION DATA /AP3/
+C
+C     IAAP3=8832
+C
+C      AP ADDRESS OF TABLE OF CEOFFICIENTS
+C
+C     IATAB3=8859
+C
+C      AP ADDRESS OF COMMON WITH INSTRUMENTAL CONSTANTS /IAIAP6/
+C
+C     IAIAP6=14100
+C
+C      AP ADDRESS OF COMMON WITH THE SOURCE KERNELS /IAP5/
+C
+C     IAIAP5=8960
+C
+C      INITIALIZE THE AP
+C
+      JSTAT=-2
+C     CALL APPUT(JSTAT,IAINT,I2_1,I2_1)
+C     CALL APWD
+C     CALL SOROOT
+      CALL SOMAIN
+C     CALL APWR
+C
+C      SEND TABLE /TAB3/
+C
+C     CALL APPUT(VALUE,IATAB3,I2_101,I2_2)
+C
+C      CALCULATE INSTRUMENTAL RESPONSES EXCEPT FOR IDA
+C
+      ZZERO=0.
+      RESP(1,1)=ASRINS(ZZERO,0)
+      DO 1 N=1,5
+      DO 1 I=1,257
+    1 RESP(I,N)=(0.,0.)
+      DO 2 I=2,244
+      OM=FLOAT(I-1)*DOMIDA
+      FACT=-1./(OM*OM)
+      RESP(I,2)=CMPLX(FACT,0.)*SROINS(OM)
+      RESP(I,3)=CMPLX(FACT,0.)*ASRINS(OM,1)
+    2 CONTINUE
+      I2=IT2(ITAPER)
+      I1=IT1(ITAPER)
+      DO 3 I=2,I2
+      OM=FLOAT(I-1)*DOMSRO
+      FACT=-1./(OM*OM)
+      RESP(I,4)=CMPLX(FACT,0.)*SROINS(OM)
+      RESP(I,5)=CMPLX(FACT,0.)*ASRINS(OM,1)
+    3 CONTINUE
+C
+C      SEND THE RESPONSES TO AP
+C
+C     CALL APPUT(RESP,IAIAP6,I2_2570,I2_2)
+C     CALL APWD
+      DO 1251 I=2,5
+      DO 1251 J=1,257
+ 1251 RESP5(J,I)=RESP(J,I)
+      WRITE(5,"('APSOUR 2 - ',2I4)") ITAPER,IFPSTR
+      RETURN
+C
+C
+      ENTRY APSYNT(ITER,IFPSTR,ITER,NODEP,KPAR)
+      WRITE(5,"('APSYNT 1 - ',4I4)")IFPSTR,ITER,NODEP,KPAR
+      CALL REWFL(7)
+      NSOUR=1
+      FACT=0.
+      NPAR=KPAR
+      IF(ITER.GE.0) GO TO 10
+C     WRITE(7) (XMD(I),I=1,6),EPLA,EPLON,DEP,TORG,DURT,FACT
+C     CALL REWFL(7)
+C     CALL BFFIN(7,1,B,13,J,M)
+      DO 4545 I=1,6
+ 4545 B(I)=XMD(I)
+      B(7)=EPLA
+      B(8)=EPLON
+      B(9)=DEP
+      B(10)=TORG
+      B(11)=DURT
+      B(12)=FACT
+      CALL REWFL(7)
+      CALL BFFOUT(7,1,NSOUR,808,J)
+      CALL BFFOUT(7,1,B,12,J)
+   10 JFACT=1
+      IF(ITER.EQ.0) JFACT=6
+      IF(ITER.GT.0) JFACT=9
+      JTER=ITER
+      CALL EPCNTR(EPLA,EPLON)
+      DO 17 I=1,6
+      IF(ITER.EQ.0) F(I)=0.
+      IF(ITER.NE.0) F(I)=XMD(I)
+   17 CONTINUE
+      F2PF3=F(2)+F(3)
+      F2MF3=F(2)-F(3)
+      R0=R0D
+      JIFDEP=0
+      IF(NODEP.EQ.0) JIFDEP=1
+      DTORG=TORG
+      DURTN=DURT
+      JTRANS=8
+      DO 800 NNN=1,NPATH
+      NREC=NPREC(1,NNN)
+      IRF=NPREC(2,NNN)
+      DO 700 NN=1,NREC
+      JREC=IRF+NN-1
+      CALL BFFI(7,1,B,5604,J,M,JREC)
+      IF(IFLAG.LT.0) GO TO 700
+      IF(IFLAG.NE.0.AND.ITER.GE.0) GO TO 700
+      JCOMP=LCOMP
+      JNPAR=KPAR
+      JIFTWO=0
+      IF(RATE.GT.20.) JIFTWO=1
+      DT=RATE
+      CALL STATN(ID,NAME,INST,STLAT,STLONG,ILEV)
+      CALL ANGLES(STLAT,STLONG,DELTA,AZEP,AZST,THETA,PHI,PSI,AZ12)
+      CZ=COS(AZST)
+      SZ=SIN(AZST)
+      GO TO(21,22,23,24,25),LCOMP
+   21 CAZ=-1.
+      SAZ=0.
+      GO TO 26
+   22 CAZ=CZ
+      SAZ=SZ
+      GO TO 26
+   23 CAZ=SZ
+      SAZ=-CZ
+      GO TO 26
+   24 CAZ=-1.
+      SAZ=0.
+      GO TO 26
+   25 CAZ=0.
+      SAZ=-1.
+   26 DO 18 I=1,4
+      XM=FLOAT(I-1)*(3.1415926536-AZEP)
+   18 EPTRYG(I)=CMPLX(COS(XM),SIN(XM))
+      IF(RATE.GT.20.) GO TO 12
+      DOM=DOMSRO
+      OMMAX=0.1396263
+      IF(ITAPERI.EQ.2) OMMAX=0.1963495
+      IDELAY=0
+      J2S=NEND+10
+      IF(INST.EQ.3) STOP 'WRONG RATE'
+      IF(INST.EQ.2) JNSTR=5
+      IF(INST.NE.2) JNSTR=4
+      GO TO 13
+   12 DOM=DOMIDA
+      OMMAX=0.0465421
+      J2S=NEND+MIN0(10,514-NEND)
+      IF(INST.NE.3) GO TO 14
+      RESP(1,1)=(0.,0.)
+      DO 15 I=2,257
+      OM=FLOAT(I-1)*DOMIDA
+C     RESP(I,1)=RSPIDA(IDAY,IYEAR+1900,NAME,OM,I)
+      CALL IDARESP(RESP(I,1),IDAY,IYEAR+1900,NAME,OM,I)
+   15 CONTINUE
+C
+C      STORE IDA RESPONSE IN AP
+C
+C     CALL APPUT(RESP,IAIAP6,I2_514,I2_2)
+      DO 1252 I=1,257
+ 1252 RESP5(I,1)=RESP(I,1)
+      JNSTR=1
+      GO TO 13
+   14 IF(INST.EQ.2) JNSTR=3
+      IF(INST.NE.2) JNSTR=2
+   13 J1S=NFIRST-MIN0(10,NFIRST-1)
+      J1F=NFIRST
+      J2F=NEND
+      JPOINT=J2S-J1S+1
+      I1S=J1S
+      T0=RATE*FLOAT(IDELAY+I1S-1)
+C
+C      COMMON /AP1/ COMPLETED; SEND IT
+C
+C     CALL APPUT(T0,IAAP1,I2_26,I2_2)
+C        COMMON /AP1/ ALREADY SHARED
+      COT2T=COS(2.*THETA)
+      S2T=0.5*(1.-COT2T)
+      C2T=0.5*(1.+COT2T)
+      FACTT=-3.*SIN(DELTA)*COS(AZ12)*S2T
+      FACTO=1.-3.*C2T
+      DELT1=DELTA
+      DO 275 I=1,24
+      PPERT(I)=PERT(I)
+  275 CONTINUE
+      IF(IFPSTR.EQ.0) CALL REINIT(PPERT,KPAR)
+C
+C      COMMON /AP3/ COMPLETED; SEND IT
+C
+C     CALL APPUT(DELT1,IAAP3,I2_27,I2_2)
+C        COMMON /AP3/ ALREADY SHARED
+      JNEIG=4
+      IF(ITER.GT.0) JNEIG=6
+      JSTAT=-1
+      JTYPE=1
+      IU=3
+      IF(LCOMP.NE.1) IU=4
+      CALL REWFL(IU)
+C
+C      SEND /INTAP/
+C
+C     CALL APPUT(JSTAT,IAINT,I2_16,I2_1)
+C        COMMON /INTAP/ ALREADY SHARED
+   46 CALL BFFIN(IU,1,KERBUF,8740,J,M)
+C     CALL APPUT(KERBUF,IAAP2,I2_8740,I2_2)
+C     CALL APWD
+      DO 1253 I=1,8740
+ 1253 BKERN(I)=KERBUF(I)
+C     CALL SOROOT
+      CALL SOMAIN
+C     CALL APWR
+C
+C      CHECK STATUS
+C
+C     CALL APGET(JSTAT,IAINT,I2_1,I2_1)
+C     CALL APWD
+      IF(JSTAT.EQ.0) GO TO 46
+      IF(LCOMP.EQ.1) GO TO 200
+      JSTAT=0
+      JTYPE=2
+      JNEIG=2
+      IF(ITER.GT.0) JNEIG=3
+C     CALL APPUT(JSTAT,IAINT,I2_16,I2_1)
+C      COMMON /INTAP/ ALREADY SHARED
+   45 CALL BFFIN(4,1,KERBUF,8740,J,M)
+C     CALL APPUT(KERBUF,IAAP2,I2_8740,I2_2)
+C     CALL APWD
+      DO 1254 I=1,8740
+ 1254 BKERN(I)=KERBUF(I)
+C     CALL SOROOT
+      CALL SOMAIN
+C     CALL APWR
+C     CALL APGET(JSTAT,IAINT,I2_1,I2_1)
+C     CALL APWD
+      IF(JSTAT.EQ.0) GO TO 45
+  200 IF(JNSTR.GT.3) GO TO 201
+      JPOINT=183
+      JIFDEP=244
+      GO TO 202
+  201 JPOINT=I1
+      JIFDEP=I2
+C 202 CALL APPUT(JSTAT,IAINT,I2_16,I2_1)
+  202 CONTINUE
+C     CALL APWD
+C     CALL TSROOT
+      CALL STRNSF
+C     CALL APWR
+      IF(ITER.EQ.0) GO TO 35
+C
+C      GET THE SYNTHETIC SEISMOGRAM
+C
+C     IF(ITER.GT.0) CALL APGET(COMP,IAAP2,I2_514,I2_2)
+C     IF(ITER.LT.0) CALL APGET(COMP,IAIAP5,I2_514,I2_2)
+      DO 1255 I=1,514
+      IF(ITER.GT.0) COMP(I)=BKERN(I)
+      IF(ITER.LT.0) COMP(I)=SKERN(I)
+ 1255 CONTINUE
+      IF(ITER.LT.0) GO TO 499
+C
+C      GET THE KERNELS
+C
+C  35 CALL APGET(SYNT,IAIAP5,I2_5140,I2_2)
+   35 DO 1256 I=1,5140
+ 1256 SYNT(I)=SKERN(I)
+C 499 CALL APWD
+  499 CONTINUE
+      WATE=1.
+      IF(INST.EQ.3.AND.RATIOI.NE.0.) WATE=RATIOI**2
+      IF(INST.EQ.3.AND.RATIOI.EQ.0.) WATE=.2E-1
+      IF(INST.NE.3.AND.RATE.GT.20..AND.RATIOM.NE.0.) WATE=RATIOM**2
+      WRITE(5,1000) NNN,NN,NAME,LCOMP,WATE
+ 1000 FORMAT(' PATH=',I3,' RECORD=',I3,' STATION=',A4,' COMP=',I2,
+     1' WEIGHT=',E10.3)
+      IF(ITER.GE.0.AND.RATE.LT.20.) CALL TAPCLR(B(23),TAPERD,NFIRST,
+     1NEND,I1,I2,SUM2)
+      IF(ITER.GE.0.AND.RATE.GT.20.) CALL TAPCLR(B(23),TAPERD,NFIRST,
+     1NEND,183,244,SUM2)
+      IF(ITER.GE.0) CALL INPMTX(WATE)
+      IF(ITER.LT.0) CALL BFFO(7,1,B,5604,J,JREC)
+  700 CONTINUE
+  800 CONTINUE
+      WRITE(5,"('APSYNT 2 - ',4I4)")IFPSTR,ITER,NODEP,KPAR
+      RETURN
+      END
+
+C$**********************************************************************
+C     SUBROUTINE ATANT(X,Y)
+C-----ATANT IS A FUNCTION G.E. 05/11/85
+      FUNCTION ATANT(X,Y)
+      IF(X.NE.0..OR.Y.NE.0.) THEN
+        ATANT=ATAN2(X,Y)
+      ELSE
+        ATANT=0.
+      ENDIF
+      RETURN
+      END
+
+C$**********************************************************************
+CXREF
+      SUBROUTINE EPCNTR(EPLAT,EPLON)
+      DATA RAD,GEOCO,TWOPI/0.0174533,0.993277,6.2831853072/
+      EPL=ATAN(GEOCO*TAN(EPLAT*RAD))
+      AE=SIN(EPL)
+      BE=COS(EPL)
+      EPO=EPLON*RAD
+      CE=COS(EPO)
+      DE=SIN(EPO)
+      RETURN
+      ENTRY ANGLES(STLAT,STLON,DELTA,AZEP,AZST,THETA,PHI,PSI,AZ12)
+      SLA=ATAN(GEOCO*TAN(STLAT*RAD))
+      AS=SIN(SLA)
+      BS=COS(SLA)
+      SLO=STLON*RAD
+      CS=COS(SLO)
+      DS=SIN(SLO)
+      CDIF=CE*CS+DE*DS
+      CDEL=AE*AS+BE*BS*CDIF
+      DELTA=ACOS(CDEL)
+      SDIF=DS*CE-CS*DE
+      SDEL=SIN(DELTA)
+      CAZE=(AS-AE*CDEL)/(BE*SDEL)
+      SAZE=SDIF*BS/SDEL
+      AZEP=ATAN2(SAZE,CAZE)
+      IF(AZEP.LT.0.) AZEP=AZEP+TWOPI
+      AZST=-ATAN2(BE*SDIF,(AE-AS*CDEL)/BS)
+      IF(AZST.LT.0.) AZST=AZST+TWOPI
+      COST=BE*SAZE
+      THETA=ACOS(COST)
+      SINT=SIN(THETA)
+      PHI=ATAN2(-CAZE,-AE*COST/BE)+EPO
+      PHI=AMOD(PHI,TWOPI)
+      IF(PHI.LT.0.) PHI=PHI+TWOPI
+      PSI=-ATAN2(-CAZE*BS,-AS)
+      IF(PSI.LT.0.) PSI=PSI+TWOPI
+      AZ1=ATAN2(-BE*SIN(PHI-EPO),AE/SINT)
+      AZ2=ATAN2(-BS*SIN(PHI-SLO),AS/SINT)
+      AZ12=AMOD(AZ1+AZ2,TWOPI)
+      IF(AZ12.LT.0.) AZ12=AZ12+TWOPI
+      RETURN
+      END
+
+C$**********************************************************************
+      SUBROUTINE FVSUB(A,I,B,J,C,K,N)
+      DIMENSION A(I*N),B(J*N),C(K*N)
+      IK=1
+      JK=1
+      KK=1
+      DO 1 L=1,N
+      C(KK)=B(JK)-A(IK)
+      IK=IK+I
+      JK=JK+J
+      KK=KK+K
+    1 CONTINUE
+      RETURN
+      END
+
+
+
+
+
+      FUNCTION IDANUM(CODE,LEN)
+
+C    FOR A GIVEN STATION OR CHANNEL CODE FOR THE PROJECT IDA STATIONS,
+C   RETURNS THE APPROPRIATE NUMBER FOR USE WITH THE CALIBRATION ROUTINE
+C   RIDA AND LOCATION ROUTINE LIDA. CHANNELS ARE GIVEN NEGATIVE NUMBERS.
+C   A VALUE OF ZERO MEANS THAT THE CODE IS NOT RECOGNIZED.
+C
+C      !!!!!!!!!!!!!! FORTRAN 77 VERSION !!!!!!!!!!!!!!!
+C
+C    CALLING PARAMETERS:
+C
+C      CODE   - THE STATION CODE, OR ALPHANUMERIC CHANNEL IDENTIFIER,
+C   WHICH MUST BE CHARACTER*LEN.
+C      LEN    - THE LENGTH OF THE CHARACTER VARIABLE CODE, WHICH MUST
+C   BE LARGE ENOUGH TO HOLD THE CHARACTERS NEEDED (3 FOR THE STATION
+C   CODES, 2, 3, OR 4 FOR THE CHANNEL NAMES).
+C
+C      THE FOLLOWING CHANNEL ID'S ARE RECOGNIZED BY THE PROGRAM
+C   (THE NUMBER IN PARENTHESES IS THE VALUE RETURNED):
+C
+C    (-1)   B1,BP1 - BANDPASS ONE (GAIN OF 10 IN THE MODE BAND)
+C    (-2)   B2,BP2 - BANDPASS TWO (GAIN OF 100 IN THE MODE BAND)
+C    (-3)   MD,MDE,MODE - MODE (GAIN OF 25 IN THE MODE BAND)
+C
+C      THE STATION ID'S RECOGNIZED BY THE PROGRAM ARE THOSE IN THE
+C   DATA STATEMENT FOR ARRAY STCODE.
+C
+C    TO UPDATE THE PROGRAM:
+C   INCREASE THE DIMENSION OF STCODE BY 1, AND ADD THE NEW STATION CODE
+C   AND THE NEW VALUE OF NSTA IN THE DATA STATEMENT.
+C
+C       >>>>>>>>>>>>  LAST UPDATED ON  21 JUNE 1983  <<<<<<<<<<<<<<
+C
+C    ********CALLS ONLY SYSTEM ROUTINES
+C
+C     AUTHOR - D. C. AGNEW, IGPP LA JOLLA
+C
+      INTEGER LEN
+      CHARACTER*(*) CODE
+      CHARACTER*2 CHNID2
+      CHARACTER*3 STCODE,CHNID3
+      CHARACTER*4 CHNID4,TWOA
+      DIMENSION STCODE(24),CHNID2(3),CHNID3(3),CHNID4(3)
+      DATA STCODE/ 'ALE','BDF','BJT','CAN','CMO','EIC','ERM','ESK',
+     1       'GAR','GUA','HAL','KIP','KMY','MCM','NNA','PFO','RAR',
+     2       'SEY','SJG','SPA','SSB','SUR','TWO','PCR'/,TWOA/'TWOA'/,
+     3     CHNID2/'B1',  'B2',  'MD'/,
+     4     CHNID3/'BP1', 'BP2', 'MDE'/,
+     5     CHNID4/'DUMY','DUMY','MODE'/,
+     5     NSTA/24/,NCHAN/3/
+      IDANUM = 0
+      DO 3 I=1,NSTA
+      IF(INDEX(CODE,STCODE(I)).NE.0) THEN
+          IDANUM = I
+          RETURN
+      ENDIF
+ 3    CONTINUE
+      IF(INDEX(CODE,TWOA).NE.0) THEN
+          IDANUM = 23
+          RETURN
+      ENDIF
+      DO 5 I=1,NCHAN
+      IF(INDEX(CODE,CHNID2(I)).NE.0) THEN
+          IDANUM = -I
+          RETURN
+      ENDIF
+ 5    CONTINUE
+      DO 7 I=1,NCHAN
+      IF(INDEX(CODE,CHNID3(I)).NE.0) THEN
+          IDANUM = -I
+          RETURN
+      ENDIF
+ 7    CONTINUE
+      DO 9 I=1,NCHAN
+      IF(INDEX(CODE,CHNID4(I)).NE.0) THEN
+          IDANUM = -I
+          IF(INDEX(CODE,'DUMY').NE.0) IDANUM = 0
+          RETURN
+      ENDIF
+ 9    CONTINUE
+      RETURN
+      END
+
+C$**********************************************************************
+      SUBROUTINE MODES
+      COMMON/INTAP/ JSTAT,ITYPE,IDUM(14)
+      COMMON/AP1/ DAP1(26)
+      COMMON/AP2/ DAP2(8740)
+      COMMON/AP3/ DAP3(27)
+      COMMON/IAP6/ RESP(2570)
+      COMMON/IAP5/ SYNT(12850)
+      COMMON/INTER/ KNT,XJ,ZZ1,ZZ2
+      IF(JSTAT.LT.-1) RETURN
+      IF(JSTAT.EQ.0) GO TO 1
+      CALL FVCLR(SYNT,1,12850)
+      KNT=0
+      XJ=-1.
+      JSTAT=0
+    1 CONTINUE
+      IF(ITYPE.EQ.1) CALL MSFER
+      IF(ITYPE.EQ.2) CALL MTORS
+      RETURN
+      END
+
+
+
+
+
+      FUNCTION NDAYS(IY1,ID1,IY2,ID2)
+
+C  FINDS THE NUMBER OF DAYS BETWEEN TWO DATES, GIVEN AS YEAR AND DAY; THE
+C  SECOND DATE (GIVEN BY IY2 AND ID2) IS TAKEN TO BE LATER. THE NUMBER OF
+C  DAYS IS 0 IF THE DATES ARE THE SAME, 1 IF DATE 2 IS ONE DAY LATER, -1
+C  IF IT IS ONE DAY EARLIER, AND SO ON.
+C   **FOR 16-BIT INTEGERS, THE MAXIMUM SPAN IS 89 YR 257 DAYS.
+C
+C  $$$$CALLS ONLY SYSTEM ROUTINES
+C
+C     AUTHOR - DUNCAN CARR AGNEW
+C
+      LEAP(JJ) = 1 - (MOD(JJ,4)+3)/4
+      NDAYS = ID2 - ID1
+      IF(IY1.EQ.IY2) RETURN
+C  IN SEPARATE YEARS - COUNT UP INTERVENING DAYS
+      IF(IY1.GT.IY2) GO TO 5
+      NDAYS = 365 + LEAP(IY1) - ID1
+      NDAYS = NDAYS + ID2
+C  IF YEARS ADJACENT WE ARE DONE
+      IF(IY2.EQ.IY1+1) RETURN
+      I1 = IY1+1
+      I2 = IY2-1
+      DO 3 I=I1,I2
+      NDAYS = NDAYS + 365 + LEAP(I)
+C  CLAVIAN (GREGORIAN) INTERCALATION
+ 3    IF(MOD(I,100).EQ.0.AND.MOD(I,400).NE.0) NDAYS = NDAYS - 1
+      RETURN
+C  THIS PART IS USED WHEN THE SECOND YEAR IS EARLIER THAN THE FIRST
+ 5    NDAYS = 365 + LEAP(IY2) - ID2
+      NDAYS = NDAYS + ID1
+      IF(IY1.EQ.IY2+1) GO TO 9
+      I2 = IY2+1
+      I1 = IY1-1
+      DO 7 I=I2,I1
+      NDAYS = NDAYS + 365 + LEAP(I)
+ 7    IF(MOD(I,100).EQ.0.AND.MOD(I,400).NE.0) NDAYS = NDAYS - 1
+ 9    NDAYS = -NDAYS
+      RETURN
+      END
+
+C$**********************************************************************
+      SUBROUTINE PROCES(X,OM,Q,GRV,ELP,EIG,PART)
+      COMPLEX A0,STEP
+      DIMENSION PART(12),EIG(6)
+      COMMON/INTAP/ JSTAT,ITYP,ICOMP,IFACT,L,LP,NPOINT,ID2(7),
+     1NPAR,IFTWO
+      COMMON/AP1/ T0,DT,OMMAX,FILL(23)
+      COMMON/IAP5/ SYNT(514),PDER(12336)
+      COMMON/IAP3/ CTRACE(514),STRACE(514)
+      COMMON/INTER/ KNT,XJ,ZZ1,ZZ2
+      IF(X.LT.0.) GO TO 99
+      IF(OM.GT.OMMAX) GO TO 100
+      IF(X.EQ.XJ) GO TO 10
+      KNT=0
+      L=X+0.001
+      LP=LP+1
+      XJ=X
+      CALL SPHARP(L,ICOMP)
+      IF(ITYP.EQ.1) CALL STABLP(X)
+      IF(ITYP.EQ.2) CALL TTABLP
+   10 IF(KNT.EQ.0.AND.DT.LT.20.) GO TO 100
+      QB=-.5*Q
+      CALL ADJUST(X,OM,GRV,ELP,PART,TH,FU)
+      GRV=FU
+      ELP=TH
+      ARG=OM*T0
+      A0=CMPLX(.95179,0.)*CEXP(CMPLX(QB*ARG,ARG))
+      TIME=T0
+      ARG=OM*DT
+      STEP=CEXP(CMPLX(QB*ARG,ARG))
+      I=1
+    3 CTRACE(I)=REAL(A0)
+      STRACE(I)=TIME*AIMAG(A0)
+      A0=A0*STEP
+      TIME=TIME+DT
+      I=I+1
+      IF(I.LE.NPOINT) GO TO 3
+      IF(ITYP.EQ.1) CALL SCOEFP(EIG,C1,C2)
+      IF(ITYP.EQ.2) CALL TCOEFP(EIG,C1,C2)
+      ARG=-C1-TH*C2
+      CALL FVSMA(CTRACE,1,ARG,SYNT,1,SYNT,1,NPOINT)
+      IF(IFACT.EQ.0) GO TO 100
+      I=1
+   20 ARG=(C1+TH*C2)*PART(I)
+      I1=I
+      IF(IFTWO.NE.0) I1=I+NPAR
+      IND=(I1-1)*514+1
+      CALL FVSMA(STRACE,1,ARG,PDER(IND),1,PDER(IND),1,NPOINT)
+      I=I+1
+      IF(I.LE.NPAR) GO TO 20
+      IF(IFTWO.EQ.0) GO TO 100
+      I=1
+   30 ARG=FU*C2*PART(I)
+      IND=(I-1)*514+1
+      CALL FVSMA(CTRACE,1,ARG,PDER(IND),1,PDER(IND),1,NPOINT)
+      I=I+1
+      IF(I.LE.NPAR) GO TO 30
+  100 KNT=KNT+1
+      RETURN
+   99 JSTAT=-1
+      RETURN
+      END
+
+C$**********************************************************************
+CPROG ROTMX2
+CXREF
+      SUBROUTINE ROTMX2(NMAX,L,THETA,D,ID1,ID2)
+      IMPLICIT DOUBLE PRECISION (A-H,O-Z)
+      DOUBLE PRECISION D,THETA
+      DIMENSION D(ID1,ID2)
+      DATA BIG,SMALL,DLBIG,DLSML/1.D35,1.D-35,35.D0,-35.D0/
+      DATA PI/3.14159265358979D0/
+      DFLOAT(N)=N
+      TH=THETA
+      IF((TH.GT.PI).OR.(TH.LT.0.D0)) STOP 'ILLEGAL ARG IN ROTMX2'
+      IF(L.NE.0) GOTO 350
+      D(1+NMAX,L+1)=1.D0
+      RETURN
+350   ISUP=1
+      IF(TH.LE.PI/2.D0) GOTO 310
+      TH=PI-TH
+      ISUP=-1
+310   NM=2*L+1
+      NMP1=NM+1
+      LP1=L+1
+      LM1=L-1
+      LP2=L+2
+      NROW=2*NMAX+1
+      NMAXP1=NMAX+1
+      LMN=L-NMAX
+      IF(TH.NE.0.D0) GOTO 320
+      DO 330 IM1CT=1,NROW
+      IM1=IM1CT+LMN
+      DO 330 IM2=LP1,NM
+      D(IM1CT,IM2)=0.D0
+      IF(IM1.EQ.IM2) D(IM1CT,IM2)=1.D0
+330   CONTINUE
+      GOTO 400
+320   CONTINUE
+C
+C     ZERO L.H.S. OF MATRIX
+C
+      DO 340 IM1=1,NROW
+      DO 340 IM2=1,LP1
+340   D(IM1,IM2)=0.D0
+C
+C        SET UP PARAMETERS
+C
+      SHTH=DSIN(0.5D0*TH)
+      CHTH=DCOS(0.5D0*TH)
+      STH=2.D0*SHTH*CHTH
+      CTH=2.D0*CHTH*CHTH-1.D0
+      DLOGF=DLOG10(CHTH/SHTH)
+      DLOGS=DLOG10(SHTH)
+C
+C       ITERATE FROM LAST COLUMN USING 1. AS STARTING VALUE
+C
+      DO 10 IM1CT=1,NROW
+      IM1=IM1CT+LMN
+      M1=IM1-LP1
+      RM1=M1
+      NM2=MIN0(IM1-1,NM-IM1)
+      D(IM1CT,NM)=1.D0
+      IF(NM2.EQ.0) GOTO 10
+      DO 20 NIT=1,NM2
+      M2=L-NIT
+      IM2=M2+LP1
+      IF(M2.NE.LM1) GOTO 70
+      T1=0.D0
+      GOTO 30
+70    T1=-DSQRT(DFLOAT((IM2+1)*(L-M2-1)))*D(IM1CT,IM2+2)
+30    D(IM1CT,IM2)=T1-(2.D0/STH)*(CTH*DFLOAT(M2+1)-RM1)
+     1    *D(IM1CT,IM2+1)
+      D(IM1CT,IM2)=D(IM1CT,IM2)/DSQRT(DFLOAT(IM2*(L-M2)))
+      TEMP=D(IM1CT,IM2)
+      RMOD=DABS(TEMP)
+      IF(RMOD.LT.BIG) GOTO 20
+      IF(NIT.EQ.NM2) GOTO 20
+      D(IM1CT,NIT+1)=DLBIG
+      D(IM1CT,IM2)=D(IM1CT,IM2)/BIG
+      D(IM1CT,IM2+1)=D(IM1CT,IM2+1)/BIG
+20    CONTINUE
+10    CONTINUE
+C
+C        SET UP NORMALIZATION FOR RIGHTMOST COLUMN
+C
+      T1=DFLOAT(2*L)*DLOGS
+      IF(LMN.EQ.0) GOTO 720
+      DO 710 I=1,LMN
+      M1=I-L
+      T1=DLOGF+0.5D0*DLOG10(DFLOAT(LP1-M1)/DFLOAT(L+M1))+T1
+710   CONTINUE
+720   D(1,1)=T1
+      IF(NROW.EQ.1) GOTO 730
+      DO 110 IM1CT=2,NROW
+      M1=IM1CT-NMAXP1
+110   D(IM1CT,1)=DLOGF+0.5D0*DLOG10(DFLOAT(L-M1+1)/DFLOAT(L+M1))
+     1     +D(IM1CT-1,1)
+730   SGN=-1.D0
+      IF((LMN/2)*2.NE.LMN) SGN=1.D0
+C
+C       RENORMALIZE ROWS
+C
+      DO 120 IM1CT=1,NROW
+      IM1=IM1CT+LMN
+      SGN=-SGN
+      CSUM=D(IM1CT,1)
+      MULT=1
+520   IF(DABS(CSUM).LT.DLBIG) GOTO 510
+      MULT=MULT*2
+      CSUM=0.5*CSUM
+      GOTO 520
+510   FAC=10.D0**CSUM
+      SFAC=SMALL/FAC
+      NM2=MIN0(IM1-1,NM-IM1)
+      NM2P1=NM2+1
+      DO 130 IM2=1,NM2P1
+      IF((D(IM1CT,IM2+1).EQ.0.D0).OR.(IM2.GE.NM2)) GOTO 250
+      CSUM=CSUM*DFLOAT(MULT)+D(IM1CT,IM2+1)
+      MULT=1
+220   IF(DABS(CSUM).LT.DLBIG) GOTO 210
+      MULT=MULT*2
+      CSUM=0.5D0*CSUM
+      GOTO 220
+210   FAC=10.D0**CSUM
+      SFAC=SMALL/FAC
+250   IN2=NMP1-IM2
+      DO 270 I=1,MULT
+      TEMP=D(IM1CT,IN2)
+      RMOD=DABS(TEMP)
+      IF(RMOD.GT.SFAC) GOTO 260
+      D(IM1CT,IN2)=0.D0
+      GOTO 130
+260   D(IM1CT,IN2)=D(IM1CT,IN2)*FAC
+270   CONTINUE
+      D(IM1CT,IN2)=SGN*D(IM1CT,IN2)
+130   CONTINUE
+120   CONTINUE
+C
+C       FILL REST OF MATRIX
+C
+400   IF(ISUP.GT.0) GOTO 410
+      SGN=-1.D0
+      IF((LMN/2)*2.NE.LMN) SGN=1.D0
+      DO 420 IM1CT=1,NROW
+      SGN=-SGN
+      IM1=IM1CT+LMN
+      NM2=MIN0(IM1,NMP1-IM1)
+      DO 420 IN2=1,NM2
+      IM2=NMP1-IN2
+420   D(IM1CT,IN2)=SGN*D(IM1CT,IM2)
+      DO 430 IM1CT=1,NROW
+      IM1=IM1CT+LMN
+      IN1=NMP1-IM1
+      IN1CT=IN1-LMN
+      SGN=-1.D0
+      NM2=MIN0(IM1,IN1)
+      DO 440 NIT=1,NM2
+      SGN=-SGN
+      IM2=1+NM2-NIT
+      IN2=NMP1-IM2
+      IM2CT=IM2-LMN
+      IN2CT=IN2-LMN
+      D(IN1CT,IN2)=SGN*D(IM1CT,IM2)
+      IF(IN2CT.GT.NROW) GOTO 440
+      D(IM2CT,IM1)=D(IN1CT,IN2)
+      D(IN2CT,IN1)=D(IM1CT,IM2)
+440   CONTINUE
+430   CONTINUE
+      RETURN
+410   DO 450 IM1CT=1,NROW
+      IM1=IM1CT+LMN
+      IN1=NMP1-IM1
+      IN1CT=IN1-LMN
+      SGN=-1.D0
+      NM2=MIN0(IM1,IN1)
+      DO 460 NIT=1,NM2
+      SGN=-SGN
+      IM2=NM-NM2+NIT
+      IN2=NMP1-IM2
+      IM2CT=IM2-LMN
+      IN2CT=IN2-LMN
+      D(IN1CT,IN2)=SGN*D(IM1CT,IM2)
+      IF(IM2CT.GT.NROW) GOTO 460
+      D(IM2CT,IM1)=D(IN1CT,IN2)
+      D(IN2CT,IN1)=D(IM1CT,IM2)
+460   CONTINUE
+450   CONTINUE
+      RETURN
+      END
+
+C$**********************************************************************
+CPROG SOURPA
+CXREF
+      SUBROUTINE SOURPA(F,SCMOM,PHS,DEL,RLAM,EIVALS,PLUNGS,AZIMS,
+     1EIVECS)
+      DIMENSION F(6),PHS(2),DEL(2),RLAM(2),EIVALS(3),EIVECS(3,3),
+     1PLUNGS(3),AZIMS(3)
+      CALL EQPAR(F,SCMOM,PHS,DEL,RLAM,EIVALS,EIVECS,PLUNGS,AZIMS)
+      DO 1 I=1,3
+      E=EIVALS(I)*1.E30
+      WRITE(5,1000) I,E,PLUNGS(I),AZIMS(I)
+    1 WRITE(16,1000) I,E,PLUNGS(I),AZIMS(I)
+ 1000 FORMAT(3X,'EIGENVALUE ',I1,' = ',E13.6,' PLUNGE =',F6.2,
+     1' AZIMUTH =',F7.2)
+      SC=SCMOM*1.E30
+      WRITE(5,1001) SC
+      WRITE(16,1001) SC
+ 1001 FORMAT('   BEST DOUBLE COUPLE; SCALAR MOMENT = ',E13.6)
+      DO 2 I=1,2
+      WRITE(5,1002) I,PHS(I),DEL(I),RLAM(I)
+      WRITE(16,1002) I,PHS(I),DEL(I),RLAM(I)
+    2 CONTINUE
+ 1002 FORMAT(3X,'FAULT PLANE ',I1,' STRIKE =',F7.2,' DIP =',
+     1F6.2,' SLIP =',F8.2,' ** NORMAL FAULT: SLIP = -90 DEG **')
+      RETURN
+      END
+
+C$**********************************************************************
+CXREF
+      SUBROUTINE STSORT(NPATH,NPREC,ISTOR0,ISTOR1)
+      DIMENSION NPREC(3,1),ISTOR0(1),ISTOR1(1)
+      COMMON/BIGSPA/  LREC0(200),LREC1(200),KFLAG(200),JFLAG(200),
+     1JID(200),B(536),FILLB(16140)
+      EQUIVALENCE (B(1),ID),(B(22),IFLAG)
+      KT0=0
+      KNT=0
+      NPATH=0
+      CALL REWFL(1)
+    1 CALL BFFIN(1,1,B,536,J,M)
+      IF(J.EQ.3) GO TO 10
+      KT0=KT0+1
+      IF(IFLAG.LT.0) GO TO 1
+      KNT=KNT+1
+      KFLAG(KNT)=0
+      LREC0(KNT)=KT0
+      LREC1(KNT)=KNT+2
+      JFLAG(KNT)=IFLAG
+      JID(KNT)=ID
+      GO TO 1
+   10 KT0=0
+      DO 2 N=1,KNT
+      LAST=0
+      IF(KFLAG(N).NE.0) GO TO 2
+      LAST=JID(N)
+      NPATH=NPATH+1
+      NPREC(1,NPATH)=1
+      KT0=KT0+1
+      NPREC(2,NPATH)=KT0+2
+      NPREC(3,NPATH)=0
+      ISTOR0(KT0)=LREC0(N)
+      ISTOR1(KT0)=LREC1(N)
+      KFLAG(N)=1
+      NP1=N+1
+      IF(NP1.GT.KNT) GO TO 4
+      DO 3 I=NP1,KNT
+      IF(JID(I).NE.LAST) GO TO 3
+      NPREC(1,NPATH)=NPREC(1,NPATH)+1
+      KT0=KT0+1
+      ISTOR0(KT0)=LREC0(I)
+      ISTOR1(KT0)=LREC1(I)
+      KFLAG(I)=1
+    3 CONTINUE
+    2 CONTINUE
+    4 WRITE(5,1000) NPATH,KNT
+ 1000 FORMAT(' NUMBER OF PATHS',I3,' NUMBER OF RECORDS',I4)
+      RETURN
+      END
+
+C$**********************************************************************
+CPROG APSTRC
+CXREF
+      SUBROUTINE APSTRC(ITAPER,NITER,IFSTOR,KPAR)
+      INTEGER*2 JJPAR(16)
+      INTEGER*4 IHTMDL(3)
+      DIMENSION AAP1(26)
+      REAL KERBUF
+      DOUBLE PRECISION PRDSUM,COLSUM
+      COMPLEX EPTRYG,RESP,ASRINS,SROINS,RSPIDA,TAPER
+C     INTEGER*2 JSTAT,JTYPE,JCOMP,JFACT,JTER,JNEIG,JPOINT,JIFDEP,
+C    1JNSTR,JTRANS,J1S,J1F,J2S,J2F,JNPAR,JIFTWO
+      INTEGER*4 JSTAT,JTYPE,JCOMP,JFACT,JTER,JNEIG,JPOINT,JIFDEP,
+     1JNSTR,JTRANS,J1S,J1F,J2S,J2F,JNPAR,JIFTWO
+      COMMON/INTAP/ JSTAT,JTYPE,JCOMP,JFACT,JTER,JNEIG,JPOINT,JIFDEP,
+     1JNSTR,JTRANS,J1S,J1F,J2S,J2F,JNPAR,JIFTWO
+      COMMON/AP1/ T0,DT,OMMAX,DELTA,CAZ,SAZ,EPTRYG(4),F(6),F2PF3,
+     1F2MF3,R0,DOM,DTORG,DURTN
+      COMMON/AP3/ DELT1,FACTT,FACTO,PPERT(24)
+      COMPLEX RESP5
+      COMMON/IAP6/ RESP5(257,5)
+      COMMON/AP2/ BKERN(8740)
+      COMMON/IAP5/ SKERN(12850)
+      DIMENSION TEMBUF(326)
+      COMMON/BIGSPA/  KERBUF(8740),RESP(257,5),PRTADD(24)
+     1  ,COLSUM(24),
+     1PRDSUM(300),TMPPRD(300),TMPCOL(24),VAR,RMS,ACCUM(24),FILLB(5344)
+      EQUIVALENCE (TEMBUF(1),TMPPRD(1))
+      DIMENSION BUFTEM(325)
+      COMMON/TAPE/ B(536),COMP(514),NPAR,NSOL,PERT(24),PRDMTX(300),
+     1COLVEC(24),VAR2,FILLT(112),NBATCH
+      EQUIVALENCE (BUFTEM(1),PRDMTX(1))
+      COMMON/DBLEM/ XMD(6),R0D
+      COMMON/DBLEC/ EPLA,EPLON,DEP,TORG,DURT
+      DIMENSION IT1(2),IT2(2),OBSEI(514)
+      COMMON/SCAN/ NSOUR,NPATH,NPREC(3,50),NOGOOD(50),RATIOI,RATIOM
+     1  ,IHTMDL,IFANM,LMAXM,LENY,NPRMM,PERTM(588),IFCC,MFIL(4),MFILAN(4)
+      EQUIVALENCE (B(1),ID),(B(2),LCOMP),(B(3),INST),(B(4),RATE),
+     1(B(7),IYEAR),(B(15),IDAY),(B(16),IDELAY),(B(17),NFIRST),
+     2(B(18),NEND),(B(22),IFLAG),(B(23),OBSEI(1))
+      EQUIVALENCE (B(19),DEL0),(B(20),AZEP0),(B(21),AZST0)
+      EQUIVALENCE (AAP1(1),T0),(JSTAT,JJPAR(1))
+C     INTEGER*2 I2_1,I2_2570,I2_2,I2_514,I2_26,I2_27,I2_16
+C    1   ,I2_8740,I2_326,I2_325
+C     DATA I2_1,I2_2570,I2_2,I2_514,I2_26,I2_27,I2_16
+C    1   ,I2_8740,I2_326,I2_325/1,2570,2,514,26,27,16,8740
+C    1   ,326,325/
+C     INTEGER*2 IAINT,IAIAP6,IAAP1,IAAP2,IAAP3,IADDR
+C
+      DATA IT1,IT2,DOMIDA,DOMSRO/137,205,183,257,0.0001917476,
+     10.0007669904/
+C
+C      AP ADDRESS OF INTEGER ARRAY /APINT/
+C
+C     IAINT=50
+C
+C      AP ADDRESS OF COMMON WITH F.P. MAIN PARAMETERS /AP1/
+C
+C     IAAP1=66
+C
+C      AP ADDRESS OF COMMON WITH MODAL PARAMETERS /AP2/
+C
+C     IAAP2=92
+C
+C      AP ADDRESS OF COMMON WITH STRUCTURE PERTURBATION /AP3/
+C
+C     IAAP3=8832
+C
+C      AP ADDRESS OF COMMON WITH 5 INSTRUMENTAL RESPONSES /IAP6/
+C      1: IDA, 2: SRO-MV, 3: ASRO-MV, 4: SRO-BV, 5: ASRO-BV.
+C
+C     IAIAP6=8859
+C
+C      INITIALIZE AP
+C
+      JSTAT=-2
+C     CALL APPUT(JSTAT,IAINT,I2_1,I2_1)
+C     CALL APWD
+C     CALL HROOT
+      CALL MODES
+C     CALL APWR
+C
+C      CALCULATE 4 OF THE 5 RESPONSES. THE IDA RESPONSE (FIRST) IS
+C      CALCULATED, WHEN NECESSARY, LATER IN THE PROGRAM
+C
+      ZZERO=0.
+      RESP(1,1)=ASRINS(ZZERO,0)
+      DO 1 N=1,5
+      DO 1 I=1,257
+    1 RESP(I,N)=(0.,0.)
+      DO 2 I=2,244
+      OM=FLOAT(I-1)*DOMIDA
+      FACT=-1./(OM*OM)
+      RESP(I,2)=CMPLX(FACT,0.)*SROINS(OM)
+      RESP(I,3)=CMPLX(FACT,0.)*ASRINS(OM,1)
+    2 CONTINUE
+      I2=IT2(ITAPER)
+      I1=IT1(ITAPER)
+      DO 3 I=2,I2
+      OM=FLOAT(I-1)*DOMSRO
+      FACT=-1./(OM*OM)
+      RESP(I,4)=CMPLX(FACT,0.)*SROINS(OM)
+      RESP(I,5)=CMPLX(FACT,0.)*ASRINS(OM,1)
+    3 CONTINUE
+C
+C      SEND THE RESPONSES TO AP
+C
+C     CALL APPUT(RESP,IAIAP6,I2_2570,I2_2)
+      DO 1250 I=1,257
+      DO 1250 J=2,5
+ 1250 RESP5(I,J)=RESP(I,J)
+      CALL EPCNTR(EPLA,EPLON)
+      DO 17 I=1,6
+   17 F(I)=XMD(I)
+      F2PF3=F(2)+F(3)
+      F2MF3=F(2)-F(3)
+      R0=R0D
+      DTORG=TORG
+      DURTN=DURT
+C
+C      MAIN LOOP FOR ALL PATHS
+C
+      DO 800 NNN=1,NPATH
+      IF(NOGOOD(NNN).NE.0) GO TO 800
+C      NUMBER OF RECORDS
+      NREC=NPREC(1,NNN)
+C      DISK ADDRESS OF THE FIRST RECORD FOR THIS PATH
+      IREC=NPREC(2,NNN)
+C      FLAG FOR EXISTENCE OF AT LEAST ONE RECORD WITH MANTLE WAVES
+      IFGTCR=NPREC(3,NNN)
+      NSOL=KPAR
+      IF(IFGTCR.NE.0) NSOL=2*KPAR
+      CALL BFFI(7,1,B,5604,J,M,IREC)
+      DO 276 I=1,24
+      ACCUM(I)=PERT(I)
+  276 CONTINUE
+      IF(IFSTOR.EQ.0) CALL REINIT(ACCUM,KPAR)
+C
+C      LOOP FOR NITER ITERATIVE SOLUTIONS FOR PATH PERURBATION;
+C      ONLY THE SYNTHETIC SEISMOGRAM IS COMPUTED IN LAST ITERATION
+C
+      DO 810 KK=1,NITER
+      DO 4 I=1,300
+    4 PRDSUM(I)=0.D0
+      DO 5 I=1,24
+    5 COLSUM(I)=0.D0
+C
+C      LOOP FOR RECORDS IN EACH PATH
+C
+      DO 700 NN=1,NREC
+      JREC=IREC+NN-1
+      CALL BFFI(7,1,B,5604,J,M,JREC)
+      NPAR=KPAR
+      NSOL=NPAR
+      IF(IFGTCR.NE.0) NSOL=2*NPAR
+      IF(IFLAG.NE.0.AND.KK.NE.NITER) GO TO 700
+      CALL STATN(ID,NAME,INST,STALAT,STLONG,ILEV)
+      CALL ANGLES(STALAT,STLONG,DELTA,AZEP,AZST,THETA,PHI,PSI,AZ12)
+      REPRAD=180./3.1415926
+      DEL1=REPRAD*DELTA
+      AZEP1=AZEP*REPRAD
+      AZST1=AZST*REPRAD
+      THETA1=THETA*REPRAD
+      PHI1=PHI*REPRAD
+      PSI1=PSI*REPRAD
+      CZ=COS(AZST)
+      SZ=SIN(AZST)
+      GO TO(21,22,23,24,25),LCOMP
+   21 CAZ=-1.
+      SAZ=0.
+      GO TO 26
+   22 CAZ=CZ
+      SAZ=SZ
+      GO TO 26
+   23 CAZ=SZ
+      SAZ=-CZ
+      GO TO 26
+   24 CAZ=-1.
+      SAZ=0.
+      GO TO 26
+   25 CAZ=0.
+      SAZ=-1.
+   26 DO 18 I=1,4
+      XM=FLOAT(I-1)*(3.1415926536-AZEP)
+   18 EPTRYG(I)=CMPLX(COS(XM),SIN(XM))
+      DT=RATE
+      I1S=NFIRST-MIN0(10,NFIRST-1)
+      J1S=I1S
+      IF(RATE.GT.20.) GO TO 12
+      DOM=DOMSRO
+      JTRANS=8
+      OMMAX=0.1396263
+      IF(ITAPER.EQ.2) OMMAX=0.1963495
+      IDELAY=0
+      J2S=NEND+10
+      IF(INST.EQ.3) STOP 'WRONG RATE'
+      IF(INST.EQ.2) JNSTR=5
+      IF(INST.NE.2) JNSTR=4
+      GO TO 13
+   12 DOM=DOMIDA
+      JTRANS=8
+      OMMAX=0.0465421
+      J2S=NEND+MIN0(10,514-NEND)
+      IF(INST.NE.3) GO TO 14
+      DO 15 I=2,257
+      OM=FLOAT(I-1)*DOMIDA
+C     RESP(I,1)=RSPIDA(IDAY,IYEAR+1900,NAME,OM,I)
+      CALL IDARESP(RESP(I,1),IDAY,IYEAR+1900,NAME,OM,I)
+   15 CONTINUE
+C
+C      STORE IDA RESPONSE IN AP
+C
+C     CALL APPUT(RESP,IAIAP6,I2_514,I2_2)
+      DO 1251 I=1,257
+ 1251 RESP5(I,1)=RESP(I,1)
+      JNSTR=1
+      GO TO 13
+   14 IF(INST.EQ.2) JNSTR=3
+      IF(INST.NE.2) JNSTR=2
+   13 T0=RATE*FLOAT(IDELAY+I1S-1)
+C
+C      COMMON /AP1/ COMPLETE, SEND IT.
+C
+C     CALL APPUT(T0,IAAP1,I2_26,I2_2)
+C       COMMON /AP1/ ALREADY SHARED
+      J1F=NFIRST
+      J2F=NEND
+      JCOMP=LCOMP
+      JFACT=1
+      IF(KK.EQ.NITER.AND.NITER.NE.1) JFACT=0
+      JPOINT=J2S-J1S+1
+      JNPAR=KPAR
+      JIFTWO=0
+      IF(RATE.GT.20.) JIFTWO=1
+      COT2T=COS(2.*THETA)
+      S2T=0.5*(1.-COT2T)
+      C2T=0.5*(1.+COT2T)
+      FACTT=-3.*SIN(DELTA)*COS(AZ12)*S2T
+      FACTO=1.-3.*C2T
+      DELT1=DELTA
+      DO 275 I=1,24
+  275 PPERT(I)=ACCUM(I)
+C
+C      COMMON /AP3/ COMPLETED; SEND IT
+C
+C     CALL APPUT(DELT1,IAAP3,I2_27,I2_2)
+C        COMMON /AP3/ ALREADY SHARED
+      IU=3
+      IF(LCOMP.NE.1) IU=4
+      CALL REWFL(IU)
+      JNEIG=0
+      JTER=0
+      JTYPE=1
+      JSTAT=-1
+C
+C      COMMON /INTAP/ COMPLETED, SEND IT
+C
+C     CALL APPUT(JSTAT,IAINT,I2_16,I2_1)
+C       COMMON /INTAP/ ALREADY SHARED
+C
+C      PROCESS SPHEROIDAL MODES
+C
+   47 CALL BFFIN(IU,1,KERBUF,8740,J,M)
+C     CALL APPUT(KERBUF,IAAP2,I2_8740,I2_2)
+C     CALL APWD
+      DO 1252 I=1,8740
+ 1252 BKERN(I)=KERBUF(I)
+C     CALL HROOT
+C     CALL APWR
+      CALL MODES
+C
+C      CHECK THE STATUS
+C
+C     CALL APGET(JSTAT,IAINT,I2_16,I2_1)
+C     CALL APWD
+      IF(JSTAT.EQ.0) GO TO 47
+      IF(LCOMP.EQ.1) GO TO 200
+C
+C      PROCESS TOROIDAL MODES
+C
+      JSTAT=0
+      JTYPE=2
+      JNEIG=0
+      JTER=0
+C
+C      SEND /INTAP/
+C
+C     CALL APPUT(JSTAT,IAINT,I2_16,I2_1)
+   48 CALL BFFIN(4,1,KERBUF,8740,J,M)
+C     CALL APPUT(KERBUF,IAAP2,I2_8740,I2_2)
+C     CALL APWD
+      DO 1253 I=1,8740
+ 1253 BKERN(I)=KERBUF(I)
+C     CALL HROOT
+C     CALL APWR
+      CALL MODES
+C
+C      CHECK THE STATUS
+C
+C     CALL APGET(JSTAT,IAINT,I2_16,I2_1)
+C     CALL APWD
+C     CALL APWD
+      IF(JSTAT.EQ.0) GO TO 48
+C
+C      COMPUTE THE INNER PRODUCT MATRIX AND THE COLUMN VECTOR
+C
+  200 JSTAT=1
+      IF(JNSTR.GT.3) GO TO 201
+      JPOINT=183
+      JIFDEP=244
+      GO TO 202
+  201 JPOINT=I1
+      JIFDEP=I2
+C 202 CALL APPUT(JSTAT,IAINT,I2_16,I2_1)
+  202 CONTINUE
+C
+C      SEND THE OBSERVED SEISMOGRAM
+C
+C     CALL APPUT(OBSEI,IAAP2,I2_514,I2_2)
+C     CALL APWD
+      DO 1254 I=1,514
+ 1254 BKERN(I)=OBSEI(I)
+C     CALL MROOT
+C     CALL APWR
+      CALL MATRIX
+C     CALL APGET(JSTAT,IAINT,I2_16,I2_1)
+C
+C      GET TMPPRD, TMPCOL, (OBSEIS)**2 & RMS
+C
+C     IADDR=IAAP2+1028
+C     CALL APGET(TMPPRD,IADDR,I2_326,I2_2)
+C     CALL APWD
+      DO 1255 I=1,326
+ 1255 TEMBUF(I)=BKERN(I+1028)
+      WRITE(5,1000) NNN,KK,NAME,LCOMP,RATE,RMS
+ 1000 FORMAT(' PATH=',I3,' ITER=',I2,' STATION ',A4,' COMP',I2,
+     1' RATE',F5.0,' RMS=',E10.3)
+C
+C      STORE IF THE FIRST EVER
+C
+      IF(IFSTOR.NE.0.OR.KK.NE.1) GO TO 53
+      IADDR=IAAP2+1028
+C     CALL APGET(PRDMTX,IADDR,I2_325,I2_2)
+C     CALL APWD
+      DO 1256 I=1,325
+ 1256 BUFTEM(I)=BKERN(I+1028)
+      CALL BFFO(7,1,B,5604,J,JREC)
+C
+C      IF LAST ITERATION, STORE THE ACCUMULATED PERTURBATION
+C      AND THE SYNTHETIC SEISMOGRAM
+C
+   53 IF(KK.NE.NITER) GO TO 56
+      IADDR=IAAP2+514
+C     CALL APGET(COMP,IADDR,I2_514,I2_2)
+C     CALL APWD
+      DO 1257 I=1,514
+ 1257 COMP(I)=BKERN(I+514)
+      DO 277 I=1,24
+  277 PERT(I)=ACCUM(I)
+      CALL BFFO(7,1,B,5604,J,JREC)
+      WRITE(16,1000) NNN,KK,NAME,LCOMP,RATE,RMS
+      IF(NITER.NE.1) GOTO 700
+C
+C      ACCUMULATE THE INNER PRODUCT MATRIX WITH AN APPROPRIATE WEIGHT
+C
+   56 IF(IFLAG.NE.0) GOTO 700
+      WATE=1.
+      IF(INST.EQ.3.AND.RATIOI.NE.0.) WATE=RATIOI**2
+      IF(INST.EQ.3.AND.RATIOI.EQ.0.) WATE=.2E-12
+      IF(INST.NE.3.AND.RATE.GT.20..AND.RATIOM.NE.0.) WATE=RATIOM**2
+      LPAR=NPAR
+      IF(JIFTWO.NE.0) LPAR=2*NPAR
+      KNT=0
+      DO 57 I=1,LPAR
+      COLSUM(I)=COLSUM(I)+WATE*TMPCOL(I)
+      IND=((2*NSOL-I)*(I-1))/2
+      DO 57 K=I,LPAR
+      KNT=KNT+1
+      J=IND+K
+   57 PRDSUM(J)=PRDSUM(J)+WATE*TMPPRD(KNT)
+  700 CONTINUE
+      IF(KK.NE.NITER) GO TO 811
+      IF(NITER.EQ.1) CALL STRINV(NPAR,NSOL,NEVUS)
+      IF(NITER.NE.1) GOTO 6
+      DO 7 I=1,24
+    7 PERT(I)=PERT(I)+PRTADD(I)
+    6 CONTINUE
+      WRITE(5,1002) NNN,NAME,NEVUS
+      WRITE(16,1002) NNN,NAME,NEVUS
+ 1002 FORMAT(//' PATH',I3,' STATION ',A4,' EINVLS USED',I3)
+      DO 114 I=1,NPAR
+      IF(NPAR.EQ.NSOL) WRITE(5,1001) I,PERT(I)
+      IF(NPAR.EQ.NSOL) WRITE(16,1001) I,PERT(I)
+      IF(NPAR.NE.NSOL) WRITE(5,1001) I,PERT(I),PERT(I+NPAR)
+      IF(NPAR.NE.NSOL) WRITE(16,1001) I,PERT(I),PERT(I+NPAR)
+ 1001 FORMAT(I5,2E15.5)
+  114 CONTINUE
+      GO TO 810
+  811 CALL STRINV(NPAR,NSOL,NEVUS)
+      DO 278 I=1,24
+  278 ACCUM(I)=ACCUM(I)+PRTADD(I)
+  810 CONTINUE
+  800 CONTINUE
+      RETURN
+      END
+
+C$**********************************************************************
+C      SUBROUTINE BITRV
+C$PROG BITRV
+      SUBROUTINE BITRV (DATA,NPREV,N,NREM)
+C     SHUFFLE THE DATA BY BIT REVERSAL.
+C     DIMENSION DATA(NPREV,N,NREM)
+C     COMPLEX DATA
+C     EXCHANGE DATA(J1,J4REV,J5) WITH DATA(J1,J4,J5) FOR ALL J1 FROM 1
+C     TO NPREV, ALL J4 FROM 1 TO N (WHICH MUST BE A POWER OF TWO), AND
+C     ALL J5 FROM 1 TO NREM.  J4REV-1 IS THE BIT REVERSAL OF J4-1.  E.G.
+C     SUPPOSE N = 32.  THEN FOR J4-1 = 10011, J4REV-1 = 11001, ETC.
+      DIMENSION DATA(1)
+      IP0=2
+      IP1=IP0*NPREV
+      IP4=IP1*N
+      IP5=IP4*NREM
+      I4REV=1
+C     I4REV = 1+(J4REV-1)*IP1
+      DO 60 I4=1,IP4,IP1
+C     I4 = 1+(J4-1)*IP1
+      IF (I4-I4REV) 10,30,30
+ 10   I1MAX=I4+IP1-IP0
+      DO 20 I1=I4,I1MAX,IP0
+C     I1 = 1+(J1-1)*IP0+(J4-1)*IP1
+      DO 20 I5=I1,IP5,IP4
+C     I5 = 1+(J1-1)*IP0+(J4-1)*IP1+(J5-1)*IP4
+      I5REV=I4REV+I5-I4
+C     I5REV = 1+(J1-1)*IP0+(J4REV-1)*IP1+(J5-1)*IP4
+      TEMPR=DATA(I5)
+      TEMPI=DATA(I5+1)
+      DATA(I5)=DATA(I5REV)
+      DATA(I5+1)=DATA(I5REV+1)
+      DATA(I5REV)=TEMPR
+ 20   DATA(I5REV+1)=TEMPI
+C     ADD ONE WITH DOWNWARD CARRY TO THE HIGH ORDER BIT OF J4REV-1.
+ 30   IP2=IP4/2
+ 40   IF (I4REV-IP2) 60,60,50
+ 50   I4REV=I4REV-IP2
+      IP2=IP2/2
+      IF (IP2-IP1) 60,40,40
+ 60   I4REV=I4REV+IP2
+      RETURN
+      END
+
+C$**********************************************************************
+CPROG EIGPAR
+CXREF
+      SUBROUTINE EIGPAR(DEPTH,ITAPER,IFANI)
+      COMMON/TAPE/ FILL(1512),LU1,NBATCH
+      COMMON/SCAN/FILL1(800),MFIL(4),MFILAN(4)
+      DATA IH1,IH2/4HH.1 ,4HH.2 /
+      CALL OPENW(1,MFIL,0,0,0,ISTAT,4096)
+      IF(ISTAT.NE.0) STOP 'CANNOT OPEN MODE CATALOG FILE'
+      CALL OPENW(2,MFILAN,0,0,0,ISTAT,10240)
+      IF(ISTAT.NE.0) STOP 'CANNOT OPEN S-DERIVATIVE FILE'
+      CALL CLOSFL(3)
+      CALL CLOSFL(4)
+      CALL OPENW(3,IH1,4,0,0,ISTAT,-256)
+      IF(ISTAT.NE.0) STOP 'CANNOT OPEN H.1 FILE'
+      CALL OPENW(4,IH2,4,0,0,ISTAT,-256)
+      IF(ISTAT.NE.0) STOP 'CANNOT OPEN H.2 FILE'
+      CALL REWFL(1)
+      CALL REWFL(2)
+      CALL REWFL(3)
+      CALL REWFL(4)
+      LU1=1
+      LU2=2
+      NSHEAR=(IFANI+1)*5
+      R0=1.-DEPTH/6371.
+      OMMAX=0.1396236
+      IF(ITAPER.EQ.2) OMMAX=0.1963495
+      CALL SETUP1(R0)
+      CALL SFRPAR(0,OMMAX,R0,NSHEAR,LU1,LU2)
+      CALL TORPAR(0,OMMAX,R0,NSHEAR,LU1,LU2)
+      CALL CLOSFL(1)
+      CALL CLOSFL(2)
+      RETURN
+      END
+
+C$**********************************************************************
+CPROG EQPAR
+CXREF
+      SUBROUTINE EQPAR(FMOM,SCMOM,PHS,DEL,RLAM,EIVALS,EIVECS
+     1                 ,PLUNGS,AZIMS)
+C
+C   FMOM(6)     INPUT OMENT TENSOR COMPONENTS
+C   SCMOM       OUTPUT SCALAR MOMENT
+C   PHS(2)      OUTPUT STRIKE AZIMUTHS
+C   DEL(2)      OUTPUT DIPS
+C   RLAM(2)     OUTPUT 'RAKE' ANGLES
+C   EIVALS(3)   OUTPUT EIGENVALUES (T-AXIS,INTER.,P-AXIS)
+C   EIVECS(3,3) OUTPUT: COLUMNS ARE NORMALIZED PRINCIPAL AXES
+C   PLUNGS(3)   OUTPUT PLUNGES OF PRINCIPAL AXES
+C   AZIMS(3)    OUTPUT AZIMUTHS OF PRINCIPAL AXES
+C
+C   ALL ANGLES ARE IN DEGREES
+C
+      DIMENSION FMOM(6),PHS(2),DEL(2),RLAM(2),EIVALS(3),EIVECS(3,3)
+     1    ,V(3,3),RN(3),E(3),PLUNGS(3),AZIMS(3)
+      DATA RADIAN/57.29577951/
+      DATA HSQ2/.70710678/
+C
+      EIVECS(1,1)=FMOM(1)
+      EIVECS(2,2)=FMOM(2)
+      EIVECS(3,3)=FMOM(3)
+      EIVECS(1,2)=FMOM(4)
+      EIVECS(2,1)=FMOM(4)
+      EIVECS(1,3)=FMOM(5)
+      EIVECS(3,1)=FMOM(5)
+      EIVECS(2,3)=FMOM(6)
+      EIVECS(3,2)=FMOM(6)
+      CALL EIGEN(EIVECS,V,3,1)
+      EIMAX=EIVECS(1,1)
+      EIMIN=EIVECS(1,1)
+      IMAX=1
+      IMIN=1
+      DO 10 I=2,3
+      IF(EIVECS(I,I).LE.EIMAX) GOTO 20
+      IMAX=I
+      EIMAX=EIVECS(I,I)
+   20 IF(EIVECS(I,I).GT.EIMIN) GOTO 10
+      IMIN=I
+      EIMIN=EIVECS(I,I)
+   10 CONTINUE
+      IF(IMAX.EQ.IMIN) PAUSE ' ERROR 1 IN EQPAR '
+      SCMOM=.5*(ABS(EIMAX)+ABS(EIMIN))
+      IINT=6-IMAX-IMIN
+      EIVALS(1)=EIVECS(IMAX,IMAX)
+      EIVALS(2)=EIVECS(IINT,IINT)
+      EIVALS(3)=EIVECS(IMIN,IMIN)
+      DO 30 I=1,3
+      EIVECS(I,1)=V(I,IMAX)
+      EIVECS(I,2)=V(I,IINT)
+   30 EIVECS(I,3)=V(I,IMIN)
+      DO 40 J=1,3
+      SUM=0.
+      DO 45 I=1,3
+   45 SUM=SUM+EIVECS(I,J)*EIVECS(I,J)
+      SUM=1./SQRT(SUM)
+      IF(EIVECS(1,J).GT.0.) SUM=-SUM
+      DO 50 I=1,3
+   50 EIVECS(I,J)=EIVECS(I,J)*SUM
+   40 CONTINUE
+C
+      DO 200 I=1,3
+      PLUNGS(I)=ATANT(-EIVECS(1,I)
+     1                ,SQRT(EIVECS(2,I)**2+EIVECS(3,I)**2))*RADIAN
+      AZIMS(I)=ATANT(-EIVECS(3,I),EIVECS(2,I))*RADIAN+180.
+  200 CONTINUE
+C
+      SGN=-1.
+      DO 100 ISGN=1,2
+      SGN=-SGN
+      DO 110 I=1,3
+      RN(I)=HSQ2*(EIVECS(I,1)+SGN*EIVECS(I,3))
+  110 E(I)=HSQ2*(EIVECS(I,1)-SGN*EIVECS(I,3))
+      IF(RN(1).GT.0.) GOTO 120
+      DO 130 I=1,3
+      RN(I)=-RN(I)
+  130 E(I)=-E(I)
+  120 SIND=SQRT(RN(2)*RN(2)+RN(3)*RN(3))
+      DEL(ISGN)=ATANT(SIND,RN(1))*RADIAN
+      PHS(ISGN)=ATANT(-RN(2),-RN(3))*RADIAN+180.
+      RLAM(ISGN)=ATANT(E(1),RN(2)*E(3)-RN(3)*E(2))*RADIAN
+  100 CONTINUE
+      RETURN
+      END
+
+C$**********************************************************************
+      SUBROUTINE FVMOV(A,I,C,K,N)
+      DIMENSION A(1),C(1)
+      II=1
+      KK=1
+      DO 10 NN=1,N
+      C(KK)=A(II)
+      KK=KK+K
+   10 II=II+I
+      RETURN
+      END
+
+
+
+
+
+      FUNCTION IDARES(NSTA,NCHAN,IYR,IDY)
+
+C    THIS SUBROUTINE SETS THE POLES AND ZEROES WHICH SPECIFY THE
+C    COMPLEX TRANSFER FUNCTION OF THE APPROPRIATE IDA INSTRUMENT
+C    AND FILTER.
+C
+C    THE CALLING PARAMETERS ARE:
+C        NSTA - THE NUMBER OF THE IDA STATION (GOTTEN FROM FUNCTION
+C               IDANUM)
+C        NCHN - THE NUMBER OF THE CHANNEL (GOTTEN FROM FUNCTION IDANUM).
+C        IYR  - THE YEAR (A.D.)
+C        IDY  - THE DAY OF THE YEAR; JAN 1 IS DAY 1, DEC 31 IS DAY 365
+C               (DAY 366 IN LEAP YEARS).
+C
+C    THE VALUE RETURNED IS:
+C        IDARES =  1 IF A RESPONSE HAS BEEN FOUND
+C                 -1 IF NO RESPONSE IS AVAILABLE FOR THAT STATION
+C                   AND CHANNEL FOR THE DATE GIVEN.
+C
+C    USAGE:
+C     BEFORE CALLING IDARES, CALL IDANUM ONCE TO GET THE STATION NUMBER
+C     CORRESPONDING TO THE STATION CODE, AND A SECOND TIME TO GET THE
+C     CHANNEL NUMBER CORRSEPONDING TO THE CHANNEL NAME. (IF YOU ARE FINDING
+C     THE RESPONSE FOR THE CHANNEL OF THE SAME NAME AT A DIFFERENT STATION,
+C     YOU NEED ONLY CALL IDANUM ONCE).  THEN CALL
+C
+C          IERR = IDARES(NSTA,NCHN,IYR,IDY)
+C
+C     AND IF IERR IS EQUAL TO 1 GO ON TO CALL RIDA (OR GDIDA) TO GET
+C     THE ACTUAL RESPONSES AT SPECIFIED FREQUENCIES.
+C       THE POLE-ZERO INFORMATION IS PASSED FROM IDARES TO RIDA AND
+C     GDIDA IN LABELLED COMMON, WITH THE NAME PLZERX.
+C
+C
+C                     *******UPDATING IDARES*******
+C
+C    1) INCREASE THE VALUE OF NRES, THE DIMENSION OF NP AND NZ,
+C       AND THE SECOND DIMENSION OF INDEX, FMULT, ZERO, POLE,
+C       INDEX2, POLE10, AND ZERO2 BY THE NUMBER OF RESPONSES ADDED.
+C    2) ADD THE FOLLOWING TO THE DATA STATEMENT FOR INDEX2, FOLLOWING THE
+C       LAST PREVIOUS ENTRY, AND REPLACING SOME OF THE ZEROES NOW THERE:
+C         STATION NUMBER
+C         CHANNEL NUMBER
+C         START YEAR
+C         START DAY
+C         END YEAR (2001 IF RESPONSE IS CURRENT)
+C         END DAY  ( 001 IF RESPONSE IS CURRENT)
+C    3) ADD THE NEW POLES TO THE DATA STATEMENT FOR POLE10, FOLLOWING THE
+C       LAST PREVIOUS ENTRY. NOTE THAT ALL ENTRIES HAVE 10 POLES, NOT
+C       ALL OF WHICH ARE USED, SO YOU WILL NEED TO LEAVE SOME (0.,0.)'S
+C       BEFORE THE NUMBERS YOU ENTER.
+C    4) ADD THE NUMBER OF NEW POLES AT THE END OF THE DATA STATEMENT FOR
+C       NP.
+C    5) ADD THE NEW ZEROS TO THE DATA STATEMENT FOR ZERO2, FOLLOWING THE
+C       LAST PREVIOUS ENTRY. NOTE THAT ALL ENTRIES HAVE 5 ZEROES, NOT
+C       ALL OF WHICH ARE USED, SO YOU WILL NEED TO LEAVE SOME (0.,0.)'S
+C       BEFORE THE NUMBERS YOU ENTER.
+C    6) ADD THE NUMBER OF NEW ZEROES AT THE END OF THE DATA STATEMENT FOR
+C       NZ.
+C    7) IF THIS IS A NEW RESPONSE FOR AN EXISTING STATION, FIND THE PREVIOUS
+C       ENTRY IN INDEX1 OR INDEX2 WITH THAT STATION NUMBER, AND CHANGE THE
+C       END DATE FROM 2001,001 TO THE CORRECT VALUE.
+C    8) ENTER NEW FACTORS IN FMULT AND UPDATE FMULT LISTING.
+C
+C        >>>>>>>>>>>>>>>>LAST UPDATE ON 22 JULY 1983<<<<<<<<<<<<<<<<<<<<
+C
+C   $$$$CALLS NDAYS (SEE BELOW)
+C
+C       AUTHOR: DUNCAN CARR AGNEW (IGPP LA JOLLA), BASED ON A PROGRAM BY
+C               MARK RIEDESEL
+C
+      COMPLEX POLE,ZERO, POLE1,POLE2,POLE3,POLE4,POLE5,POLE6,POLE7,
+     1 POLE8,POLE9,POLE10,POLE11,POLE12, ZERO1,ZERO2,  CPOLE,CZERO
+      DIMENSION INDEX(6,68), FMULT(68),  POLE(10,68),  POLE1(10,6),
+     1 POLE2(10,6),POLE3(10,6),POLE4(10,6),POLE5(10,6),POLE6(10,6),
+     2 POLE7(10,6),POLE8(10,6),POLE9(10,6),POLE10(10,6),
+     2 POLE11(10,6),POLE12(10,2),
+     3 ZERO(5,68), ZERO1(5,30),ZERO2(5,38),
+     4 INDEX1(6,38),INDEX2(6,30), NP(68), NZ(68)
+      COMMON/PLZERX/CF,NPOLES,CPOLE(20),NZERO,CZERO(20)
+      EQUIVALENCE (INDEX(1,1),INDEX1(1,1)),(INDEX(1,39),INDEX2(1,1)),
+     1 (POLE(1,1),POLE1(1,1)),      (POLE(1,7),POLE2(1,1)),
+     2 (POLE(1,13),POLE3(1,1)),     (POLE(1,19),POLE4(1,1)),
+     3 (POLE(1,25),POLE5(1,1)),     (POLE(1,31),POLE6(1,1)),
+     4 (POLE(1,37),POLE7(1,1)),     (POLE(1,43),POLE8(1,1)),
+     5 (POLE(1,49),POLE9(1,1)),     (POLE(1,55),POLE10(1,1)),
+     5 (POLE(1,61),POLE11(1,1)),    (POLE(1,67),POLE12(1,1)),
+     6 (ZERO(1,1),ZERO1(1,1)),      (ZERO(1,31),ZERO2(1,1))
+      DATA NRES/68/
+C
+C    EACH SEXTUPLE IN THE ARRAY INDEX CONTAINS THE STATION NUMBER
+C  (AS IN IDANUM - NOTE THAT THERE IS NO STATION 14 HERE BECAUSE
+C  WE HAVE NO RESPONSE FOR MCM), CHANNEL NUMBER (NEGATIVE), AND
+C  START AND END DATES FOR THE CALIBRATION
+C
+C  STATIONS IN DATA STATEMENT FOR INDEX1 ARE:
+C
+C    DATA                ALE/MODE                BDF/MODE
+C   1                    BJT/MODE                CAN/BP1
+C   2                    CAN/BP2                 CAN/MODE
+C   3                    CAN/MODE                CMO/MODE
+C   4                    CMO/MODE                EIC/MODE
+C   5                    ERM/MODE                ERM/MODE
+C   6                    ESK/MODE                GAR/MODE
+C   7                    GAR/MODE                GAR/MODE
+C   8                    GUA/MODE                GUA/MODE
+C   9                    GUA/MODE                HAL/MODE
+C   1                    HAL/MODE                HAL/MODE
+C   2                    HAL/MODE                HAL/MODE
+C   3                    KIP/MODE                KIP/MODE
+C   4                    KIP/MODE                KMY/MODE
+C   5                    NNA/BP1                 NNA/BP2
+C   6                    NNA/BP1                 NNA/BP2
+C   7                    NNA/MODE                NNA/MODE
+C   8                    PFO/MODE                PFO/MODE
+C   9                    PFO/MODE                PFO/MODE
+      DATA INDEX1/ 1,-3,1982,298,2001,001,  2,-3,1977,094,1984,322,
+     1             3,-3,1982,227,2001,001,  4,-1,1975,122,1975,365,
+     2             4,-2,1975,122,1975,365,  4,-3,1976,001,1976,259,
+     3             4,-3,1976,260,1978,085,  5,-3,1977,214,1978,283,
+     4             5,-3,1978,285,2001,001,  6,-3,1978,236,1980,202,
+     5             7,-3,1980,231,1981,097,  7,-3,1981,099,1984,143,
+     6             8,-3,1978,258,1983,098,  9,-3,1976,247,1977,126,
+     7             9,-3,1977,127,1978,229,  9,-3,1978,235,1980,343,
+     8            10,-3,1979,314,1981,027, 10,-3,1981,027,1981,101,
+     9            10,-3,1981,102,1982,243, 11,-3,1976,114,1977,136,
+     1            11,-3,1977,138,1977,178, 11,-3,1977,178,1981,167,
+     2            11,-3,1981,170,1981,306, 11,-3,1981,312,2001,001,
+     3            12,-3,1977,249,1978,212, 12,-3,1978,213,1982,063,
+     4            12,-3,1982,065,1982,063, 13,-3,1980,296,2001,001,
+     5            15,-1,1975,164,1976,212, 15,-2,1975,164,1976,212,
+     6            15,-1,1976,218,1977,080, 15,-2,1976,218,1977,080,
+     7            15,-3,1977,086,1979,077, 15,-3,1979,079,1983,150,
+     8            16,-3,1977,046,1981,090, 16,-3,1981,091,1981,111,
+     9            16,-3,1981,111,1981,321, 16,-3,1981,321,2001,001/
+C
+C  STATIONS IN DATA STATEMENT FOR INDEX2 ARE:
+C
+C    DATA                RAR/MODE                RAR/MODE
+C   1                    RAR/MODE                RAR/MODE
+C   2                    RAR/MODE                SEY/MODE
+C   3                    SEY/MODE                SJG/MODE
+C   4                    SPA/MODE                SSB/MODE
+C   5                    SUR/MODE                SUR/MODE
+C   6                    SUR/MODE                SUR/MODE
+C   7                    SUR/MODE                SUR/MODE
+C   8                    TWO/MODE                ESK/MODE
+C   9                    SJG/MODE                NNA/MODE
+C   1                    BDF/MODE                ERM/MODE
+C   2                    GUA/MODE                GUA/MODE
+C   3                    KIP/MODE                KIP/MODE
+C   4                    NNA/MODE                PCR/MODE
+C   5                    PCR/MODE                SJG/MODE
+C    *NOTE THAT THE TIME DIVIDING THE SECOND AND THIRD RESPONSES FOR
+C   SUR (#21) IS SOMEWHAT ARBITRARY, AS THE RESPONSE CHANGED GRADUALLY
+C   THROUGHOUT THE PERIOD 1978:306 - 1981:267. THE DATE CHOSEN AS
+C   ABOUT THE POINT AT WHICH THE DC RESPONSE (AS JUDGED FROM TIDAL
+C   ANALYSES) WAS HALFWAY BETWEEN ITS MEASURED VALUES AT THE START AND
+C   END.                                     - DCA, 9 APR 1983
+      DATA INDEX2/17,-3,1976,273,1978,101, 17,-3,1978,103,1980,098,
+     1            17,-3,1980,100,1981,039, 17,-3,1981,043,1982,095,
+     2            17,-3,1982,097,2001,001, 18,-3,1980,304,1981,273,
+     3            18,-3,1981,274,1983,010, 19,-3,1982,158,1983,152,
+     4            20,-3,1978,004,2001,001, 21,-3,1981,265,1983,102,
+     5            22,-3,1975,351,1978,300, 22,-3,1978,306,1980,080,
+     6            22,-3,1980,081,1981,267, 22,-3,1981,268,1981,299,
+     7            22,-3,1981,300,1982,233, 22,-3,1982,235,2001,001,
+     8            23,-3,1978,099,2001,001,  8,-3,1983,099,2001,001,
+     9            15,-3,1983,158,1984,320, 19,-3,1983,154,1984,317,
+     1             2,-3,1984,323,2001,001,  7,-3,1984,144,2001,001,
+     2            10,-3,1982,244,1984,137, 10,-3,1984,138,2001,001,
+     3            12,-3,1982,065,1984,131, 12,-3,1984,132,2001,001,
+     4            15,-3,1984,321,2001,001, 24,-3,1983,222,1984,270,
+     5            24,-3,1984,271,2001,001, 19,-3,1984,318,2001,001/
+C
+      DATA NP/  8,7,8,6,8,7,7,8,8,8,8,8,8,7,8,9,8,8,8,7,8,8,8,8,8,8,8,
+     1  9,6,8,6,8,8,8,7,7,8,8,8,8,8,8,8,8,8,8,5,8,7,7,7,8,8,8,9,8,8,8,
+     2  8,8,9,8,8,8,8,8,9,8/
+C
+      DATA NZ/  3,2,3,3,4,4,4,3,3,3,3,3,3,4,3,3,2,3,3,3,3,3,3,3,3,3,3,
+     1  3,2,3,2,3,3,3,2,2,3,3,3,3,3,3,3,3,3,3,2,3,3,3,3,3,3,3,3,3,3,3,
+     2  3,3,3,3,3,3,3,3,3,3/
+C
+C  STATIONS IN DATA STATEMENT FOR FMULT ARE:
+C
+C    DATA                ALE/MODE      BDF/MODE       BJT/MODE
+C   1      CAN/BP1       CAN/BP2       CAN/MODE       CAN/MODE
+C   2      CMO/MODE      CMO/MODE      EIC/MODE       ERM/MODE
+C   3      ERM/MODE      ESK/MODE      GAR/MODE       GAR/MODE
+C   4      GAR/MODE      GUA/MODE      GUA/MODE       GUA/MODE
+C   5      HAL/MODE      HAL/MODE      HAL/MODE       HAL/MODE
+C   6      HAL/MODE      KIP/MODE      KIP/MODE       KIP/MODE
+C   7      KMY/MODE      NNA/BP1       NNA/BP2        NNA/BP1
+C   8      NNA/BP2       NNA/MODE      NNA/MODE       PFO/MODE
+C   9      PFO/MODE      PFO/MODE      PFO/MODE       RAR/MODE
+C   1      RAR/MODE      RAR/MODE      RAR/MODE       RAR/MODE
+C   2      SEY/MODE      SEY/MODE      SJG/MODE       SPA/MODE
+C   3      SSB/MODE      SUR/MODE      SUR/MODE       SUR/MODE
+C   4      SUR/MODE      SUR/MODE      SUR/MODE       TWO/MODE
+C   5      ESK/MODE      NNA/MODE      SJG/MODE       BDF/MODE
+C   6      ERM/MODE      GUA/MODE      GUA/MODE       KIP/MODE
+C   7      KIP/MODE      NNA/MODE      PCR/MODE       PCR/MODE
+C   8      SJG/MODE
+      DATA FMULT/     8.967899E+14, 4.818759E+14,  4.906021E+14,
+     1 -8.670000E+8, -7.328000E+9,  8.700589E+10,  5.560101E+11,
+     2  6.149397E+14, 7.197244E+14,-5.563924E+14,  3.427004E+14,
+     3  3.448599E+14, 5.721255E+14,-3.410111E+10, -1.750762E+14,
+     4 -8.592357E+14, 2.686534E+16, 6.148022E+14,  7.472622E+14,
+     5  3.378761E+11, 6.186678E+14,-5.474110E+14, -6.303788E+14,
+     6 -3.475623E+14, 5.944817E+14, 6.540581E+14,  7.469828E+14,
+     7  2.506156E+14,-1.250000E+10,-1.060000E+11, -3.580000E+10,
+     8 -3.027000E+11, 1.004301E+15, 1.064623E+15,  1.901791E+14,
+     9  4.639140E+14, 1.721722E+14, 1.839558E+14,  1.211668E+13,
+     1  3.267753E+14, 3.267753E+14, 3.923313E+14,  4.524056E+14,
+     2  5.658091E+14, 5.793386E+14, 1.302274E+15, -1.1E+11,
+     3  2.433561E+15, 5.900000E+10, 1.329205E+15,  1.719255E+15,
+     4  1.206289E+15, 1.104922E+15, 1.120022E+15,  5.560344E+14,
+     5  5.530189E+14, 1.034062E+15, 7.472727E+14,  5.199261E+14,
+     6  4.859247E+14, 8.559293E+14, 7.716844E+14,  7.469828E+14,
+     7  8.541218E+14, 1.046575E+15, 2.295495E+15,  2.297033E+15,
+     8  7.377245E+14/
+C
+C  STATIONS IN DATA STATEMENT FOR ZERO1 ARE:
+C
+C    DATA                ALE/MODE                BDF/MODE
+C   1                    BJT/MODE
+C   2                        CAN/BP1
+C   3                        CAN/BP2
+C   4                CAN/MODE
+C   5                CAN/MODE                    CMO/MODE
+C   6        CMO/MODE                 EIC/MODE
+C   7        ERM/MODE                 ERM/MODE
+C   8        ESK/MODE                 GAR/MODE
+C   9        GAR/MODE                 GAR/MODE
+C   1        GUA/MODE                 GUA/MODE
+C   2        GUA/MODE                 HAL/MODE
+C   3        HAL/MODE                 HAL/MODE
+C   4        HAL/MODE                 HAL/MODE
+C   5        KIP/MODE                 KIP/MODE
+C   6        KIP/MODE                 KMY/MODE
+C   7                        NNA/BP1
+C   8                        NNA/BP2
+      DATA ZERO1/  (2.6211,0.),4*(0.,0.),      5*(0.,0.),
+     1             (2.3632,0.),4*(0.,0.),
+     2 (13.995,0.),(.00286766,0.),(1.59155,0.),2*(0.,0.),
+     3 (13.995,0.),2*(.00286766,0.),(1.59155,0.),(0.,0.),
+     4 (13.995,0.),(1.5915,0.),3*(0.,0.),
+     5 (3.5161,0.),(1.5915,0.),3*(0.,0.), (3.0762,0.),4*(0.,0.),
+     6 (1.7989,0.),4*(0.,0.), (4.4259,0.),4*(0.,0.),
+     7 (1.9468,0.),4*(0.,0.), (1.7620,0.),4*(0.,0.),
+     8 (4.3186,0.),4*(0.,0.), (17.868,0.),(1.5915,0.),3*(0.,0.),
+     9 (1.1468,0.),4*(0.,0.), (1.0913,0.),4*(0.,0.),
+     1 5*(0.,0.),             (1.5767,0.),4*(0.,0.),
+     2 (1.5767,0.),4*(0.,0.), (1.5915,0.),4*(0.,0.),
+     3 (2.3716,0.),4*(0.,0.), (2.3716,0.),4*(0.,0.),
+     4 (2.2556,0.),4*(0.,0.), (2.2759,0.),4*(0.,0.),
+     5 (1.6417,0.),4*(0.,0.), (1.6417,0.),4*(0.,0.),
+     6 (1.4620,0.),4*(0.,0.), (1.5052,0.),4*(0.,0.),
+     7   (.00286766,0.),(1.59155,0.),3*(0.,0.),
+     8 2*(.00286766,0.),(1.59155,0.),2*(0.,0.)/
+C  STATIONS IN DATA STATEMENT FOR ZERO2 ARE:
+C
+C    DATA                    NNA/BP1
+C   1                        NNA/BP2
+C   2        NNA/MODE                 NNA/MODE
+C   3        PFO/MODE                 PFO/MODE
+C   4        PFO/MODE                 PFO/MODE
+C   5        RAR/MODE                 RAR/MODE
+C   6        RAR/MODE                 RAR/MODE
+C   7        RAR/MODE                 SEY/MODE
+C   8        SEY/MODE                 SJG/MODE
+C   9        SPA/MODE                 SSB/MODE
+C   1        SUR/MODE                 SUR/MODE
+C   2        SUR/MODE                 SUR/MODE
+C   3        SUR/MODE                 SUR/MODE
+C   4        TWO/MODE                 ESK/MODE
+C   5        NNA/MODE                 SJG/MODE
+      DATA ZERO2/   (.00286766,0.),(1.59155,0.),3*(0.,0.),
+     1            2*(.00286766,0.),(1.59155,0.),2*(0.,0.),
+     2 (2.4297,0.),4*(0.,0.), (2.2933,0.),4*(0.,0.),
+     3 5*(0.,0.),             5*(0.,0.),
+     4 (23.950,0.),4*(0.,0.), (2.7612,0.),4*(0.,0.),
+     5 (1.5195,0.),4*(0.,0.), (2.4394,0.),4*(0.,0.),
+     6 (2.4394,0.),4*(0.,0.), (2.4394,0.),4*(0.,0.),
+     7 (2.4394,0.),4*(0.,0.), (1.4322,0.),4*(0.,0.),
+     8 (1.3976,0.),4*(0.,0.), (1.6134,0.),4*(0.,0.),
+     9 5*(0.,0.),             (.73990,0.),4*(0.,0.),
+     1 (1.592,0.),4*(0.,0.),  (2.2705,0.),4*(0.,0.),
+     2 (2.2409,0.),4*(0.,0.), (2.2425,0.),4*(0.,0.),
+     3 (2.2425,0.),4*(0.,0.), (2.1993,0.),4*(0.,0.),
+     4 (2.2870,0.),4*(0.,0.), (2.9708,0.),4*(0.,0.),
+     5 (2.2119,0.),4*(0.,0.), (1.7643,0.),4*(0.,0.),
+     6 (2.2150,0.),4*(0.,0.), (1.8224,0.),4*(0.,0.),
+     7 (2.0435,0.),4*(0.,0.), (1.9068,0.),4*(0.,0.),
+     8 (1.4620,0.),4*(0.,0.), (1.2781,0.),4*(0.,0.),
+     9 (2.2529,0.),4*(0.,0.), (.95218,0.),4*(0.,0.),
+     1 (1.0872,0.),4*(0.,0.), (1.7643,0.),4*(0.,0.)/
+C
+      DATA POLE1/
+     1 (2.2654,0.),(3.7798,2.9415),(19.223,6.0505),
+C                     ALE/MD
+     2 (.74105,1.5367),(.84945,1.2742),(1.2621,0.),
+     3 (2.6997,0.),(.023437,.01352),2*(0.,0.),
+     4 (2.5589,3.2129),(12.945,10.833),(.78275,1.5542),
+C                 BDF/MD
+     5 (.83371,1.3717),(1.3701,0.),(2.1440,0.),(.22563E-01,.12983E-01),
+     6 3*(0.,0.),
+     7 (1.3799,0.),(2.6911,4.1090),(18.071,5.2097),
+C                     BJT/MD
+     8 (.76841,1.5112),(.85211,1.3442),(1.3575,0.),
+     9 (2.0455,0.),(.022642,.013069),2*(0.,0.),
+     1 (.61358,.81980),(3.5970,3.3538),(.795775,0.),
+C                    CAN/B1
+     2 (.795775,0.),(.0289373,0.),(.837658,0.),
+     3 4*(0.,0.),
+     4 (.61358,.81980),(3.5970,3.3538),(.795775,0.),
+C                    CAN/B2
+     5 (.795775,0.),(.0289373,0.),(.837658,0.),
+     6 (.0289373,0.),(.837658,0.),2*(0.,0.),
+     7 (.61358,.81980),(3.5970,3.3538),(.80938,1.4816),
+C                 CAN/MD
+     8 (.81877,1.3775),(1.4612,0.),(2.0770,0.),
+     9 (.21950E-01,.12605E-01),3*(0.,0.)/
+      DATA POLE2/
+     1 (.85779,1.5012),(2.4982,2.6099),(.80938,1.4816),
+C                 CAN/MD
+     2 (.81877,1.3775),(1.4612,0.),(2.0770,0.),
+     3 (.21950E-01,.12605E-01),3*(0.,0.),
+     4 (2.4256,3.8391),(2.4717,0.),(13.679,10.728),
+C                     CMO/MD
+     5 (.79845,1.5253),(.83892,1.3969),(1.4703,0.),
+     6 (2.0496,0.),(.22522E-01,.13007E-01),2*(0.,0.),
+     7 (1.9429,0.),(2.1967,3.4965),(16.607,7.2479),
+C                     CMO/MD
+     8 (.79845,1.5253),(.83892,1.3969),(1.4703,0.),
+     9 (2.0496,0.),(.22522E-01,.13007E-01),2*(0.,0.),
+     1 (2.2227,3.7907),(3.4302,0.),(15.685,10.284),
+C                     EIC/MD
+     2 (.80193,1.4631),(.81256,1.3552),(1.4892,0.),
+     3 (2.0472,0.),(.23250E-01,.13257E-01),2*(0.,0.),
+     4 (1.3076,0.),(1.4530,4.4999),(12.694,10.245),
+C                     ERM/MD
+     5 (.80031,1.5176),(.81987,1.3838),(1.4845,0.),
+     6 (2.1284,0.),(.23205E-01,.13773E-01),2*(0.,0.),
+     7 (1.0150,0.),(1.5427,5.0847),(12.603,9.8490),
+C                     ERM/MD
+     8 (.80031,1.5176),(.81987,1.3838),(1.4845,0.),
+     9 (2.1284,0.),(.23205E-01,.13773E-01),2*(0.,0.)/
+      DATA POLE3/
+     1 (3.0093,3.7566),(3.1511,0.),(14.855,11.851),
+C                     ESK/MD
+     2 (.80114,1.4902),(.82600,1.3515),(1.4651,0.),
+     3 (2.0162,0.),(.23025E-01,.13350E-01),2*(0.,0.),
+     4 (.85158,1.1297),(4.0788,0.),(.79845,1.5253),
+C                     GAR/MD
+     5 (.83892,1.3969),(1.4703,0.),(2.0496,0.),
+     6 (.22522E-01,.13007E-10),3*(0.,0.),
+     7 (.88086,0.),(1.2101,3.3625),(11.475,4.9450),
+C                     GAR/MD
+     8 (.81187,1.3767),(.84847,1.4973),(1.5062,0.),
+     9 (2.0663,0.),(.22498E-01,.13179E-01),2*(0.,0.),
+     1 (.91371,0.),(1.3971,3.2555),(10.285,0.),
+C                         GAR/MD
+     2 (73.212,0.),(.81187,1.3767),(.84847,1.4973),
+     3 (1.5062,0.),(2.0663,0.),(.22498E-01,.13179E-01),(0.,0.),
+     4 (2.2625,4.1222),(10.457,32.174),(11.735,0.),
+C                     GUA/MD
+     5 (.76841,1.5112),(.85211,1.3442),(1.3575,0.),
+     6 (2.0455,0.),(.22642E-01,.13069E-01),2*(0.,0.),
+     7 (1.7577,0.),(1.8598,3.9009),(13.971,11.180),
+C                     GUA/MD
+     8 (.79953,1.5094),(.82120,1.3550),(1.4485,0.),
+     9 (2.1366,0.),(.22947E-01,.13437E-01),2*(0.,0.)/
+      DATA POLE4/
+     1 (1.7577,0.),(1.8598,3.9009),(13.971,11.180),
+C                     GUA/MD
+     2 (.83921,1.5954),(.87975,1.3707),(1.3455,0.),
+     3 (2.3763,0.),(.22720E-01,.13123E-01),2*(0.,0.),
+     4 (.51115,.24414E-02),(3.8549,1.6624),(.85399,1.5426),
+C             HAL/MD
+     5 (.88505,1.3896),(1.5581,0.),(2.3381,0.),
+     6 (.22555E-01,.12451E-01),3*(0.,0.),
+     7 (1.7407,0.),(2.5482,4.6942),(13.726,10.906),
+C                     HAL/MD
+     8 (.79845,1.5253),(.83892,1.3969),(1.4703,0.),
+     9 (2.0496,0.),(.22522E-01,.13007E-01),2*(0.,0.),
+     1 (1.7407,0.),(2.5482,4.6942),(13.726,10.906),
+C                     HAL/MD
+     2 (.81139,1.3891),(.81213,1.5138),(1.4597,0.),
+     3 (1.9123,0.),(.23011E-01,.13245E-01),2*(0.,0.),
+     4 (1.5613,0.),(2.7583,4.9423),(16.977,6.5568),
+C                     HAL/MD
+     5 (.81139,1.3891),(.81213,1.5138),(1.4597,0.),
+     6 (1.9123,0.),(.23011E-01,.13245E-01),2*(0.,0.),
+     7 (1.4291,0.),(1.5891,4.5350),(12.219,9.4469),
+C                     HAL/MD
+     8 (.81139,1.3891),(.81213,1.5138),(1.4597,0.),
+     9 (1.9123,0.),(.23011E-01,.13245E-01),2*(0.,0.)/
+      DATA POLE5/
+     1 (1.3179,0.),(2.3478,4.6312),(13.594,10.971),
+C                     KIP/MD
+     2 (.78072,1.5005),(.84460,1.3634),(1.3669,0.),
+     3 (2.0363,0.),(.22604E-01,.12972E-01),2*(0.,0.),
+     4 (1.3179,0.),(2.3478,4.6312),(13.594,10.971),
+C                     KIP/MD
+     5 (.79357,1.5426),(.86476,1.3487),(1.3505,0.),
+     6 (2.1593,0.),(.22899E-01,.13313E-01),2*(0.,0.),
+     7 (1.2389,0.),(2.0237,4.9674),(14.892,10.179),
+C                     KIP/MD
+     8 (.79357,1.5426),(.86476,1.3487),(1.3505,0.),
+     9 (2.1593,0.),(.22899E-01,.13313E-01),2*(0.,0.),
+     1 (1.0822,0.),(2.5229,4.8356),(10.221,0.),
+C                         KMY/MD
+     2 (14.791,0.),(.80458,1.3264),(.80741,1.4660),
+     3 (1.4702,0.),(2.0391,0.),(.22944E-01,.13768E-01),(0.,0.),
+     4 (.67518,.43493),(11.183,0.),(.795775,0.),
+C                        NNA/B1
+     5 (.795775,0.),(.0289373,0.),
+     6 (.837658,0.),4*(0.,0.),
+     7 (.67518,.43493),(11.183,0.),(.795775,0.),
+C                        NNA/B2
+     8 (.795775,0.),(.0289373,0.),(.837658,0.),
+     9 (.0298373,0.),(.837658,0.),2*(0.,0.)/
+      DATA POLE6/
+     1 (.78740,1.4269),(10.174,0.),(.795775,0.),
+C                        NNA/B1
+     2 (.795775,0.),(.0289373,0.),
+     3 (.837658,0.),4*(0.,0.),
+     4 (.78740,1.4269),(10.174,0.),(.795775,0.),
+C                        NNA/B2
+     5 (.795775,0.),(.0289373,0.),(.837658,0.),
+     6 (.0298373,0.),(.837658,0.),2*(0.,0.),
+     7 (1.5738,0.),(2.7636,4.2173),(15.680,9.9257),
+C                     NNA/MD
+     8 (.77844,1.5078),(.82114,1.3333),(1.3947,0.),
+     9 (2.2512,0.),(.22619E-01,.12988E-01),2*(0.,0.),
+     1 (1.4163,0.),(2.8471,4.4227),(16.786,8.2638),
+C                     NNA/MD
+     2 (.77844,1.5078),(.82114,1.3333),(1.3947,0.),
+     3 (2.2512,0.),(.22619E-01,.12988E-01),2*(0.,0.),
+     4 (2.0735,2.1244),(8.0841,6.8100),(.70338,1.5505),
+C                 PFO/MD
+     5 (.82695,1.2049),(1.1719,0.),(3.5131,0.),
+     6 (.23659E-01,.13106E-01),3*(0.,0.),
+     7 (2.0735,2.1244),(8.0841,6.8100),(.82321,1.3142),
+C                 PFO/MD
+     8 (.82746,1.5714),(1.4649,0.),(2.7177,0.),
+     9 (.23127E-01,.13187E-01),3*(0.,0.)/
+      DATA POLE7/
+     1 (.64691,4.8587),(1.8538,14.343),(5.4411,0.),
+C                     PFO/MD
+     2 (.82321,1.3142),(.82746,1.5714),(1.4649,0.),
+     3 (2.7177,0.),(.23127E-01,.13187E-01),2*(0.,0.),
+     4 (1.8352,0.),(1.9544,3.4049),(7.5734,7.8560),
+C                     PFO/MD
+     5 (.82321,1.3142),(.82746,1.5714),(1.4649,0.),
+     6 (2.7177,0.),(.23127E-01,.13187E-01),2*(0.,0.),
+     7 (1.0810,1.4920),(2.0053,0.),(28.860,0.),
+C                         RAR/MD
+     8 (.80199,1.4828),(.82644,1.3957),(1.4603,0.),
+     9 (1.9730,0.),(.23451E-01,.12867E-01),2*(0.,0.),
+     1 (1.6122,0.),(2.5111,3.7277),(14.238,8.2195),
+C                     RAR/MD
+     2 (.80199,1.4828),(.82644,1.3957),(1.4603,0.),
+     3 (1.9730,0.),(.23451E-01,.12867E-01),2*(0.,0.),
+     4 (1.6122,0.),(2.5111,3.7277),(14.238,8.2195),
+C                     RAR/MD
+     5 (.80199,1.4828),(.82644,1.3957),(1.4603,0.),
+     6 (1.9730,0.),(.23451E-01,.12867E-01),2*(0.,0.),
+     7 (1.6122,0.),(2.5111,3.7277),(14.238,8.2195),
+C                     RAR/MD
+     8 (.80199,1.4828),(.82644,1.3957),(1.4603,0.),
+     9 (1.9730,0.),(.23451E-01,.12867E-01),2*(0.,0.)/
+      DATA POLE8/
+     1 (1.6122,0.),(2.5111,3.7277),(14.283,8.2195),
+C                     RAR/MD
+     2 (.81539,1.4981),(.84739,1.3970),(1.4988,0.),
+     3 (2.0252,0.),(.23781E-01,.13977E-01),2*(0.,0.),
+     4 (1.0378,0.),(1.7521,5.2401),(13.903,10.250),
+C                     SEY/MD
+     5 (.78702,1.4936),(.84474,1.3656),(1.4574,0.),
+     6 (2.0130,0.),(.23176E-01,.13246E-01),2*(0.,0.),
+     7 (1.0333,0.),(1.7183,5.2813),(14.155,9.6852),
+C                     SEY/MD
+     8 (.78702,1.4936),(.84474,1.3656),(1.4574,0.),
+     9 (2.0130,0.),(.23176E-01,.13246E-01),2*(0.,0.),
+     1 (1.7871,0.),(2.3310,3.4041),(14.823,10.312),
+C                     SJG/MD
+     2 (.81397,1.4089),(.87677,1.4965),(1.6118,0.),
+     3 (1.9825,0.),(.22731E-01,.13236E-01),2*(0.,0.),
+     4 (.78702,1.4936),(.84474,1.3656),(1.4574,0.),
+C                     SPA/MD
+     5 (2.0130,0.),(.023176,.013246),5*(0.,0.),
+     6 (.75415,0.),(3.9961,3.8826),(21.319,10.839),
+C                     SSB/MD
+     7 (.84809,1.5414),(.87904,1.3838),(1.5308,0.),
+     8 (2.3435,0.),(.22566E-01,.12232E-01),2*(0.,0.)/
+      DATA POLE9/
+     1 (.3749,0.),(.6238,.7029),
+CSUR/MD
+     2 (.8154,1.498),(.8474,1.397),(1.499,0.),
+     3 (2.025,0.),(.02378,.01398),3*(0.,0.),
+     4 (1.1899,0.),(2.4181,4.9423),(14.175,10.711),
+C                     SUR/MD
+     5 (.69079,1.4999),(1.1505,1.3730),(1.5276,.64383),
+     6 (.24128E-01,.11332E-01),3*(0.,0.),
+     7 (.88420,0.),(2.8643,4.6668),(16.136,7.9663),
+C                     SUR/MD
+     8 (.69079,1.4999),(1.1505,1.3730),(1.5276,.64383),
+     9 (.24128E-01,.11332E-01),3*(0.,0.),
+     1 (1.5656,0.),(1.6246,5.9101),(16.574,9.3962),
+C                     SUR/MD
+     2 (.81539,1.4981),(.84739,1.3970),(1.4988,0.),
+     3 (2.0252,0.),(.23781E-01,.13977E-01),2*(0.,0.),
+     4 (1.5656,0.),(1.6246,5.9101),(16.574,9.3962),
+C                     SUR/MD
+     5 (.79953,1.5094),(.82120,1.3550),(1.4485,0.),
+     6 (2.1366,0.),(.22947E-01,.13437E-01),2*(0.,0.),
+     7 (1.4534,0.),(1.6891,6.1031),(17.572,7.7814),
+C                     SUR/MD
+     8 (.79953,1.5094),(.82120,1.3550),(1.4485,0.),
+     9 (2.1366,0.),(.022947,.013437),2*(0.,0.)/
+      DATA POLE10/
+     1 (1.4547,0.),(2.5185,3.9890),(14.003,0.),
+C                         TWO/MD
+     2 (28.829,0.),(.80938,1.4816),(.81877,1.3775),
+     3 (1.4612,0.),(2.0770,0.),(.21950E-01,.12605E-01),(0.,0.),
+     4 (2.0235,0.),(3.0145,4.3353),(14.127,11.687),
+C                     ESK/MD
+     5 (.80114,1.4902),(.82600,1.3515),(1.4651,0.),
+     6 (2.0162,0.),(.023025,.013350),2*(0.,0.),
+     7 (1.2507,0.),(2.9375,4.7077),(17.250,6.0069),
+C                     NNA/MD
+     8 (.77844,1.5078),(.82114,1.3333),(1.3947,0.),
+     9 (2.2512,0.),(.022619,.012988),2*(0.,0.),
+     1 (1.9554,0.),(2.3741,3.4889),(17.198,7.8272),
+C                     SJG/MD
+     2 (.81397,1.4089),(.87677,1.4965),(1.6118,0.),
+     3 (1.9825,0.),(.022731,.013236),2*(0.,0.),
+     4 (1.3151,0.),(3.0218,4.8081),(14.122,9.8113),
+     5 (0.78275,1.5542),(.83371,1.3717),(1.3701,0.),
+     6 (2.144,0.),(.22563E-01,.12983E-01),2*(0.,0.),
+     7 (1.4594,0.),(2.5888,3.5169),(15.838,7.3473),
+     8 (.80031,1.5176),(.81987,1.3838),(1.4845,0.),
+     9 (2.1284,0.),(.23205E-01,.131773E-01),2*(0.,0.)/
+      DATA POLE11/
+     1 (1.8917,0.),(2.7746,3.5427),(13.868,0.),
+     2 (29.194,0.),(.83921,1.5954),(.87975,1.3707),
+     3 (1.3455,0.),(2.3763,0.),(.2272E-01,.13123E-01),
+     4 (0.,0.),
+     5 (2.1740,0.),(2.4441,3.1324),(19.364,3.228),
+     6 (.83921,1.5954),(.87975,1.3707),(1.3455,0.),
+     7 (2.3763,0.),(.2272E-01,.13123E-01),2*(0.,0.),
+     8 (1.2389,0.),(2.0237,4.9674),(14.892,10.179),
+     9 (.79357,1.5426),(.86476,1.3487),(1.3505,0.),
+     1 (2.1593,0.),(.22899E-01,.13313E-01),2*(0.,0.),
+     2 (.85465,0.),(2.2326,5.7843),(17.281,7.3623),
+     3 (.79357,1.5426),(.86476,1.3487),(1.3505,0.),
+     4 (2.1593,0.),(.22899E-01,.13313E-01),2*(0.,0.),
+     5 (1.2224,0.),(2.9755,4.6268),(16.786,7.4583),
+     6 (.77844,1.5078),(.82114,1.3333),(1.3947,0.),
+     7 (2.2512,0.),(.22619E-01,.12988E-01),2*(0.,0.),
+     8 (1.0465,0.),(3.9351,3.7166),(21.24,10.083),
+     9 (.84809,1.5414),(.87904,1.3838),(1.5308,0.),
+     1 (2.3435,0.),(.22566E-01,.12232E-01),2*(0.,0.)/
+      DATA POLE12/
+     1 (1.1757,0.),(4.0460,3.9509),(17.747,0.),
+     2 (36.269,0.),(.84809,1.5414),(.87904,1.3838),
+     3 (1.5308,0.),(2.3435,0.),(.22566E-01,.12232E-01),
+     4 (0.,0.),
+     5 (1.9554,0.),(2.3741,3.4889),(17.198,7.8272),
+     6 (.81397,1.4089),(.87677,1.4965),(1.6118,0.),
+     7 (1.9825,0.),(.22731E-01,.13236E-01),2*(0.,0.)/
+
+      IDARES = -1
+      DO 15 I=1,NRES
+      IF(NSTA.NE.INDEX(1,I).OR.NCHAN.NE.INDEX(2,I)) GO TO 15
+C  STATION AND CHANNEL NUMBERS OK - NOW CHECK THE DATE
+      IYS = INDEX(3,I)
+      IDS = INDEX(4,I)
+      IYE = INDEX(5,I)
+      IDE = INDEX(6,I)
+C  FIND NUMBER OF DAYS FROM START OF CALIBRATION TO DATE WANTED
+      NDA = NDAYS(IYS,IDS,IYR,IDY)
+C  FIND NUMBER OF DAYS FROM DATE WANTED TO END OF CALIBRATION
+      NDB = NDAYS(IYR,IDY,IYE,IDE)
+      IF(NDA.LT.0.OR.NDB.LT.0) GO TO 15
+C  HAVE A CALIBRATION - LOAD COMMON
+      IDARES = 1
+      CF = FMULT(I)
+      NPOLES = NP(I)
+      DO 5 J=1,NPOLES
+ 5    CPOLE(J) = POLE(J,I)
+      NZERO = NZ(I)
+      DO 10 J=1,NZERO
+ 10   CZERO(J) = ZERO(J,I)
+      RETURN
+ 15   CONTINUE
+      RETURN
+      END
+
+C$**********************************************************************
+      SUBROUTINE MTORS
+      COMMON/INTAP/ JSTAT,IDUM(15)
+      COMMON/AP2/ T(437),O(437),Q(437),G(437),E(437),U(1311),P(5244)
+      NN=1
+  100 IND=(NN-1)*3+1
+      IND1=(NN-1)*12+1
+      CALL PROCES(T(NN),O(NN),Q(NN),G(NN),E(NN),U(IND),P(IND1))
+      IF(JSTAT.NE.0) RETURN
+      NN=NN+1
+      IF(NN.LE.437) GO TO 100
+      RETURN
+      END
+
+C$**********************************************************************
+      COMPLEX FUNCTION RESIDA(OM,ICOMP,IYEAR,IDAY)
+      COMPLEX RIDA
+      INTEGER*2 IDAY,IYEAR,IDD
+      CHARACTER*3 CODE,CHAN(2)
+      INTEGER*4 ICOMPL
+      data icompl/0/
+      INTEGER*2 IYEARL,IDAYL
+      data  IYEARL/0/,IDAYL/0/
+      SAVE ICOMPL,IYEARL,IDAYL
+      DATA CHAN/'MDE','BP2'/
+      DATA ISEY/'SEY '/
+
+CC    IF(ICOMP.NE.ICOMPL.OR.IYEAR.NE.IYEARL.OR.IDAY.NE.IDAYL) THEN
+CC    WRITE(5,"('RESIDA:',2X,A4,I6,I5)") ICOMP,IYEAR,IDAY
+CC    ICOMPL=ICOMP
+CC    IYEARL=IYEAR
+CC    IDAYL=IDAY
+CC    ENDIF
+
+      IF(ICOMP.EQ.ISEY.AND.IYEAR.EQ.1980.AND.IDAY.LE.304) THEN
+      IDD=305
+      ELSE
+      IDD=IDAY
+      ENDIF
+
+      WRITE(CODE,"(A3)") ICOMP
+      IYR=IYEAR
+      IDY=IDD
+      NSTA=IDANUM(CODE,3)
+      DO 10 I=1,2
+      NCHA=IDANUM(CHAN(I),3)
+      IERR=IDARES(NSTA,NCHA,IYR,IDY)
+      IF(IERR.EQ.1) GOTO 20
+   10 CONTINUE
+      PAUSE '!!!! NO IDA RESPONNSE !!!!'
+      RETURN
+   20 RESIDA=RIDA(OM)
+      RETURN
+      END
+
+C$**********************************************************************
+C      SUBROUTINE RFOUR
+C$PROG RFOUR
+      SUBROUTINE RFOUR(DATA,M,NN)
+      DIMENSION DATA(1),NTOT(3)
+      NTOT(1)=2*2**M
+      XN=NTOT(1)/2
+      NTP2=NTOT(1)+2
+      IF(NN.LT.0) GO TO 1
+      NT=NTOT(1)
+      DO 2 N=1,NT
+    2 DATA(N)=DATA(N)/XN
+      CALL FOUR2(DATA,NTOT,1,-1,0)
+      RETURN
+    1 DO 4 N=1,NTP2
+    4 DATA(N)=DATA(N)/2.
+      CALL FOUR2(DATA,NTOT,1,1,-1)
+      RETURN
+      END
+
+C$**********************************************************************
+      SUBROUTINE STABLP(XL)
+      COMMON/AP1/ DUM1(17),F4,F5,F6,F2PF3,F2MF3,DUM2(4)
+      COMMON/IAP1/ XX(2,3),VV(2,3),FILL2(20)
+      COMMON/IAP2/ B1C,A2C,BB1C,AA2C,X,DUMM2
+      X=.5*XL*(XL+1.)
+      F62=2.*F6
+      B1C=F4*XX(1,2)+F5*XX(2,2)
+      A2C=F2MF3*XX(1,3)+F62*XX(2,3)
+      BB1C=F4*VV(1,2)+F5*VV(2,2)
+      AA2C=F2MF3*VV(1,3)+F62*VV(2,3)
+      RETURN
+      END
+
+C$**********************************************************************
+CPROG TAPCLR
+CXREF
+      SUBROUTINE TAPCLR(ARR1,ARR2,NF,NE,IT1,IT2,SUM2)
+      DIMENSION ARR1(1),ARR2(1)
+      ARG=3.1415926536/FLOAT(IT2-IT1)
+      CALL RFOUR(ARR1,8,-1)
+      DO 1 I=1,514
+    1 ARR2(I)=0.
+      SUM2=0.
+      DO 2 I=NF,NE
+      SUM2=SUM2+ARR1(I)
+    2 ARR2(I)=ARR1(I)
+      SUM2=SUM2/FLOAT(NE-NF+1)
+      DO 3 I=NF,NE
+    3 ARR2(I)=ARR2(I)-SUM2
+      CALL RFOUR(ARR1,8,1)
+      CALL RFOUR(ARR2,8,1)
+      ARR2(1)=0.
+      SUM2=0
+      DO 4 I=2,257
+      J=2*I-1
+      IF(I.LE.IT1) TAP=1.
+      IF(I.GE.IT2) TAP=0.
+      IF(I.GT.IT1.AND.I.LT.IT2) TAP=0.5*(1.+COS(ARG*FLOAT(I-IT1)))
+      ARR2(J)=ARR2(J)*TAP
+      ARR2(J+1)=ARR2(J+1)*TAP
+      SUM2=SUM2+ARR2(J)**2+ARR2(J+1)**2
+    4 CONTINUE
+      RETURN
+      END
+
+C$**********************************************************************
+C$PROG DDABS
+      DOUBLE PRECISION FUNCTION DDABS(X)
+      DOUBLE PRECISION X
+      IF(X.GE.0.D0) DDABS=X
+      IF(X.LT.0.D0) DDABS=-X
+      RETURN
+      END
+
+C$**********************************************************************
+C$PROG DOT
+C$XREF
+      DOUBLE PRECISION FUNCTION DOT(A,J,B,K,N)
+      IMPLICIT DOUBLE PRECISION(A-H,O-Z)
+      DOUBLE PRECISION A,B
+      DIMENSION A(J,N),B(K,N)
+      DOT=0.D0
+      DO 1 I=1,N
+    1 DOT=DOT+A(1,I)*B(1,I)
+      RETURN
+      END
+
+C$**********************************************************************
+      SUBROUTINE MATRIX
+      DIMENSION PART(12336)
+      COMMON/INTAP/ IDUM1(3),IFACT,IDUM2(2),IT1,IT2,INSTR,NTRANS,I1S,
+     1I1F,I2S,I2F,NPAR,IFTWO
+      COMPLEX BRESP,RESP(257),CSPEC(257)
+      COMMON/AP1/ DUM1(23),DOM,DTORG,DURTN
+      COMMON/IAP5/ ARR(12850)
+      COMMON/IAP6/ BRESP(257,5)
+      COMMON/IAP3/ CTRACE(514),STRACE(514)
+      COMMON/AP2/ OBSEI(514),SYNSEI(514),PRTMTX(300),COLVEC(24),
+     1B,RMS,FILL(7386)
+      EQUIVALENCE (CTRACE(1),CSPEC(1)),(PART(1),ARR(515))
+      EQUIVALENCE (STRACE(1),RESP(1))
+      NPTC=2**NTRANS+1
+      CALL FVCLR(SYNSEI,1,840)
+C
+C      ESTABLISH RESPONSE TRANSFORM WITH CORRECTIONS FOR
+C      DURATION AND ORIGIN TIME
+C
+      I=1
+    5 OM=DOM*FLOAT(I-1)
+      ARG=OM*DURTN
+      FACT=1.
+      IF(ARG.NE.0.) FACT=SIN(ARG)/ARG
+      ARG=-OM*DTORG
+      CA=COS(ARG)*FACT
+      SA=SIN(ARG)*FACT
+      RESP(I)=BRESP(I,INSTR)*CMPLX(CA,SA)
+      I=I+1
+      IF(I.LE.NPTC) GO TO 5
+C
+C      FOURIER TRANSFORM, RESPONSE, TRUNCATION
+C
+      NP=I2S-I1S+1
+      NPF=I2F-I1F+1
+      LP=NPAR*(IFTWO+1)+1
+      NN=1
+   50 CALL FVCLR(CTRACE,1,514)
+      I=1
+   51 IND=(NN-1)*514+I
+      IND1=I1S+I-1
+      CTRACE(IND1)=ARR(IND)
+      I=I+1
+      IF(I.LE.NP) GO TO 51
+      CALL RFOUR(CTRACE,NTRANS,1)
+      I=1
+   52 CSPEC(I)=CSPEC(I)*RESP(I)
+      I=I+1
+      IF(I.LE.NPTC) GO TO 52
+      IND=(NN-1)*514+1
+      CALL TAPCLA(CTRACE,ARR(IND),I1F,I2F,IT1,IT2)
+      NN=NN+1
+      IF(NN.LE.LP) GO TO 50
+C
+C      IF BOTH MINOR & MAJOR CIRCLES, SUBTRACT MINOR FROM MAJOR ARC
+C      PARTIALS
+C
+      IF(IFTWO.EQ.0.OR.IFACT.EQ.0) GO TO 40
+      N=1
+   15 N1=N+NPAR
+      IND=(N-1)*514+1
+      IND1=(N1-1)*514+1
+      CALL FVSUB(PART(IND),1,PART(IND1),1,PART(IND1),1,514)
+      N=N+1
+      IF(N.LE.NPAR) GO TO 15
+C
+C      TRANSFORM OBSERVED SEISMOGRAM INTO THE TIME DOMAIN
+C
+   40 CALL TAPCLA(OBSEI,CTRACE,I1F,I2F,IT1,IT2)
+      CALL FSVESQ(CTRACE(I1F),1,B,NPF)
+C
+C      DIFFERENCE BETWEEN OBSERVED & SYNTHETIC SEISMOGRAM, RMS
+C
+      CALL FVMOV(ARR,1,SYNSEI,1,514)
+      CALL FVSUB(SYNSEI,1,CTRACE,1,CTRACE,1,514)
+      CALL FSVESQ(CTRACE(I1F),1,RMS,NPF)
+      RMS=RMS/B
+      IF(IFACT.EQ.0) GO TO 75
+C
+C      COLUMN VECTOR AND INNER PRODUCT MATRIX
+C      THE ARRAYS COLVEC AND PRTMTX HAVE ALREADY BEEN ZEROED
+C
+      NEQ=LP-1
+      KNT=0
+      N=1
+   10 INDN=(N-1)*514+I1F
+      CALL FDOTPR(CTRACE(I1F),1,PART(INDN),1,COLVEC(N),NPF)
+      I=N
+   11 KNT=KNT+1
+      INDI=(I-1)*514+I1F
+      CALL FDOTPR(PART(INDN),1,PART(INDI),1,PRTMTX(KNT),NPF)
+      I=I+1
+      IF(I.LE.NEQ) GO TO 11
+      N=N+1
+      IF(N.LE.NEQ) GO TO 10
+C
+C      TRANSFORM SYNTHETIC SEISMOGRAM INTO FREQUENCY DOMAIN
+C
+   75 CALL RFOUR(SYNSEI,NTRANS,1)
+      RETURN
+      END
+
+C$**********************************************************************
+CPROG OUTPUT
+CXREF
+      SUBROUTINE OUTPUT(LU,ITAPER)
+      COMMON/TAPE/ IB(1401),FILL(113)
+      DIMENSION B(536),INSTR(5),IADATE(3),IATIME(3),ISL(2),IDIP(2),
+     1IAZ(3),ISTR(2),IPL(3),YMD(6)
+      EQUIVALENCE (IB(1),B(1))
+      COMMON/DBLEC/ EPLA,EPLON,DEP,TORG,DURT
+      COMMON/DBLEM/ XMD(6),R0D
+      COMMON/OUTPAR/ ERRLA,ERRLO,ERRDEP,ERRTIM,
+     1ERRMOM(6),SCALAR,STRIKE(2),DIP(2),SLIP(2),
+     2EIVL(3),PLUNG(3),AZIM(3)
+      DATA INSTR/4HSRO ,4HASRO,4HIDA ,4HDWWS,4HRSTN/
+      NSOUR=1
+      CALL REWFL(7)
+      CALL BFFIN(7,1,B,1,J,M)
+      CALL BFFIN(7,1,B,13,J,M)
+    1 CALL BFFIN(7,1,B,1401,J,M)
+      IF(J.EQ.3) GO TO 10
+      IF(IB(22).NE.0) GO TO 1
+      CALL STATN(IB(1),NAME,IB(3),STLAT,STLONG,ILEV)
+      IFMT=2
+      CUTOFF=45.
+      IF(ITAPER.EQ.2) CUTOFF=32.
+      IF(B(4).GT.20.) CUTOFF=135.
+      T0=FLOAT(IB(16)+IB(17)-1)*B(4)
+      TL=FLOAT(IB(18)-IB(17))*B(4)
+      IN=IB(3)
+      WRITE(LU,1000) IFMT,NAME,IB(1),INSTR(IN),IB(2),STLAT,STLONG,
+     1ILEV,B(19),B(20),B(21),CUTOFF,T0,TL
+ 1000 FORMAT(I1,2X,A4,I4,1X,A4,I2,F7.2,F8.2,I5,F7.2,3F6.1,2F8.1)
+      GO TO 1
+   10 CONTINUE
+      CALL IDATE(IADATE)
+      IADATE(3)=MOD(IADATE(3),1900)
+      CALL ITIME(IATIME)
+      IFMT=3
+      N=1
+      WRITE(LU,1001) IFMT,NSOUR,N,EPLA,ERRLA,EPLON,ERRLO,
+     1DEP,ERRDEP,TORG,ERRTIM,DURT,IADATE(2),
+     2IADATE(1),IADATE(3),(IATIME(I),I=1,3)
+ 1001 FORMAT(I1,2X,2I1,F7.2,F6.2,F8.2,F6.2,5F6.1,1X,
+     12(I2,1H/),I2,1H,,2(I2,1H:),I2)
+      AMAX=0.
+      DO 21 I=1,6
+   21 AMAX=AMAX1(ABS(XMD(I)),AMAX)
+      DO 22 I=1,8
+      X=10.**(I-1)
+      IF(AMAX*X.LT.1.) GO TO 22
+      XNORM=X
+      IEXP=31-I
+      GO TO 23
+   22 CONTINUE
+      STOP 'EXPONENT OUT OF RANGE'
+   23 DO 24 I=1,6
+      YMD(I)=XMD(I)*XNORM
+   24 ERRMOM(I)=ERRMOM(I)*XNORM
+      IFMT=4
+      WRITE(LU,1002) IFMT,NSOUR,N,IEXP,(YMD(I),ERRMOM(I),I=1,6)
+ 1002 FORMAT(I1,2X,2I1,I3,6(F7.3,F5.3))
+      IFMT=5
+      DO 25 I=1,3
+      IPL(I)=PLUNG(I)+.499
+      EIVL(I)=EIVL(I)*XNORM
+   25 IAZ(I)=AMOD(AZIM(I)+.499,360.)
+      SCALAR=SCALAR*XNORM
+      DO 26 I=1,2
+      IDIP(I)=DIP(I)+.499
+      ISL(I)=SLIP(I)+SIGN(0.499,SLIP(I))
+      IF(ISL(I).LT.-180) ISL(I)=360+ISL(I)
+      IF(ISL(I).GT.180) ISL(I)=ISL(I)-360
+   26 ISTR(I)=AMOD(STRIKE(I)+.499,360.)
+      WRITE(LU,1003) IFMT,NSOUR,N,(EIVL(I),IPL(I),IAZ(I),I=1,3),
+     1SCALAR,(ISTR(I),IDIP(I),ISL(I),I=1,2)
+ 1003 FORMAT(I1,2X,2I1,3(F7.2,I3,I4),F6.2,2(I4,I3,I5))
+      CALL REWFL(7)
+      RETURN
+      END
+
+C$**********************************************************************
+CPROG RSOINC
+CXREF
+      SUBROUTINE RSOINC(A,N,IDX)
+      DIMENSION A(1),IDX(1)
+      IF (N.EQ.1) GO TO 65
+      IF (N.LE.0) GO TO 60
+      DO 1 I = 1,N
+      IDX(I) = I
+    1 CONTINUE
+      N2 = N/2
+      N21 = N2 + 2
+      ICT=1
+      I=2
+   11 N1=N21-I
+      NN=N
+      IK=N1
+   15 C=A(IK)
+      IC=IDX(IK)
+  100 JK=2*IK
+      IF (JK.GT.NN) GO TO 140
+      IF (JK.EQ.NN) GO TO 120
+       IF (A(JK+1).LE.A(JK)) GO TO 120
+      JK=JK+1
+  120 IF (A(JK).LE. C) GO TO 140
+      A(IK)=A(JK)
+      IDX(IK)=IDX(JK)
+      IK=JK
+      GO TO 100
+  140 A(IK)=C
+      IDX(IK)=IC
+      GO TO (3,45) ,ICT
+    3 IF (I.GE.N2) GO TO 35
+      I=I+1
+      GO TO 11
+   35 ICT=2
+      NP2=N+2
+      I=2
+   37 N1=NP2-I
+      NN=N1
+      IK=1
+      GO TO 15
+  45  CONTINUE
+      T = A(1)
+      A(1) = A(N1)
+      A(N1) = T
+      IT = IDX(1)
+      IDX(1) = IDX(N1)
+      IDX(N1) = IT
+      IF (I.GE.N) GO TO 55
+      I=I+1
+      GO TO 37
+   55 RETURN
+   60 WRITE(6,500)
+  500 FORMAT('ERROR RETURN FROM SORTD1 - N LESS THAN OR EQUAL TO 1')
+      STOP
+   65 IDX(1)=1
+      RETURN
+      END
+CBEND
+
+C$**********************************************************************
+      SUBROUTINE SCOEFP(E,C1,C2)
+      DIMENSION E(4)
+      COMMON/IAP1/ X0C,DUMM1(5),V0C,DUMM2(25)
+      COMMON/IAP2/ B1C,A2C,BB1C,AA2C,XJ,DUM4
+      COMMON/AP1/ DUM1(14),F1,DUM2(5),F2PF3,DUM3(5)
+      XK=E(2)*F1+(E(1)-XJ*E(3))*F2PF3
+      YK=E(4)+E(1)-E(3)
+      C1=X0C*XK-B1C*YK+A2C*E(3)
+      C2=V0C*XK-BB1C*YK+AA2C*E(3)
+      RETURN
+      END
+
+C$**********************************************************************
+CPROG SELECT
+CXREF
+      SUBROUTINE SELECT(IFEXST,IFPSTR,NSTRSO,IFANI,ITRSTR,ITAPER,MXITER,
+     1IFINV,IFOMIT,IFCCN,NHTMDL,MFIL,MFILAN)
+      DOUBLE PRECISION GAMMA,DDAMP
+      CHARACTER*1 NHTMDL(12)
+      DIMENSION MFIL(4),MFILAN(4)
+      COMMON/INVPAR/ ICOL(12),GAMMA
+      COMMON/DDAMP/ DDAMP
+      COMMON/PARAM/ NOTRCE,NOM4M5,NODEP,NOEPIC
+      COMMON/DBLEC/ EPLA,EPLON,DEP,TORG,DURT
+      DO 1 I=1,12
+    1 ICOL(I)=0
+      WRITE(16,2100)
+ 2100 FORMAT(13X,' PARAMETERS SELECTED FOR INVERSION:'//)
+      WRITE(5,5001)
+ 5001 FORMAT(' NAME OF MODE PARAMETER FILE'/16('*'))
+      READ(15,5002) (MFIL(IM),IM=1,4)
+ 5002 FORMAT(4A4)
+      WRITE(16,5003) (MFIL(IM),IM=1,4)
+ 5003 FORMAT(1X,4A4,14X,'MODE PARAMETER FILE')
+      WRITE(5,5004)
+ 5004 FORMAT(' NAME OF KERNEL FILE'/16('*'))
+      READ(15,5002) (MFILAN(IM),IM=1,4)
+      WRITE(16,5005) (MFILAN(IM),IM=1,4)
+ 5005 FORMAT(1X,4A4,14X,'KERNEL FILE')
+      WRITE(5,1000)
+ 1000 FORMAT(' DOES CMT SOLUTION EXIST? 1 - YES, 0 - NO'/'*')
+      READ(15,1001) IFEXST
+ 1001 FORMAT(I1,I2)
+      WRITE(16,2000) IFEXST
+ 2000 FORMAT(1X,I1,29X,'CMT SOLN. EXISTS? 1 - YES, 0 - NO')
+      WRITE(5,1027)
+ 1027 FORMAT(' DOES .INV FILE EXIST? 1 - YES, 0 - NO'/'*')
+      READ(15,1001) IFINV
+      WRITE(16,2027) IFINV
+ 2027 FORMAT(1X,I1,29X,'.INV FILE EXISTS? 1 - YES, 0 - NO')
+      WRITE(5,1014)
+ 1014 FORMAT(' USE PREVIOUS STRUCTURE PERTURBATIONS? -- IF NOT'/
+     1   ' THEN TYPE NAME OF MODEL FILE AND 1 OR ZERO FOR'
+     2  ,' CRUSTAL CORRECTION'/'* ************ *')
+      READ(15,1028) IFPSTR,(NHTMDL(I),I=1,12),IFCCN
+ 1028 FORMAT(I1,1X,12A1,1X,I1)
+      WRITE(16,2014) IFPSTR,(NHTMDL(I),I=1,12),IFCCN
+ 2014 FORMAT(1X,I1,1X,12A1,1X,I1,14X,'USE PREV STRUC?; HTM FILE;'
+     1 ,' CRUST CORR?')
+      WRITE(5,1002)
+ 1002 FORMAT(' NUMBER OF STRUCTURE - SOURCE ITERATIONS'/'*'
+     1  ,' *','         TYPE 1 TO OMIT LAST SOURCE INVERSION')
+      READ(15,1001) NSTRSO,IFOMIT
+      WRITE(16,2002) NSTRSO,IFOMIT
+ 2002 FORMAT(1X,I1,1X,I1,27X,'NO. OF STRCT-SOURCE ITRATNS; LAST'
+     1  ,'SRCE INV. OMITTED?')
+      WRITE(5,1003)
+ 1003 FORMAT(' *** PARAMETERS FOR STRUCTURE INVERSION ***')
+      WRITE(16,2003)
+ 2003 FORMAT(//13X,'*** PARAMETERS FOR STRUCTURE INVERSION ***')
+      WRITE(5,1004)
+ 1004 FORMAT(' ISOTROPIC (0) OR ANISOTROPIC (1) VS PERTURBATION'/
+     1  '*')
+      READ(15,1001) IFANI
+      WRITE(16,2004) IFANI
+ 2004 FORMAT(1X,I1,29X,'ISOTROPIC (0) OR ANISOTROPIC (1) VS PERTURBATION
+     1')
+      WRITE(5,1005)
+ 1005 FORMAT(' 1. PERTURB CRUSTAL THICKNESS? 0 - NO, 1 - YES'/'*')
+      READ(15,1001) ICOL(1)
+      WRITE(16,2005) ICOL(1)
+ 2005 FORMAT(1X,I1,29X,'1. PERTURB CRUSTAL THICKNESS? 0-NO, 1-YES')
+      WRITE(5,1006)
+ 1006 FORMAT(' 2. PERTURB P-VEL MOHO-220KM? 0 - NO, 1 - YES'/'*')
+      READ(15,1001) ICOL(2)
+      WRITE(16,2006) ICOL(2)
+ 2006 FORMAT(1X,I1,29X,'2. PERTURB P-VEL MOHO-220KM? 0 - NO, 1 - YES')
+      WRITE(5,1007)
+ 1007 FORMAT(' 3.-6. & 8.-11. NUMBER OF RADIAL FUNCTIONS FOR VS'/'*')
+      READ(15,1001) NRS
+      WRITE(16,2007) NRS
+ 2007 FORMAT(1X,I1,29X,'3.-6. & 8.-11. NUMBER OF RADIAL FUNCTIONS FOR VS
+     1')
+      DO 2 I=1,NRS
+      IF(IFANI.NE.0) ICOL(I+7)=1
+    2 ICOL(I+2)=1
+      WRITE(5,1008)
+ 1008 FORMAT(' 7. & 12. PERTURB VS 670-1100KM? 0 - NO, 1 - YES'/'*')
+      READ(15,1001) ICOL(7)
+      WRITE(16,2008) ICOL(7)
+ 2008 FORMAT(1X,I1,29X,'7. & 12. PERTURB VS 670-1100? 0 - NO, 1 - YES')
+      IF(IFANI.NE.0) ICOL(12)=ICOL(7)
+      WRITE(5,1009)
+ 1009 FORMAT(' NUMBER OF ITERATIONS FOR STRUCTURE IN EACH PASS'/'*')
+      READ(15,1001) ITRSTR
+      WRITE(16,2009) ITRSTR
+ 2009 FORMAT(1X,I1,29X,'NUMBER OF ITERATIONS FOR STRUCTURE IN EACH PASS'
+     1)
+      WRITE(5,1010)
+ 1010 FORMAT(' EIGENVALUE CUT-OFF RATIO'/'*.******')
+      READ(15,1011) GAMMA
+      WRITE(16,2010) GAMMA
+ 2010 FORMAT(1X,F8.6,22X,'EIGENVALUE CUT-OFF RATIO')
+ 1011 FORMAT(F8.6)
+      WRITE(5,1012)
+ 1012 FORMAT(' *** CMT INVERSION PARAMETERS ***')
+      WRITE(16,2012)
+ 2012 FORMAT(//13X,' *** CMT INVERSION PARAMETERS ***')
+      WRITE(5,1013)
+ 1013 FORMAT(' TAPER: 1 - (45, 60), 2 - (32, 40)'/'*')
+      READ(15,1001) ITAPER
+      WRITE(16,2013) ITAPER
+ 2013 FORMAT(1X,I1,29X,' TAPER: 1 - (45,60), 2 - (32,40)')
+      WRITE(5,1015)
+ 1015 FORMAT(' NUMBER OF CMT ITERATIONS'/'*')
+      READ(15,1001) MXITER
+      WRITE(16,2015) MXITER
+ 2015 FORMAT(1X,I1,29X,' NUMBER OF CMT ITERATIONS')
+      WRITE(5,1016)
+ 1016 FORMAT(' CONSTRAIN ISOTROPIC COMPONENT = 0; 0 - NO, 1 - YES'/
+     1'*')
+      READ(15,1001) NOTRCE
+      WRITE(16,2016) NOTRCE
+ 2016 FORMAT(1X,I1,29X,'CONSTRAIN ISOTROPIC COMPONENT = 0; 0 - NO, 1 - YE
+     1S')
+      WRITE(5,1017)
+ 1017 FORMAT(' DEPTH DAMPING'/'*.***')
+      READ(15,1018) DDAMP
+      WRITE(16,2018) DDAMP
+ 2018 FORMAT(1X,F5.3,25X,' DEPTH DAMPING')
+ 1018 FORMAT(F5.3)
+      IF(DDAMP.EQ.0.D0) DDAMP=1.D0
+      IF(IFEXST.NE.0) GO TO 3
+      WRITE(5,1019)
+ 1019 FORMAT(' SOURCE COORDINATES: LAT, LON, DEPTH, ORIGIN TIME'/
+     1'***.** ****.** ***.* ****.*')
+      READ(15,1020) EPLA,EPLON,DEP,TORG
+      WRITE(16,2019) EPLA,EPLON,DEP,TORG
+ 2019 FORMAT(1X,F6.2,F8.2,F6.1,F7.1,3X,'SOURCE COORDINATES: LAT, LON, DE
+     1PTH, ORIGIN TIME')
+ 1020 FORMAT(F6.2,F8.2,F6.1,F7.1)
+      WRITE(5,1021)
+ 1021 FORMAT(' SOURCE DURATION'/'***.*')
+      READ(15,1022) DURT
+      WRITE(16,2021) DURT
+ 2021 FORMAT(1X,F5.1,25X,' SOURCE DURATION')
+ 1022 FORMAT(F5.1)
+      GO TO 4
+    3 LU=2
+      IF(IFINV.NE.0) LU=7
+      CALL RDSOUR(LU)
+      WRITE(5,1026) EPLA,EPLON,DEP,TORG,DURT
+ 1026 FORMAT(' ACCEPT EXISTING COORDINATES:'/5F10.3/
+     1' 0 - NO, 1 - YES'/'*')
+      READ(15,1001) IFACCP
+      WRITE(16,2026) IFACCP
+ 2026 FORMAT(1X,I1,29X,' ACCEPT EXISTING COORDINATES? 1-YES, 0-NO')
+      IF(IFACCP.EQ.1) GO TO 4
+      WRITE(5,1019)
+      READ(15,1020) EPLA,EPLON,DEP,TORG
+      WRITE(16,2019) EPLA,EPLON,DEP,TORG
+      WRITE(5,1021)
+      READ(15,1022) DURT
+      WRITE(16,2021) DURT
+    4 WRITE(5,1023)
+ 1023 FORMAT(' CONSTRAIN M4=M5=0; 0 - NO, 1 - YES'/'*')
+      READ(15,1001) NOM4M5
+      WRITE(16,2023) NOM4M5
+ 2023 FORMAT(1X,I1,29X,' CONSTRAIN M4=M5=0; 0 - NO, 1 - YES')
+      WRITE(5,1024)
+ 1024 FORMAT(' CONSTRAIN DEPTH; 0 - NO, 1 - YES'/'*')
+      READ(15,1001) NODEP
+      WRITE(16,2024) NODEP
+ 2024 FORMAT(1X,I1,29X,' CONSTRAIN DEPTH; 0 - NO, 1 - YES')
+      WRITE(5,1025)
+ 1025 FORMAT(' CONSTRAIN EPICENTER, 0 - NO, 1 - YES'/'*')
+      READ(15,1001) NOEPIC
+      WRITE(16,2025) NOEPIC
+ 2025 FORMAT(1X,I1,29X,' CONSTRAIN EPICENTER, 0 - NO, 1 - YES')
+      RETURN
+      END
+
+C$**********************************************************************
+CPROG SFRPAR
+CXREF
+      SUBROUTINE SFRPAR(NMIN,OMMAX,R0,NSHEAR,LU1,LU2)
+      DIMENSION G(6)
+      COMMON/BIGSPA/ XL(380),OM(380),QB(380),GRV(380),EL(380),
+     1EV(2280),PT(12,380),B1(1024),B2(1024),B3(1024),B4(1024),
+     2B5(256,10),EH(2280)
+      DIMENSION B(8740),E(6,380),H(6,380)
+      COMMON/TAPE/ FILT(250),INDSFR(330),INDTOR(300),KNTSFR(330),
+     1KNTTOR(300),KNTS,KNTT,IU1,NBATCH
+      COMMON/SPLIN/ FILS(5),IR1
+      EQUIVALENCE (XL(1),B(1)),(EV(1),E(1,1)),(EH(1),H(1,1))
+      DATA I256/256/
+      IRLST=0
+      IU1=LU1
+      X=0.
+      KNT=0
+      DO 100 NN=1,KNTS
+      NT=KNTSFR(NN)-NMIN
+      IF(NT.EQ.0) GO TO 99
+      IT1=INDSFR(NN)+NMIN
+      IT2=IT1+KNTSFR(NN)-1
+      DO 1 I=IT1,IT2
+      IREC=(I+255)/I256
+      IF(IREC.NE.IRLST) CALL GETPAR(I,LU1,LU2,B1,B2,B3,B4,B5,IRLST,
+     1IR1,NSHEAR)
+      IF(NN.EQ.2.AND.I.EQ.IT1) GO TO 1
+      IP=MOD(I-1,I256)+1
+      IP256=IP+I256
+      IP512=IP256+I256
+      IP768=IP512+I256
+      OMEGA=B1(IP)
+      IF(I.EQ.IT1.AND.OMEGA.GT.OMMAX) GO TO 99
+      IF(OMEGA.GT.OMMAX) GO TO 100
+      KNT=KNT+1
+      OM(KNT)=OMEGA
+      QB(KNT)=B1(IP256)
+      AV=B1(IP512)
+      AH=B1(IP768)
+      XL(KNT)=X
+      GRV(KNT)=B2(IP)
+      EL(KNT)=B2(IP256)
+      PT(1,KNT)=B2(IP512)
+      PT(2,KNT)=B2(IP768)
+      DO 2 K=1,NSHEAR
+      K2=K+2
+    2 PT(K2,KNT)=B5(IP,K)
+      U1=B3(IP)
+      UP1=B3(IP256)
+      V1=B3(IP512)
+      VP1=B3(IP768)
+      U2=B4(IP)
+      UP2=B4(IP256)
+      V2=B4(IP512)
+      VP2=B4(IP768)
+      CALL SPLINE(U1,UP1,U2,UP2,US,UPS,UPPS)
+      CALL SPLINE(V1,VP1,V2,VP2,VS,VPS,VPPS)
+      G(1)=US/R0
+      G(2)=UPS
+      G(3)=VS/R0
+      G(4)=VPS
+      G(5)=R0*UPPS
+      G(6)=R0*VPPS
+      DO 7 K=1,6
+      E(K,KNT)=AV*G(K)
+    7 H(K,KNT)=AH*G(K)
+      IF(KNT.LT.380) GO TO 1
+      CALL BFFOUT(3,1,B,8740,J)
+      DO 4 K=1,2280
+    4 EV(K)=EH(K)
+      CALL BFFOUT(4,1,B,8740,J)
+      KNT=0
+    1 CONTINUE
+  100 X=X+1.
+   99 KNT=KNT+1
+      XL(KNT)=-1.
+      CALL BFFOUT(3,1,B,8740,J)
+      M=6*(KNT-1)
+      DO 6 K=1,M
+    6 EV(K)=EH(K)
+      CALL BFFOUT(4,1,B,8740,J)
+C     END FILE 3
+      CALL REWFL(3)
+      RETURN
+      END
+CPROG SNGINV
+CXREF
+      SUBROUTINE SNGINV(ITAPERI,ITERI)
+      DOUBLE PRECISION A,B,C,ERR,HOLD,DET,SOLUTN,DDAMP
+      DIMENSION A(12,12),B(12),ERR(12),C(12),SYNT(514,10),
+     1IPAR(10),SOLUTN(12),NAMES(10),SPEC(514)
+      COMMON/PARAM/ NOTRCE,NOM4M5,NODEP,NOEPIC
+      COMMON/DDAMP/DDAMP
+      COMMON/TAPE/ SEIBUF(536),SYN7(514),FILLT(464)
+      COMMON/DBLEC/ EPLA,EPLON,DEP,TORG,DURT
+      COMMON/DBLEM/ XMD(6),R0D
+      COMMON/BIGSPA/ SYNT,SPEC,FIL1B(5656),EIVECS(3,3),pad,
+     1B,ERR,C,SOLUTN,IPAR,DDEP,DLAT,DLON,DT0,A,FIL2B(5958)
+c pad added and FIL2B shortened to align double precision on double word
+c boundaries
+      EQUIVALENCE (SEIBUF(22),IFLAG),
+     1(SEIBUF(3),INST),(SEIBUF(17),NFIRST),(SEIBUF(18),NEND)
+      COMMON/OUTPAR/ ERRLA,ERRLO,ERRDEP,ERRTIM,
+     1ERRMOM(6),SCALAR,STRIKE(2),DIP(2),SLIP(2),
+     2EIVL(3),PLUNG(3),AZIM(3)
+      EQUIVALENCE (SEIBUF(4),RATE)
+      DATA NAMES/4H M1 ,4H M2 ,4H M3 ,4H M4 ,4H M5 ,4H M6 ,
+     14HDDEP,4HDLAT,4HDLON,4HDTOR/,REPRAD/57.29578/
+      ITAPER=ITAPERI
+      ITER=ITERI
+      WRITE(5,998) NODEP
+  998 FORMAT('IN SNGINV NODEP = ',I2)
+      DO 1 I=1,12
+      B(I)=0.D0
+      ERR(I)=0.D0
+      SOLUTN(I)=0.D0
+      IF(I.LE.10) IPAR(I)=0
+      DO 1 J=1,12
+    1 A(J,I)=0.D0
+      DDEP=0.
+      ERRDEP=0.
+      DLAT=0.
+      ERRLA=0.
+      DLON=0.
+      ERRLO=0.
+      DT0=0.
+      ERRTIM=0.
+      DO 2 I=1,6
+      IF(ITER.EQ.0) XMD(I)=0.
+      ERRMOM(I)=0.
+    2 CONTINUE
+      NPAR=0
+      IFACT=6
+      IF(ITER.GT.0) IFACT=10
+      DO 3 I=1,IFACT
+      IF(I.GT.3) GO TO 4
+      NPAR=NPAR+1
+      IPAR(NPAR)=I
+      GO TO 3
+    4 IF(I.GT.5) GO TO 5
+      IF(NOM4M5.GT.0) GO TO 3
+      NPAR=NPAR+1
+      IPAR(NPAR)=I
+      GO TO 3
+    5 IF(I.GT.6) GO TO 6
+      NPAR=NPAR+1
+      IPAR(NPAR)=I
+      GO TO 3
+    6 IF(ITER.EQ.0) GO TO 3
+      IF(I.GT.7) GO TO 67
+      IF(NODEP.GT.0) GO TO 3
+      NPAR=NPAR+1
+      IPAR(NPAR)=I
+      GO TO 3
+   67 IF(I.EQ.10) GO TO 68
+      IF(NOEPIC.GT.0) GO TO 3
+   68 NPAR=NPAR+1
+      IPAR(NPAR)=I
+    3 CONTINUE
+      POINTS=0.
+      SUM2=0.
+      IF(ITER.EQ.0) RETURN
+      DO 30 I=1,NPAR
+      J=IPAR(I)
+      IF(J.GT.6) GO TO 30
+      SOLUTN(J)=XMD(J)
+   30 CONTINUE
+      RETURN
+      ENTRY INPMTX(WATEI)
+      WATE=WATEI
+      IF(IFLAG.NE.0) RETURN
+      IMIN=3
+      IMAX=514
+      IF(ITAPER.EQ.1) IMAX=366
+      IF(RATE.GT.20.) IMAX=488
+      RED=1.
+      IF(ITAPER.EQ.1) RED=0.7111
+C     IF(RATE.GT.20.) RED=0.948
+      IF(RATE.GT.20.) RED=0.948
+      IF(ITER.EQ.0) GO TO 774
+      DO 775 I=IMIN,IMAX
+  775 SPEC(I)=SPEC(I)-SYN7(I)
+  774 POINTS=POINTS+FLOAT(NEND-NFIRST+1)*RED
+      DO 20 KK=IMIN,IMAX
+      SUM2=SUM2+WATE*SPEC(KK)**2
+      DO 40 JK=1,NPAR
+      I=IPAR(JK)
+      FACT=SYNT(KK,I)*WATE
+      HOLD=SPEC(KK)*FACT
+      B(JK)=B(JK)+HOLD
+      DO 21 JB=1,JK
+      J=IPAR(JB)
+      HOLD=FACT*SYNT(KK,J)
+      A(JK,JB)=A(JK,JB)+HOLD
+   21 CONTINUE
+   40 CONTINUE
+   20 CONTINUE
+      RETURN
+      ENTRY RESULT(IERR)
+      IERR=0
+      IF(ITER.EQ.0) SUM2OR=SUM2
+      NEQ=NPAR
+      IF(NOTRCE.EQ.0) GO TO 10
+      NEQ=NEQ+1
+      A(NEQ,1)=1.D0
+      A(NEQ,2)=1.D0
+      A(NEQ,3)=1.D0
+   10 DO 12 I=1,NEQ
+      DO 12 J=1,I
+   12 A(J,I)=A(I,J)
+      DO 15 I=1,NEQ
+   15 WRITE(5,1009) I,(A(I,J),J=1,NEQ)
+      WRITE(5,1010) (B(I),I=1,NEQ)
+ 1009 FORMAT(I3,12E10.3/(3X,12E10.3))
+ 1010 FORMAT(' B=',12E10.3/(3X,12E10.3))
+c     OPEN(35,FILE='lu_35',FORM='FORMATTED',RECFM='DS',PAD='YES')
+      OPEN(35,FILE='lu_35',FORM='FORMATTED')
+      WRITE(35,"('NPAR=',I10)")NPAR
+      DO I=1,NPAR
+        WRITE(35,"(5X,I10)") IPAR(I)
+      ENDDO
+      WRITE(35,"('SUM2=',E20.10)")SUM2
+      WRITE(35,"('SU2O=',E20.10)")SUM2OR
+      DO I=1,NPAR
+        DO J=1,NPAR
+          WRITE(35,"('ATA  ',D20.10)") A(J,I)
+        ENDDO
+      ENDDO
+      DO I=1,NPAR
+        WRITE(35,"('ATB  ',D20.10)") B(I)
+      ENDDO
+      DO I=1,6
+        WRITE(35,"('SOLU ',E20.10)") SOLUTN(I)
+      ENDDO
+      WRITE(35,"('EPLA ',E20.10)")EPLA
+      WRITE(35,"('EPLO ',E20.10)")EPLON
+      WRITE(35,"('DEP  ',E20.10)")DEP
+      WRITE(35,"('TORG ',E20.10)")TORG
+      WRITE(35,"('DURT ',E20.10)")DURT
+      CLOSE(35)
+
+
+C     WRITE(14,REC=1) NSOUR,NPAR,NEQ,SUM2OR
+C    1   ,((XMD(I,J),I=1,6),J=1,3),((IPAR(I,J),J=1,10),I=1,3)
+C     DO 112 I=1,NEQ
+C 112 WRITE(14)(A(J,I),J=1,NEQ)
+C     WRITE(14) (B(I),I=1,NEQ)
+      CALL MATINV(A,NEQ,12,DET)
+      DO 113 I=1,NPAR
+      C(I)=0.D0
+      DO 13 J=1,NPAR
+   13 C(I)=C(I)+A(I,J)*B(J)
+  113 SUM2=SUM2-B(I)*C(I)
+C     WRITE(14) (C(I),I=1,NPAR)
+      HOLD=SUM2/POINTS
+      DO 22 I=1,NPAR
+      KJ=IPAR(I)
+      ERR(KJ)=DSQRT(A(I,I)*HOLD)
+   22 SOLUTN(KJ)=SOLUTN(KJ)+C(I)
+      RAT=SUM2/SUM2OR
+      IF(ITER.EQ.0) WRITE(16,3004)
+      WRITE(5,1100) RAT
+      WRITE(16,1100) RAT
+ 1100 FORMAT(' R.M.S. RATIO',F10.5)
+      WRITE(16,1000) ITER
+      WRITE(5,1000) ITER
+ 1000 FORMAT(' ITERATION',I2)
+      DO 847 I=1,NPAR
+      J=IPAR(I)
+      IF(J.GT.6) GO TO 847
+      XMD(J)=SOLUTN(J)
+      ERRMOM(J)=ERR(J)
+  847 CONTINUE
+      DO 14 I=1,IFACT
+      DO 24 K=1,NPAR
+      IF(I.EQ.IPAR(K)) GO TO 25
+   24 CONTINUE
+      GO TO 14
+   25 WRITE(16,1001) NAMES(I),SOLUTN(I),ERR(I)
+      WRITE(5,1001) NAMES(I),SOLUTN(I),ERR(I)
+ 1001 FORMAT(1X,A4,2D13.5,4X)
+      IF(I.EQ.7) DDEP=-SOLUTN(I)*6371.*DDAMP
+      IF(I.EQ.7) ERRDEP=ERR(I)*6371.
+      IF(I.NE.7) GO TO 573
+      WRITE(5,788) DEP,DDEP,NODEP
+  788 FORMAT('IN SNGINV DEP = ',F10.1,' DDEP = ',F10.1,' NODEP = ',I2)
+      IF(DEP+DDEP.GT.14.99) GO TO 573
+      WRITE(5,574)
+      WRITE(16,574)
+  574 FORMAT(' DEPTH BECOMING LESS THAN 15KM'/
+     1' SOLUTION CONSTRAINED TO THE VALUE FROM PRECEDING ITERATION')
+      NODEP=1
+      IERR=1
+      RETURN
+  573 IF(I.EQ.8) DLAT=-SOLUTN(I)*REPRAD/R0D
+      IF(I.EQ.8) ERRLA=ERR(I)*REPRAD/R0D
+      IF(I.EQ.9) DLON=SOLUTN(I)*REPRAD/(R0D*COS(EPLA/REPRAD))
+      IF(I.EQ.9) ERRLO=ERR(I)*REPRAD/(R0D*COS(EPLA/REPRAD))
+      IF(I.EQ.10) DT0=SOLUTN(I)
+      IF(I.EQ.10) ERRTIM=ERR(I)
+   14 CONTINUE
+      EPLA=EPLA+DLAT
+      EPLON=EPLON+DLON
+      DEP=DEP+DDEP
+      TORG=TORG+DT0
+      CALL SOURPA(XMD,SCALAR,STRIKE,DIP,SLIP,EIVL,PLUNG,AZIM,EIVECS)
+      WRITE(5,1002) NAMES(7),DDEP,NAMES(8),DLAT,
+     1NAMES(9),DLON,NAMES(10),DT0
+      WRITE(16,1002) NAMES(7),DDEP,NAMES(8),DLAT,
+     1NAMES(9),DLON,NAMES(10),DT0
+ 1002 FORMAT(' PERT. IN HYPOC.',2X,4(1X,A4,F7.3))
+      WRITE(5,1004)
+      WRITE(16,1004)
+ 1004 FORMAT(' COORDINATES AFTER INVERSION')
+      WRITE(5,1005) DEP
+      WRITE(16,1005) DEP
+ 1005 FORMAT(' DEPTH',6X,F10.3)
+      WRITE(5,1006) EPLA
+      WRITE(16,1006) EPLA
+ 1006 FORMAT(' LATITUDE',3X,F10.3)
+      WRITE(5,1007) EPLON
+      WRITE(16,1007) EPLON
+ 1007 FORMAT(' LONGITUDE',2X,F10.3)
+      WRITE(5,1008) TORG
+      WRITE(16,1008) TORG
+ 1008 FORMAT(' ORIGIN TIME',F10.3)
+      WRITE(16,3003)
+ 3003 FORMAT(1H1/////)
+      CALL PPFP(16,8,26,EIVECS)
+      WRITE(16,3004)
+ 3004 FORMAT(1H1//)
+      RETURN
+      END
+CBEND
+CBEND
+
+C$**********************************************************************
+      SUBROUTINE SOMAIN
+      COMMON/INTAP/ JSTAT,ITYPE,ICOMP,IDUM(13)
+      COMMON/AP1/ DAP1(26)
+      COMMON/AP2/ DAP2(8740)
+      COMMON/AP3/ DAP3(27)
+      COMMON/TAB3/ DTAB3(101)
+      COMMON/IAP5/ SYNT(12850)
+      COMMON/IAP6/ DIAP6(2570)
+      COMMON/INTER/ KNT,XJ,ZZ1,ZZ2
+      IF(JSTAT.GE.0) GO TO 1
+      CALL FVCLR(SYNT,1,5140)
+      IF(JSTAT.LT.-1) RETURN
+      JSTAT=0
+      KNT=0
+      XJ=-1.
+    1 IF(ITYPE.EQ.2) GO TO 10
+C     CALL APOVLD(2)
+      CALL SOSFRS
+      RETURN
+C  10 CALL APOVLD(3)
+   10 CONTINUE
+      CALL SOTORS
+      RETURN
+      END
+
+C$**********************************************************************
+      SUBROUTINE SOTORS
+      COMMON/INTAP/ JSTAT,ITYPE,ICOMP,IFACT,ITER,NEIG,NPOINT,IDUM(9)
+      COMMON/IAP5/ SYNT(5140),ADDF(7710)
+      COMMON/AP1/ T0,DT,OMMAX,FILL(23)
+      COMMON/AP2/ XL(437),OMEGA(437),QBAR(437),GRV(437),ELP(437),
+     1U(1311),SP(5244)
+      COMMON/IAP3/ XTRACE(514),C(60),XMUL(10),CC(120),DUMM3(324)
+      COMMON/IAP1/ PSFER(16),PTORS(16)
+      COMMON/INTER/ KNT,XJ,ZZ1,ZZ2
+      COMPLEX A0,STEP
+      NC=3*IFACT
+      DO 100 NN=1,437
+      X=XL(NN)
+      IF(X.LT.0.) GO TO 99
+      OM=OMEGA(NN)
+      IF(OM.GT.OMMAX) GO TO 100
+      IF(X.EQ.XJ) GO TO 10
+      KNT=0
+      XJ=X
+      L=XJ+.001
+      CALL SPHARS(L,ICOMP)
+      CALL FVCLR(C,1,190)
+      K=1
+   20 INDP=(K-1)*8+1
+      INDC=(K-1)*60
+      CALL TTABLS(XJ,PTORS(INDP))
+      DO 1 I=1,NEIG
+      CALL TCOEFS(ITER,I,XMUL,PTORS(INDP))
+      J=1
+   21 INDJ=INDC+I+(J-1)*3
+      CC(INDJ)=XMUL(J)
+      J=J+1
+      IF(J.LE.IFACT) GO TO 21
+    1 CONTINUE
+      K=K+1
+      IF(K.LE.2) GO TO 20
+   10 IF(KNT.EQ.0.AND.DT.LT.20.) GO TO 100
+      INDP=(NN-1)*12+1
+      INDU=(NN-1)*3+1
+      CALL ADJUSS(X,OM,GRV(NN),ELP(NN),SP(INDP),DTHETA)
+      QB=-.5*QBAR(NN)
+      ARG=OM*T0
+      A0=-CMPLX(.95179,0.)*CEXP(CMPLX(QB*ARG,ARG))
+      ARG=OM*DT
+      STEP=CEXP(CMPLX(QB*ARG,ARG))
+      DO 2 I=1,NPOINT
+      XTRACE(I)=REAL(A0)
+    2 A0=A0*STEP
+      CALL FVSMA(CC(61),1,DTHETA,CC,1,C,1,NC)
+      I1=-513
+      INDF=-2
+      I=1
+   30 I1=I1+514
+      INDF=INDF+3
+      CALL FDOTPR(C(INDF),1,U(INDU),1,FACT,NEIG)
+      CALL FVSMA(XTRACE,1,FACT,SYNT(I1),1,SYNT(I1),1,NPOINT)
+      I=I+1
+      IF(I.LE.IFACT) GO TO 30
+  100 KNT=KNT+1
+      RETURN
+   99 JSTAT=-1
+      RETURN
+      END
+
+C$**********************************************************************
+      SUBROUTINE SPHARP(L,ICOMP)
+      COMPLEX EPC,X,Y,XX,YY,YT
+      COMMON/AP1/ DUM1(3),THETA,CAZ,SAZ,EPC(4),DUM2(12)
+      COMMON/IAP1/ X(6),Y(6),ADD1(8)
+      COMMON/INTER/ KNT,XJ,ZZ1,ZZ2
+      DIMENSION Z(3),ZP(3),ZPP(3),X1(9),X2(6)
+      EQUIVALENCE (Z(1),X1(1)),(ZP(1),X1(4)),(ZPP(1),X1(7)),(X1(4),
+     1X2(1))
+      DATA FPI/12.5663706/
+      CALL FVCLR(X1,1,9)
+      CT=COS(THETA)
+      ST=SIN(THETA)
+      COSEC=1./ST
+      M=MIN0(L,2)
+      LP1=L+1
+      MP1=M+1
+      ZL=L
+      FCT=(2.*ZL+1.)/FPI
+      FL3=ZL*(ZL+1.)
+      COT=CT/ST
+      IF(L.GT.2) GO TO 20
+      GO TO(22,23,24),LP1
+   22 Z(1)=FCT
+      GO TO 28
+   23 Z(1)=CT*FCT
+      ZP(1)=-ST*FCT
+      Z(2)=ZP(1)
+      ZP(2)=-.5*Z(1)*FL3
+      GO TO 27
+   24 ZZ1=1.
+      ZZ2=CT
+   20 Z3=((2.*ZL-1.)*CT*ZZ2-(ZL-1.)*ZZ1)/ZL
+      ZZ1=ZZ2
+      ZZ2=Z3
+      Z3=ZZ2*FCT
+      Z(1)=Z3
+      Z2=ZL*(ZZ1-CT*ZZ2)*FCT*COSEC
+      ZP(1)=-Z2
+      ZP(2)=COT*Z2-FL3*Z3
+      Z(2)=-Z2
+      Z2=-Z2
+      Z1=Z3
+      FCT=1.
+      I=3
+   25 FCT=0.5*FCT
+      ZM=I-1
+      Z3=-(2.*(ZM-1.)*COT*Z2+(ZL-ZM+2.)*(ZL+ZM-1.)*Z1)
+      Z(I)=Z3*FCT
+      ZP(I)=-FCT*((ZL+ZM)*(ZL-ZM+1.)*Z2+ZM*COT*Z3)
+      Z1=Z2
+      Z2=Z3
+      I=I+1
+      IF(I.LE.MP1) GO TO 25
+   27 I=1
+   26 ZPP(I)=COT*ZP(I)-(FL3-(FLOAT(I-1)*COSEC)**2)*Z(I)
+      I=I+1
+      IF(I.LE.MP1) GO TO 26
+   28 I=1
+    1 K=MOD(I-1,3)+1
+      IF(ICOMP.GT.1) GO TO 2
+      X(I)=X1(I)*EPC(K)
+      Y(I)=(0.,0.)
+      GO TO 3
+    2 XM=K-1
+      XX=X2(I)*EPC(K)
+      YT=CMPLX(0.,XM*X1(I)*COSEC)
+      YY=EPC(K)*YT
+      X(I)=-CAZ*XX-SAZ*YY
+      Y(I)=SAZ*XX-CAZ*YY
+    3 I=I+1
+      IF(I.LE.6) GO TO 1
+      RETURN
+      END
+
+C$**********************************************************************
+      SUBROUTINE STAPCL(ARR1,ARR2,NF,NE,IT1,IT2)
+      DIMENSION ARR1(1),ARR2(1)
+      ARG=3.14159265/FLOAT(IT2-IT1)
+      CALL RFOUR(ARR1,8,-1)
+      CALL FVCLR(ARR2,1,514)
+      SUM2=0.
+      DO 2 I=NF,NE
+      SUM2=SUM2+ARR1(I)
+    2 ARR2(I)=ARR1(I)
+      SUM2=SUM2/FLOAT(NE-NF+1)
+      DO 3 I=NF,NE
+    3 ARR2(I)=ARR2(I)-SUM2
+      CALL RFOUR(ARR2,8,1)
+      DO 4 I=2,257
+      IF(I.LE.IT1) SUM2=1.
+      IF(I.GE.IT2) SUM2=0.
+      IF(I.GT.IT1.AND.I.LT.IT2) SUM2=0.5*(1.+COS(ARG*FLOAT(I-IT1)))
+      J=2*I-1
+      ARR2(J)=ARR2(J)*SUM2
+      ARR2(J+1)=ARR2(J+1)*SUM2
+    4 CONTINUE
+      RETURN
+      END
+
+C$**********************************************************************
+      SUBROUTINE TTABLP
+      COMMON/AP1/ DUM1(17),F4,F5,F6,F2PF3,F2MF3,DUM2(4)
+      COMMON/IAP1/ XX(12),Y(2,3),W(2,3),ADD1(8)
+      COMMON/IAP2/ B1ST,A2ST,BB1ST,AA2ST,DUMM(2)
+      F62=2.*F6
+      B1ST=F4*Y(2,2)-F5*Y(1,2)
+      A2ST=F2MF3*Y(2,3)-F62*Y(1,3)
+      BB1ST=F4*W(2,2)-F5*W(1,2)
+      AA2ST=F2MF3*W(2,3)-F62*W(1,3)
+      RETURN
+      END
+
+C$**********************************************************************
+C      SUBROUTINE COOL2
+C$PROG COOL2
+      SUBROUTINE COOL2 (DATA,NPREV,N,NREM,ISIGN)
+C     DISCRETE FOURIER TRANSFORM OF LENGTH N.  IN-PLACE COOLEY-TUKEY
+C     ALGORITHM, BIT-REVERSED TO NORMAL ORDER, SANDE-TUKEY PHASE SHIFTS.
+C     DIMENSION DATA(NPREV,N,NREM)
+C     COMPLEX DATA
+C     DATA(J1,K4,J5) = SUM(DATA(J1,J4,J5)*EXP(ISIGN*2*PI*I*(J4-1)*
+C     (K4-1)/N)), SUMMED OVER J4 = 1 TO N FOR ALL J1 FROM 1 TO NPREV,
+C     K4 FROM 1 TO N AND J5 FROM 1 TO NREM.  N MUST BE A POWER OF TWO.
+C     METHOD--LET IPREV TAKE THE VALUES 1, 2 OR 4, 4 OR 8, ..., N/16,
+C     N/4, N.  THE CHOICE BETWEEN 2 OR 4, ETC., DEPENDS ON WHETHER N IS
+C     A POWER OF FOUR.  DEFINE IFACT = 2 OR 4, THE NEXT FACTOR THAT
+C     IPREV MUST TAKE, AND IREM = N/(IFACT*IPREV).  THEN--
+C     DIMENSION DATA(NPREV,IPREV,IFACT,IREM,NREM)
+C     COMPLEX DATA
+C     DATA(J1,J2,K3,J4,J5) = SUM(DATA(J1,J2,J3,J4,J5)*EXP(ISIGN*2*PI*I*
+C     (K3-1)*((J3-1)/IFACT+(J2-1)/(IFACT*IPREV)))), SUMMED OVER J3 = 1
+C     TO IFACT FOR ALL J1 FROM 1 TO NPREV, J2 FROM 1 TO IPREV, K3 FROM
+C     1 TO IFACT, J4 FROM 1 TO IREM AND J5 FROM 1 TO NREM.  THIS IS
+C     A PHASE-SHIFTED DISCRETE FOURIER TRANSFORM OF LENGTH IFACT.
+C     FACTORING N BY FOURS SAVES ABOUT TWENTY FIVE PERCENT OVER FACTOR-
+C     ING BY TWOS.  DATA MUST BE BIT-REVERSED INITIALLY.
+C     IT IS NOT NECESSARY TO REWRITE THIS SUBROUTINE INTO COMPLEX
+C     NOTATION SO LONG AS THE FORTRAN COMPILER USED STORES REAL AND
+C     IMAGINARY PARTS IN ADJACENT STORAGE LOCATIONS.  IT MUST ALSO
+C     STORE ARRAYS WITH THE FIRST SUBSCRIPT INCREASING FASTEST.
+      DIMENSION DATA(1)
+      TWOPI=6.2831853072*FLOAT(ISIGN)
+      IP0=2
+      IP1=IP0*NPREV
+      IP4=IP1*N
+      IP5=IP4*NREM
+      IP2=IP1
+C     IP2=IP1*IPROD
+      NPART=N
+ 10   IF (NPART-2) 60,30,20
+ 20   NPART=NPART/4
+      GO TO 10
+C     DO A FOURIER TRANSFORM OF LENGTH TWO
+ 30   IF (IP2-IP4) 40,160,160
+ 40   IP3=IP2*2
+C     IP3=IP2*IFACT
+      DO 50 I1=1,IP1,IP0
+C     I1 = 1+(J1-1)*IP0
+      DO 50 I5=I1,IP5,IP3
+C     I5 = 1+(J1-1)*IP0+(J4-1)*IP3+(J5-1)*IP4
+      I3A=I5
+      I3B=I3A+IP2
+C     I3 = 1+(J1-1)*IP0+(J2-1)*IP1+(J3-1)*IP2+(J4-1)*IP3+(J5-1)*IP4
+      TEMPR=DATA(I3B)
+      TEMPI=DATA(I3B+1)
+      DATA(I3B)=DATA(I3A)-TEMPR
+      DATA(I3B+1)=DATA(I3A+1)-TEMPI
+      DATA(I3A)=DATA(I3A)+TEMPR
+ 50   DATA(I3A+1)=DATA(I3A+1)+TEMPI
+      IP2=IP3
+C     DO A FOURIER TRANSFORM OF LENGTH FOUR (FROM BIT REVERSED ORDER)
+ 60   IF (IP2-IP4) 70,160,160
+ 70   IP3=IP2*4
+C     IP3=IP2*IFACT
+C     COMPUTE TWOPI THRU WR AND WI IN DOUBLE PRECISION, IF AVAILABLE.
+      THETA=TWOPI/FLOAT(IP3/IP1)
+      SINTH=SIN(THETA/2.)
+      WSTPR=-2.*SINTH*SINTH
+      WSTPI=SIN(THETA)
+      WR=1.
+      WI=0.
+      DO 150 I2=1,IP2,IP1
+C     I2 = 1+(J2-1)*IP1
+      IF (I2-1) 90,90,80
+ 80   W2R=WR*WR-WI*WI
+      W2I=2.*WR*WI
+      W3R=W2R*WR-W2I*WI
+      W3I=W2R*WI+W2I*WR
+ 90   I1MAX=I2+IP1-IP0
+      DO 140 I1=I2,I1MAX,IP0
+C     I1 = 1+(J1-1)*IP0+(J2-1)*IP1
+      DO 140 I5=I1,IP5,IP3
+C     I5 = 1+(J1-1)*IP0+(J2-1)*IP1+(J4-1)*IP3+(J5-1)*IP4
+      I3A=I5
+      I3B=I3A+IP2
+      I3C=I3B+IP2
+      I3D=I3C+IP2
+C     I3 = 1+(J1-1)*IP0+(J2-1)*IP1+(J3-1)*IP2+(J4-1)*IP3+(J5-1)*IP4
+      IF (I2-1) 110,110,100
+C     APPLY THE PHASE SHIFT FACTORS
+ 100  TEMPR=DATA(I3B)
+      DATA(I3B)=W2R*DATA(I3B)-W2I*DATA(I3B+1)
+      DATA(I3B+1)=W2R*DATA(I3B+1)+W2I*TEMPR
+      TEMPR=DATA(I3C)
+      DATA(I3C)=WR*DATA(I3C)-WI*DATA(I3C+1)
+      DATA(I3C+1)=WR*DATA(I3C+1)+WI*TEMPR
+      TEMPR=DATA(I3D)
+      DATA(I3D)=W3R*DATA(I3D)-W3I*DATA(I3D+1)
+      DATA(I3D+1)=W3R*DATA(I3D+1)+W3I*TEMPR
+ 110  T0R=DATA(I3A)+DATA(I3B)
+      T0I=DATA(I3A+1)+DATA(I3B+1)
+      T1R=DATA(I3A)-DATA(I3B)
+      T1I=DATA(I3A+1)-DATA(I3B+1)
+      T2R=DATA(I3C)+DATA(I3D)
+      T2I=DATA(I3C+1)+DATA(I3D+1)
+      T3R=DATA(I3C)-DATA(I3D)
+      T3I=DATA(I3C+1)-DATA(I3D+1)
+      DATA(I3A)=T0R+T2R
+      DATA(I3A+1)=T0I+T2I
+      DATA(I3C)=T0R-T2R
+      DATA(I3C+1)=T0I-T2I
+      IF (ISIGN) 120,120,130
+ 120  T3R=-T3R
+      T3I=-T3I
+ 130  DATA(I3B)=T1R-T3I
+      DATA(I3B+1)=T1I+T3R
+      DATA(I3D)=T1R+T3I
+ 140  DATA(I3D+1)=T1I-T3R
+      TEMPR=WR
+      WR=WSTPR*TEMPR-WSTPI*WI+TEMPR
+ 150  WI=WSTPR*WI+WSTPI*TEMPR+WI
+      IP2=IP3
+      GO TO 60
+ 160  RETURN
+      END
+
+C$**********************************************************************
+      DOUBLE PRECISION FUNCTION DFLOAT(I)
+      DFLOAT=DBLE(I)
+      RETURN
+      END
+
+C$**********************************************************************
+      SUBROUTINE FDOTPR(A,I,B,J,C,N)
+      DIMENSION A(N*I),B(J*N)
+      C=0.
+      IK=1
+      JK=1
+      DO 1 K=1,N
+      C=C+A(IK)*B(JK)
+      IK=IK+I
+      JK=JK+J
+    1 CONTINUE
+      RETURN
+      END
+
+C$**********************************************************************
+C      SUBROUTINE MATINV
+C$PROG MATINV
+      SUBROUTINE MATINV(A,N,M,DET)
+      IMPLICIT DOUBLE PRECISION(A-H,O-Z)
+      DOUBLE PRECISION A,DET
+C     THIS SUBROUTINE IS FOR MATRIX INVERSION AND SIMULT. LINEAR EQS.
+C     A = THE GIVEN COEFFICIENT MATRIX A; A-1 WILL BE STORED IN THIS MAT
+C         -RIX AT RETURN TO THE MAIN PROGRAM
+C     N = ORDER OF A, N > OR = 1.
+C     M = DIMENSION OF A IN THE CALLING PROGRAM
+C     DET = VALUE OF DETERMINANT
+      DIMENSION A(M,M),IPVOT(40),INDEX(40,2),PIVOT(40)
+      EQUIVALENCE (IROW,JROW),(ICOL,JCOL)
+C     FOLLOWING 3 STATMENTS FOR INITIALIZATION
+      DET=1.D0
+      DO 17 J=1,N
+   17 IPVOT(J)=0
+      DO 135 I=1,N
+C     FOLLOWING 12 STATEMENTS FOR SEARCH FOR PIVOT ELEMENT
+      T=0.D0
+      DO 9 J=1,N
+      IF(IPVOT(J)-1)13,9,13
+   13 DO 23 K=1,N
+      IF(IPVOT(K)-1)43,23,81
+   43 IF(DDABS(T)-DDABS(A(J,K)))83,23,23
+   83 IROW=J
+      ICOL=K
+      T=A(J,K)
+   23 CONTINUE
+    9 CONTINUE
+      IPVOT(ICOL)=IPVOT(ICOL)+1
+C     FOLLOWING 15 STATEMENTS TO PUT PIVOT ELEMENT ON DIAGONAL
+      IF(IROW-ICOL)73,109,73
+   73 DET=-DET
+      DO 12 L=1,N
+      T=A(IROW,L)
+      A(IROW,L)=A(ICOL,L)
+   12 A(ICOL,L)=T
+  109 INDEX(I,1)=IROW
+      INDEX(I,2)=ICOL
+      PIVOT(I)=A(ICOL,ICOL)
+      DET=DET*PIVOT(I)
+C     FOLLOWING 6 STATEMENTS TO DIVIDE PIVOT ROW BY PIVOT ELEMENT
+      A(ICOL,ICOL)=1.D0
+      DO 205 L=1,N
+  205 A(ICOL,L)=A(ICOL,L)/PIVOT(I)
+C      FOLLOWING 10 STATEMENTS TO REDUCE NON-PIVOT ROWS
+      DO 135 LI=1,N
+      IF(LI-ICOL)21,135,21
+   21 T=A(LI,ICOL)
+      A(LI,ICOL)=0.D0
+      DO 89 L=1,N
+   89 A(LI,L)=A(LI,L)-A(ICOL,L)*T
+  135 CONTINUE
+C     FOLLOWING 11 STATEMENTS TO INTERCHANGE COLUMNS
+      DO 3 I=1,N
+      L=N-I+1
+      IF(INDEX(L,1)-INDEX(L,2))19,3,19
+   19 JROW=INDEX(L,1)
+      JCOL=INDEX(L,2)
+      DO 549 K=1,N
+      T=A(K,JROW)
+      A(K,JROW)=A(K,JCOL)
+      A(K,JCOL)=T
+  549 CONTINUE
+    3 CONTINUE
+   81 RETURN
+      END
+
+C$**********************************************************************
+CPROG OCFUN
+CXREF
+      FUNCTION OCFUN(XLAT,XLON)
+      COMMON/OCFN/IOC(9,36)
+      ILAT=1+(90.-XLAT)/5.
+      ILAT=MIN0(36,MAX0(1,ILAT))
+      ILON=1+AMOD(XLON+360.,360.)/5.
+      ILON=MIN0(72,MAX0(1,ILON))
+      IBYTE=(ILON-1)/2
+      CALL ILBYTE(K,IOC(1,ILAT),IBYTE)
+      IFODD=MOD(ILON,2)
+      IF(IFODD.EQ.0) IOCFUN=MOD(K,16)
+      IF(IFODD.NE.0) IOCFUN=K/16
+      OCFUN=FLOAT(IOCFUN)*.1
+      RETURN
+      END
+
+      subroutine ilbyte(k,buf,ibyt)
+      character*1 buf(*)
+      k=ichar(buf(ibyt))
+      return
+      end
+
+
+
+      COMPLEX FUNCTION RIDA(W)
+
+C    FUNCTION RIDA RETURNS THE COMPLEX TRANSFER FUNCTION OF THE
+C    APPROPRIATE IDA SYSTEM (INSTRUMENT AND FILTER) AS A FUNCTION OF
+C    ANGULAR FREQUENCY W (RADIANS/SEC).
+C     THAT IS, RIDA(W) CONVERTS GROUND MOTION TO COUNTS, AND 1./RIDA
+C    CONVERTS COUNTS TO GROUND MOTION, AT THE FREQUENCY W. (TO CONVERT
+C    FROM HZ TO RAD/SEC, MULTIPLY BY 2*PI).
+C     A CALL TO THIS FUNCTION FOR A PARTICULAR IDA SYSTEM MUST
+C    BE PRECEDED BY THE SUBROUTINE CALLS
+C
+C             NUMSTA = IDANUM(STCODE)
+C             NUMCHN = IDANUM(CHCODE)
+C             IERR   = IDARES(NUMSTA,NUMCHN,IYR,IDY)
+C     WHERE
+C                STCODE IS THE STATION CODE (ALPHA)
+C                CHCODE IS THE CHANNEL NAME (ALPHA)
+C                NUMSTA IS THE STATION NUMBER (0 IF NO CODE FOUND)
+C                NUMCHN IS THE CHANNEL NUMBER (0 IF NO CODE FOUND)
+C                IYR    IS THE YEAR A.D.
+C                IDY    IS THE DAY OF THE YEAR
+C                IERR   IS AN ERROR CODE (-1 IF NO RESPONSE AVAILABLE
+C                          FOR THAT STATION AND TIME, OTHERWISE 1).
+C
+C    THESE CALLS NEED BE MADE ONLY ONCE FOR EACH NEW STATION,
+C    AFTER WHICH RIDA MAY BE CALLED REPEATEDLY TO GET THE RESPONSE.
+C
+C     $$$$CALLS ONLY SYSTEM ROUTINES
+C
+C        D. C. AGNEW, APRIL 1983
+C
+      COMPLEX POLE,ZERO,S
+C   COMMON BLOCK HOLDING INSTRUMENT PARAMETERS (SET BY IDARES)
+      COMMON/PLZERX/CF,NP,POLE(20),NZ,ZERO(20)
+      RIDA = CMPLX(CF,0.)
+C   SET NORMALIZED FREQUENCY (FOR NORMALIZING FREQUENCY OF 1 CHZ)
+      S = CMPLX(0.,15.91549431*W)
+C   COMPUTE RESPONSE, INCLUDING COMPLEX CONJUGATES AS NEEDED
+      IF(NZ.EQ.0) GO TO 2
+      DO 1 I=1,NZ
+      IF(AIMAG(ZERO(I)).EQ.0) RIDA = RIDA*(S+ZERO(I))
+ 1    IF(AIMAG(ZERO(I)).NE.0) RIDA = RIDA*(S+ZERO(I))*
+     1   (S+CONJG(ZERO(I)))
+ 2    IF(NP.EQ.0) RETURN
+      DO 3 I=1,NP
+      IF(AIMAG(POLE(I)).EQ.0) RIDA = RIDA/(S+POLE(I))
+ 3    IF(AIMAG(POLE(I)).NE.0) RIDA = RIDA/((S+POLE(I))*
+     1   (S+CONJG(POLE(I))))
+      RETURN
+      END
+CBEND
+
+C$**********************************************************************
+      SUBROUTINE TCOEFP(E,C1,C2)
+      DIMENSION E(2)
+      COMMON/IAP2/ B1ST,A2ST,BB1ST,AA2ST,DUMM(2)
+      E21=E(2)-E(1)
+      C1=A2ST*E(1)-B1ST*E21
+      C2=AA2ST*E(1)-BB1ST*E21
+      RETURN
+      END
+
+C$**********************************************************************
+      SUBROUTINE TSROOT
+      CALL STRNSF
+      RETURN
+      END
+
+C$**********************************************************************
+CPROG YLMAV
+CXREF
+      SUBROUTINE YLMAV(XLAT1,XLON1,XLAT2,XLON2,LMAX,YLMH,YLMT
+     1   ,WK1,WK2,WK3,SAR,D)
+      DOUBLE PRECISION D(1),DCTH
+      COMPLEX FAC,DFAC,TEMP,TEMP1,CCON
+      DIMENSION SAR(1),WK1(1),WK2(1),WK3(1),YLMH(1),YLMT(1)
+C
+C     WK1,WK2,WK3,SAR SHOULD BE DIMENSIONED AT LEAST (LMAX+1)*4
+C     D SHOULD BE DIMENSIONED AT LEAST (2*LMAX+1)**2*8
+C     YLMH,YLMT ARE IN COMLEX ARRAYS OF LENGTH (LMAX+1)**2(*8)
+C
+      DATA RADIAN/57.2957795/
+C
+      CALL POLE(XLAT1,XLON1,XLAT2,XLON2,XLATP,XLONP,AZMP,DELTA)
+C
+      DEL=DELTA/RADIAN
+      CTH=(90.-XLATP)/RADIAN
+      DCTH=CTH
+      CPH=XLONP/RADIAN
+      PHMP=(180.-AZMP)/RADIAN
+C
+      LM1=LMAX+1
+      SAR(1)=1.
+      DO 11 IMP=2,LM1
+      ARG=FLOAT(IMP-1)*DEL*.5
+   11 SAR(IMP)=SIN(ARG)/ARG
+C
+      IND=0
+      DO 10 IL1=1,LM1
+      L=IL1-1
+      ITLP1=2*L+1
+C
+      CALL LEGNDR(90./RADIAN,L,L,WK1,WK2,WK3)
+C
+      CALL  ROTMX2(L,L,DCTH,D,ITLP1,ITLP1)
+C
+      FAC=(1.,0.)
+      DFAC=CEXP(CMPLX(0.,CPH))
+C
+      DO 20 IM=1,IL1
+      IMC=IM+L
+      IBIA=ITLP1*(IMC-1)
+      TEMP=(0.,0.)
+C
+      DO 25 IC=1,ITLP1
+      MP=IC-IL1
+      FMP=FLOAT(MP)
+      IMP=IABS(MP)+1
+      SSGN=1.
+      IF(MP.LT.0.AND.(MP/2)*2.NE.MP) SSGN=-1.
+      ARG=FMP*PHMP
+      CCON=CMPLX(0.,ARG)
+      CCON=CEXP(CCON)
+      TEMP=TEMP+SSGN*WK1(IMP)*SAR(IMP)*D(IBIA+IC)*CCON
+   25 CONTINUE
+C
+      TEMP=TEMP*FAC
+      TEMP1=WK1(1)*D(IL1+IBIA)*FAC
+      IND=IND+1
+      YLMT(IND)=REAL(TEMP)
+      YLMH(IND)=REAL(TEMP1)
+      IF(IM.EQ.1) GOTO 20
+      IND=IND+1
+      YLMT(IND)=AIMAG(TEMP)
+      YLMH(IND)=AIMAG(TEMP1)
+   20 FAC=FAC*DFAC
+C
+   10 CONTINUE
+      RETURN
+      END
+
+C$**********************************************************************
+C$PROG ASRINS
+C$XREF
+      COMPLEX FUNCTION ASRINS(OMEGA,NORM)
+      COMPLEX S,F,POLE,ZERO
+      IF(NORM.NE.0)GO TO 100
+      OMEGA=(2.*3.1415926536)/25.
+  100 CONTINUE
+      S=OMEGA*(0.,1.)
+      ZERO=(S**4)
+      POLE=(S+(0.2094,0.00341))*(S+(0.2094,-0.00341))*(S+(0.1291,0.26
+     199))
+     2*(S+(0.1291,-0.2699))*(S+(0.05955,0.02364))*(S+(0.05955,-0.02364))
+     3*(S+(0.1589,0.5940))*(S+(0.1589,-0.5940))*(S+0.6296)*(S+0.08853)
+     4*(S+(0.8547,0.2555))*(S+(0.8547,-0.2555))*(S+(0.5415,0.6834))*
+     5(S+(0.5415,-0.6834))
+      ASRINS=(4.61E+03)*(ZERO/POLE)
+      IF(NORM.NE.0)GO TO 110
+      XNORM=CABS(ASRINS)
+      GO TO 999
+  110 CONTINUE
+      ASRINS=ASRINS/CMPLX(XNORM,0.)
+  999 RETURN
+      END
+
+C$**********************************************************************
+C$PROG CLEAR
+C$XREF
+      SUBROUTINE CLEAR(I1,I2,IMAX,DATA)
+      DIMENSION DATA(1)
+      DOUBLE PRECISION SUMY,B
+      NP=I2-I1+1
+      SUMY=0.D0
+      DO 1 I=I1,I2
+    1 SUMY=SUMY+DATA(I)
+      B=SUMY/DFLOAT(NP)
+      DO 2 I=I1,I2
+    2 DATA(I)=DATA(I)-B
+      IF(I1.EQ.1) GO TO 4
+      K=I1-1
+      DO 3 I=1,K
+    3 DATA(I)=0.
+    4 IF(I2.EQ.IMAX) RETURN
+      K=I2+1
+      DO 5 I=K,IMAX
+    5 DATA(I)=0.
+      RETURN
+      END
+
+C$**********************************************************************
+C      SUBROUTINE FOUR2
+C$PROG FOUR2
+      SUBROUTINE FOUR2 (DATA,N,NDIM,ISIGN,IFORM)
+C     COOLEY-TUKEY FAST FOURIER TRANSFORM IN USASI BASIC FORTRAN.
+C     MULTI-DIMENSIONAL TRANSFORM, EACH DIMENSION A POWER OF TWO,
+C     COMPLEX OR REAL DATA.
+C     TRANSFORM(K1,K2,...) = SUM(DATA(J1,J2,...)*EXP(ISIGN*2*PI*SQRT(-1)
+C     *((J1-1)*(K1-1)/N(1)+(J2-1)*(K2-1)/N(2)+...))), SUMMED FOR ALL
+C     J1 AND K1 FROM 1 TO N(1), J2 AND K2 FROM 1 TO N(2),
+C     ETC. FOR ALL NDIM SUBSCRIPTS.  NDIM MUST BE POSITIVE AND
+C     EACH N(IDIM) MUST BE A POWER OF TWO.  ISIGN IS +1 OR -1.
+C     LET NTOT = N(1)*N(2)*...*N(NDIM).  THEN A -1 TRANSFORM
+C     FOLLOWED BY A +1 ONE (OR VICE VERSA) RETURNS NTOT
+C     TIMES THE ORIGINAL DATA.  IFORM = 1, 0 OR -1, AS DATA IS
+C     COMPLEX, REAL OR THE FIRST HALF OF A COMPLEX ARRAY.  TRANSFORM
+C     VALUES ARE RETURNED TO ARRAY DATA.  THEY ARE COMPLEX, REAL OR
+C     THE FIRST HALF OF A COMPLEX ARRAY, AS IFORM = 1, -1 OR 0.
+C     THE TRANSFORM OF A REAL ARRAY (IFORM = 0) DIMENSIONED N(1) BY N(2)
+C     BY ... WILL BE RETURNED IN THE SAME ARRAY, NOW CONSIDERED TO
+C     BE COMPLEX OF DIMENSIONS N(1)/2+1 BY N(2) BY ....  NOTE THAT IF
+C     IFORM = 0 OR -1, N(1) MUST BE EVEN, AND ENOUGH ROOM MUST BE
+C     RESERVED.  THE MISSING VALUES MAY BE OBTAINED BY COMPLEX CONJUGA-
+C     TION.  THE REVERSE TRANSFORMATION, OF A HALF COMPLEX ARRAY DIMEN-
+C     SIONED N(1)/2+1 BY N(2) BY ..., IS ACCOMPLISHED BY SETTING IFORM
+C     TO -1.  IN THE N ARRAY, N(1) MUST BE THE TRUE N(1), NOT N(1)/2+1.
+C     THE TRANSFORM WILL BE REAL AND RETURNED TO THE INPUT ARRAY.
+C     RUNNING TIME IS PROPORTIONAL TO NTOT*LOG2(NTOT), RATHER THAN
+C     THE NAIVE NTOT**2.  FURTHERMORE, LESS ERROR IS BUILT UP.
+C     WRITTEN BY NORMAN BRENNER OF MIT LINCOLN LABORATORY, JANUARY 1969.
+C     SEE-- IEEE AUDIO TRANSACTIONS (JUNE 1967), SPECIAL ISSUE ON FFT.
+      DIMENSION DATA(1), N(1)
+      NTOT=1
+      DO 10 IDIM=1,NDIM
+ 10   NTOT=NTOT*N(IDIM)
+      IF (IFORM) 70,20,20
+ 20   NREM=NTOT
+      DO 60 IDIM=1,NDIM
+      NREM=NREM/N(IDIM)
+      NPREV=NTOT/(N(IDIM)*NREM)
+      NCURR=N(IDIM)
+      IF (IDIM-1+IFORM) 30,30,40
+ 30   NCURR=NCURR/2
+ 40   CALL BITRV (DATA,NPREV,NCURR,NREM)
+      CALL COOL2 (DATA,NPREV,NCURR,NREM,ISIGN)
+      IF (IDIM-1+IFORM) 50,50,60
+ 50   CALL FIXRL (DATA,N(1),NREM,ISIGN,IFORM)
+      NTOT=(NTOT/N(1))*(N(1)/2+1)
+ 60   CONTINUE
+      RETURN
+ 70   NTOT=(NTOT/N(1))*(N(1)/2+1)
+      NREM=1
+      DO 100 JDIM=1,NDIM
+      IDIM=NDIM+1-JDIM
+      NCURR=N(IDIM)
+      IF (IDIM-1) 80,80,90
+ 80   NCURR=NCURR/2
+      CALL FIXRL (DATA,N(1),NREM,ISIGN,IFORM)
+      NTOT=NTOT/(N(1)/2+1)*N(1)
+ 90   NPREV=NTOT/(N(IDIM)*NREM)
+      CALL BITRV (DATA,NPREV,NCURR,NREM)
+      CALL COOL2 (DATA,NPREV,NCURR,NREM,ISIGN)
+ 100  NREM=NREM*N(IDIM)
+      RETURN
+      END
+
+
+
+
+
+      FUNCTION GDIDA(W)
+
+C    FUNCTION GDIDA RETURNS THE GROUP DELAY OF THE APPROPRIATE IDA
+C    SYSTEM (INSTRUMENT AND FILTER) AS A FUNCTION OF ANGULAR FREQUENCY
+C    W (RADIANS/SEC).
+C     THE VALUE RETURNED IS THE DELAY, IN SECONDS. THE SIGN CONVENTION
+C    USED IS THAT A NEGATIVE VALUE CORRESPONDS TO A DELAY
+C     A CALL TO THIS FUNCTION FOR A PARTICULAR IDA SYSTEM MUST
+C    BE PRECEDED BY THE SUBROUTINE CALLS
+C
+C             NUMSTA = IDANUM(STCODE)
+C             NUMCHN = IDANUM(CHCODE)
+C             IERR   = IDARES(NUMSTA,NUMCHN,IYR,IDY)
+C     WHERE
+C                STCODE IS THE STATION CODE (ALPHA)
+C                CHCODE IS THE CHANNEL NAME (ALPHA)
+C                NUMSTA IS THE STATION NUMBER (0 IF NO CODE FOUND)
+C                NUMCHN IS THE CHANNEL NUMBER (0 IF NO CODE FOUND)
+C                IYR    IS THE YEAR A.D.
+C                IDY    IS THE DAY OF THE YEAR
+C                IERR   IS AN ERROR CODE (-1 IF NO RESPONSE AVAILABLE
+C                          FOR THAT STATION AND TIME, OTHERWISE 1).
+C
+C    THESE CALLS NEED BE MADE ONLY ONCE FOR EACH NEW STATION,
+C    AFTER WHICH GDIDA MAY BE CALLED REPEATEDLY TO GET THE DELAY.
+C
+C     $$$$CALLS ONLY SYSTEM ROUTINES
+C
+C        D. C. AGNEW, APRIL 1983
+C
+      COMPLEX POLE,ZERO,S
+C   COMMON BLOCK HOLDING INSTRUMENT PARAMETERS (SET BY IDARES)
+      COMMON/PLZERX/CF,NP,POLE(20),NZ,ZERO(20)
+C   SET NORMALIZED FREQUENCY (FOR NORMALIZING FREQUENCY OF 1 CHZ)
+      F = 15.91549431*W
+      S = CMPLX(0.,F)
+      F2 = F**2
+C  COMPUTE GROUP DELAY FROM THE DERIVATIVE OF THE POLYNOMIAL FUNCTION
+ 4    GDIDA = 0.
+      IF(NZ.EQ.0) GO TO 6
+      DO 5 I = 1,NZ
+      A = REAL(ZERO(I))
+      A2 = A*A
+      B = (AIMAG(ZERO(I)))**2
+      IF(A.EQ.0.AND.B.EQ.0.AND.F.EQ.0) GO TO 5
+      IF(B.EQ.0) GDIDA = GDIDA + A/(F2+A2)
+      IF(B.NE.0) GDIDA = GDIDA + (2*A*(F2+A2+B))/
+     1  ((A2+B)**2 + 2*F2*(A2-B) + F2**2)
+ 5    CONTINUE
+ 6    IF(NP.EQ.0) GO TO 8
+      DO 7 I = 1,NP
+      A = REAL(POLE(I))
+      A2 = A*A
+      B = (AIMAG(POLE(I)))**2
+      IF(B.EQ.0) GDIDA = GDIDA - A/(F2+A2)
+ 7    IF(B.NE.0) GDIDA = GDIDA - (2*A*(F2+A2+B))/
+     1  ((A2+B)**2 + 2*F2*(A2-B) + F2**2)
+C   NORMALIZE GROUP DELAY TO SECONDS
+ 8    GDIDA = GDIDA/.062831853
+      RETURN
+      END
+
+C$**********************************************************************
+CPROG RSPIDA
+CXREF
+C     COMPLEX FUNCTION RSPIDA(IDAY,IYEAR,NAME,OMEGA,I)
+      SUBROUTINE IDARESP(ANSWER,IDAY,IYEAR,NAME,OMEGA,I)
+      COMPLEX ANSWER
+      COMPLEX RESIDA
+      INTEGER*2 JDAY,JYEAR
+      IF(I.GT.1) GO TO 10
+      ANSWER=(0.,0.)
+      RETURN
+   10 JDAY=IDAY
+      JYEAR=IYEAR
+      ANSWER=-RESIDA(OMEGA,NAME,JYEAR,JDAY)*CMPLX(0.01,0.)
+      RETURN
+      END
+CBEND
+
+C$**********************************************************************
+CPROG ISCAN
+CXREF
+      SUBROUTINE ISCAN(IFCOM,ITAPER)
+      COMPLEX CSPEC
+      CHARACTER*12 HETMDL
+      INTEGER*4 IHTMDL(3)
+      COMMON/SCAN/ NSOUR,NPATH,NPREC(3,50),NOGOOD(50),RATIOI,RATIOM
+     1  ,IHTMDL,IFANM,LMAXM,LENY,NPRMM,PERTM(588),IFCC,MFIL(4),MFILAN(4)
+      COMMON/BIGSPA/ FILLB(1536),ISTOR0(200),ISTOR1(200),
+     1IFL(10),ARRAY(1401),DATA(514),FILLB2(13815)
+      DIMENSION CSPEC(257),B(536),SPEC(514),COMP(514)
+      EQUIVALENCE (B(1),ARRAY(1)),(B(1),ID),(B(3),INST),(B(4),RATE),
+     1(B(16),DELAY),(B(17),NF),(B(18),NEND),(B(19),DELTA),
+     2(B(20),AZEP),(B(21),AZST),(B(22),IFLAG),(B(23),SPEC(1)),
+     3(B(16),IDELAY),(SPEC(1),CSPEC(1)),(COMP(1),ARRAY(537)),
+     4(B(2),ICP)
+      DIMENSION IT1(2),IT2(2)
+      DATA IT1,IT2/137,205,183,257/
+      DATA DOMEGI/0.0001917476/
+      DATA MAXLEN/588/
+      M=514
+      NSOUR=1
+      JT1=IT1(ITAPER)
+      JT2=IT2(ITAPER)
+      IF(IFCOM.NE.0) CALL BFFIN(2,1,NSOUR,1,J,M)
+      CALL BFFOUT(7,1,NSOUR,1,J)
+      NW=11*NSOUR+1
+      IF(IFCOM.NE.0) CALL BFFIN(2,1,B,NW,J,M)
+      CALL BFFOUT(7,1,B,NW,J)
+      DO 3 I=537,1401
+    3 ARRAY(I)=0.
+      NT=2*JT2
+      NT1=NT+1
+      KNTS=0
+      PS=0.
+      REDB=1.
+      IF(ITAPER.EQ.1) REDB=.711
+      REDM=.948
+      KNTM=0
+      PM=0.
+      KNTI=0
+      PI=0.
+      SUMS=0.
+      SUMI=0.
+      SUMM=0.
+      CALL STSORT(NPATH,NPREC,ISTOR0,ISTOR1)
+      KNT=0
+      DO 100 NN=1,NPATH
+      NOT=1
+      NOGOOD(NN)=0
+      NR=NPREC(1,NN)
+      DO 87 I=1,10
+   87 IFL(I)=-1
+      DO 10 N=1,NR
+      KNT=KNT+1
+      IREC=ISTOR0(KNT)
+      CALL BFFI(1,1,B,2144,J,M,IREC)
+      IREC=ISTOR1(KNT)
+      IF(IFCOM.NE.0) CALL BFFI(2,1,COMP,2056,J,M,IREC)
+      IF(RATE.GT.20.) GO TO 200
+      IFL(ICP)=IFLAG
+      KNTS=KNTS+1
+      PS=PS+FLOAT(NEND-NF+1)
+      CALL TAPCLR(SPEC,DATA,NF,NEND,JT1,JT2,SUM2)
+      SUMS=SUMS+SUM2
+      CALL BFFOUT(7,1,ARRAY,1401,J)
+      IF(IFLAG.EQ.0) NOT=0
+      GO TO 10
+  200 IF(RATE.GT.40.) GO TO 11
+      NF=NF/2+1
+      NEND=NEND/2+1
+      RATE=64.
+      DO 7 I=245,514
+    7 SPEC(I)=0.
+      CALL RFOUR(SPEC,7,-1)
+      NEP1=NEND+1
+      DO 8 I=NEP1,514
+    8 SPEC(I)=0.
+      CALL RFOUR(SPEC,8,1)
+      IF(IFCOM.EQ.0) GO TO 11
+      CALL RFOUR(COMP,7,-1)
+      CALL CLEAR(NF,NEND,514,COMP)
+      CALL RFOUR(COMP,8,1)
+   11 IFL(ICP+5)=IFLAG
+      IF(IFLAG.EQ.0) NOT=0
+      JDELAY=IFIX(DELAY+32.)/64
+      SHFT=64.*FLOAT(JDELAY)-DELAY
+      IDELAY=JDELAY
+      DO 51 I=2,257
+      ARG=SHFT*FLOAT(I-1)*DOMEGI
+   51 CSPEC(I)=CSPEC(I)*CMPLX(COS(ARG),SIN(ARG))
+      CALL TAPCLR(SPEC,DATA,NF,NEND,182,244,SUM2)
+      IF(INST.EQ.3) KNTI=KNTI+1
+      IF(INST.EQ.3) PI=PI+FLOAT(NEND-NF+1)
+      IF(INST.NE.3) KNTM=KNTM+1
+      IF(INST.NE.3) PM=PM+FLOAT(NEND-NF+1)
+      IF(INST.EQ.3) SUMI=SUMI+SUM2
+      IF(INST.NE.3) SUMM=SUMM+SUM2
+      CALL BFFOUT(7,1,ARRAY,1401,J)
+      DO 93 I=6,10
+      IF(IFL(I).NE.0) GO TO 93
+      NPREC(3,NN)=1
+   93 CONTINUE
+   10 CONTINUE
+      IF(NOT.NE.0) NOGOOD(NN)=1
+      CALL STATN(ID,NAME,INST,STLAT,STLONG,ILEV)
+      WRITE(16,1000) NN,NAME,DELTA,AZEP,AZST,INST,(IFL(I),I=1,10)
+ 1000 FORMAT(1X,I2,1X,A4,3F10.3,I5,5X,2(5I3,5X))
+  100 CONTINUE
+C
+C      WRITE THE PATH PARAMETERS
+C
+      CALL REWFL(7)
+      RATIOI=0.
+      RATIOM=0.
+      AVSRO=0.
+      AVIDA=0.
+      AVMNT=0.
+      IF(KNTS.NE.0) AVSRO=SQRT(SUMS/(REDB*PS))
+      IF(KNTI.NE.0) AVIDA=SQRT(SUMI/(PI*REDM))
+      IF(KNTM.NE.0) AVMNT=SQRT(SUMM/(PM*REDM))
+      IF(AVMNT.NE.0.) RATIOM=AVSRO/AVMNT
+      IF(AVIDA.NE.0.) RATIOI=AVSRO/AVIDA
+      IF(AVSRO.EQ.0..AND.AVIDA.NE.0.) RATIOI=AVMNT/AVIDA
+      IF(KNTS.NE.0) WRITE(6,1002) KNTS
+ 1002 FORMAT(I4,' LONG-PERIOD BODY-WAVE RECORDS')
+      IF(KNTM.NE.0) WRITE(6,1001) KNTM,RATIOM
+ 1001 FORMAT(I4,' GDSN MANTLE WAVE RECORDS, AMPLITUDE RATIO ',E10.3)
+      IF(KNTI.NE.0) WRITE(6,1003) KNTI,RATIOI
+ 1003 FORMAT(I4,' IDA MANTLE WAVE RECORDS, AMPLITUDE RATIO ',E10.3)
+      CALL CLOSFL(1,ISTAT)
+      CALL CLOSFL(2,ISTAT)
+      IFCC=0
+      HETMDL='            '
+      READ(HETMDL,111) IHTMDL
+  111 FORMAT(3A4)
+      IFANM=0
+      LMAXM=0
+      LENY=0
+      NPRMM=0
+      DO 92 I=1,MAXLEN
+   92 PERTM(I)=0.
+      CALL BFFOUT(7,1,NSOUR,808,J)
+      CALL REWFL(7)
+      RETURN
+      END
+
+
+
+
+
+      FUNCTION LIDA(NSTA,GCLAT,ELONG)
+
+C   FOR A GIVEN IDA STATION NUMBER (AS RETURNED BY ROUTINE IDANUM),
+C  RETURNS THE GEOCENTRIC COORDINATES OF THE STATION, AND FOR THE
+C  FUNCTION ITSELF AN ERROR CODE.
+C
+C   CALLING PARAMETERS:
+C
+C     NSTA  - THE STATION NUMBER, AS GOTTEN FROM SUBROUTINE IDANUM.
+C     GCLAT - THE GEOCENTRIC COLATITUDE, IN DEGREES, FOUND FOR A
+C             FLATTENING OF 1/298.25 (CARRIED TO SECOND ORDER).
+C             THE NORTH LATITUDE IS 90.-GCLAT.
+C     ELONG - THE EAST LONGITUDE, IN DEGREES (BETWEEN + AND - 180)
+C     LIDA  - THE FUNCTIONAL VALUE, SET TO 1 ON A SUCCESSFUL CALL,
+C             -1 IF THE STATION NUMBER IS TOO LARGE.
+C
+C    >>>>>>>>>>>LAST UPDATED ON 22 JUNE 1983<<<<<<<<<<<
+C
+C  $$$$CALLS ONLY SYSTEM ROUTINES
+C
+C    AUTHOR - D. C. AGNEW, IGPP LA JOLLA
+C
+      DIMENSION LAT(3,23),LONG(3,23)
+C  COORDINATES STORED IN DATA ARRAYS ARE THE GEOGRAPHIC LATITUDES AND
+C  LONGITUDES, IN SEXAGESIMAL DEGREES.
+      DATA NUMSTA/23/
+      DATA LAT/   82,29,00,-15,39,50, 40,02,25,-35,19,15, 64,51,36,
+     1 -27,09,29, 42,00,54, 55,19,00, 39,00,00, 13,32,18, 44,38,16,
+     2  21,25,24, 25,08,54,-77,50,57,-11,59,15, 33,36,33,-21,12,45,
+     3 -04,36,54, 18,06,34,-90,00,00, 45,16,45,-32,22,47,-35,01,57/
+      DATA LONG/-62,24,00, -47,54,12, 116,10,30, 148,59,55,-147,50,06,
+     1-109,26,04, 143,09,26, -3,12,18, 70,19,00, 144,54,42, -63,35,30,
+     2-158,00,54, 102,44,49,166,40,02,-76,50,32,-116,27,19,-159,46,24,
+     3  55,29,27, -66,09,00, 00,00,00,  4,32,31,  20,48,42, 138,34,41/
+      DATA DR/.017453293/,FLT/298.25/
+      IF(NSTA.GT.NUMSTA) GO TO 3
+      LIDA = 1
+      S = LAT(1,NSTA)/IABS(LAT(1,NSTA))
+      W = LONG(1,NSTA)/IABS(LONG(1,NSTA))
+      GCLAT = FLOAT(LAT(1,NSTA)) + S*((FLOAT(LAT(2,NSTA)) +
+     1 (FLOAT(LAT(3,NSTA)))/60.)/60.)
+      ELONG = FLOAT(LONG(1,NSTA)) + W*((FLOAT(LONG(2,NSTA)) +
+     1 (FLOAT(LONG(3,NSTA)))/60.)/60.)
+      GCLAT = DR*GCLAT
+      E = 1./FLT
+      W = SIN(GCLAT)
+      S = ((2.-E)*W +4.*E*(W**3))*E*COS(GCLAT)
+      GCLAT = (GCLAT-S)/DR
+      GCLAT = 90.-GCLAT
+      RETURN
+ 3    LIDA = -1
+      RETURN
+      END
+
+C$**********************************************************************
+CPROG PPFP
+      SUBROUTINE PPFP(LU,KIN,ISHFT,U)
+C
+C     SUBROUTINE FOR PRINTER PLOTTING NODAL PLANE
+C     BEACH BALLS
+C
+C     LU      LOGICAL UNIT
+C     KIN     WIDTH AND HEIGHT OF PLOT IN INCHES
+C     ISHFT   NUMBER OF CHARACTERS FROM LEFT MARGIN
+C             TO START PLOT
+C     U(3,3)  MATRIX WHOSE COLUMNS ARE THE EIGENVECTORS
+C             OF THE MOMENT TENSOR (T,N,P) AS RETURNED
+C             BY SUBROUTINE EQPAR
+C
+C
+      DIMENSION U(3,3)
+      CHARACTER*1 WORK(133)
+      CHARACTER*16 FORM
+C
+      WRITE(LU,11)
+   11 FORMAT(//)
+      RT2=SQRT(2.)
+      IX=1+ISHFT
+      WRITE(FORM,1)  IX
+    1 FORMAT(1H(,I3,8HX,132A1))
+C
+C
+      NCOL=10*KIN
+      NROW=6*KIN
+      RK5=FLOAT(5*KIN)
+      RK3=FLOAT(3*KIN)
+C
+      DO 20 IP=1,3,2
+      UU=U(1,IP)
+      FAC=0.
+      DEN=1.-UU*UU
+      IF(DEN.NE.0.) FAC=SQRT(2.*(1.+UU)/DEN)
+      X=U(3,IP)*FAC
+      Y=U(2,IP)*FAC
+      ICOL=RK5*(X/RT2+1.)+1.
+      IROW=RK3*(Y/RT2+1.)+1.
+      IROW=MAX0(1,MIN0(IROW,NROW))
+      ICOL=MAX0(1,MIN0(ICOL,NCOL))
+      IF(IP.EQ.3) ICOLP=ICOL
+      IF(IP.EQ.3) IROWP=IROW
+      IF(IP.EQ.1) ICOLT=ICOL
+      IF(IP.EQ.1) IROWT=IROW
+   20 CONTINUE
+C
+C
+      DO 10 IROW=1,NROW
+      Y=RT2*((FLOAT(IROW)-.5)/RK3-1.)
+      DO 30 ICOL=1,NCOL
+      X=RT2*((FLOAT(ICOL)-.5)/RK5-1.)
+      R2=X*X+Y*Y
+      R=SQRT(R2)
+      VR=-1.+.5*R2
+      IF(VR.LE.0.) GOTO 40
+      WORK(ICOL)=' '
+      GOTO 50
+   40 ST=SQRT(1.-VR*VR)
+      VT=ST*Y/R
+      VP=ST*X/R
+      TESTT=ABS(U(1,1)*VR+U(2,1)*VT+U(3,1)*VP)
+      TESTP=ABS(U(1,3)*VR+U(2,3)*VT+U(3,3)*VP)
+      IF(TESTP.GT.TESTT) WORK(ICOL)='-'
+      IF(TESTT.GE.TESTP) WORK(ICOL)='#'
+C
+   50 IF((IABS(ICOL-ICOLP).LE.1.AND.IABS(IROW-IROWP).LE.1)
+     1 .OR.(IABS(ICOL-ICOLT).LE.1.AND.IABS(IROW-IROWT).LE.1))
+     2 WORK(ICOL)=' '
+      IF(ICOL.EQ.ICOLP.AND.IROW.EQ.IROWP) WORK(ICOL)='P'
+      IF(ICOL.EQ.ICOLT.AND.IROW.EQ.IROWT) WORK(ICOL)='T'
+   30 CONTINUE
+C
+C
+      WRITE(LU,FORM)(WORK(ICOL),ICOL=1,NCOL)
+   10 CONTINUE
+      WRITE(LU,11)
+      RETURN
+      END
+
+C$**********************************************************************
+CPROG SETUP1
+CXREF
+      SUBROUTINE SETUP1(R0)
+      DIMENSION B(1024)
+      COMMON/TAPE/ R(49),BUFF(201),INDSFR(330),INDTOR(300),
+     1KNTSFR(330),KNTTOR(300),KNTS,KNTT,LU1,NBATCH
+      COMMON/SPLIN/ DR,HN,HN2,HN3,RHN,IR1
+      COMMON/BIGSPA/ IB(1024),FILL(16652)
+      EQUIVALENCE (B(1),IB(1))
+      CALL REWFL(LU1)
+      CALL BFFIN(LU1,1,IB,51,J,M)
+      KNTS=IB(2)
+      KNTT=IB(3)
+      DO 1 I=1,48
+    1 R(I)=B(I+3)
+      CALL BFFIN(LU1,1,IB,660,J,M)
+      DO 2 I=1,330
+      INDSFR(I)=IB(I)
+    2 KNTSFR(I)=IB(I+330)
+      CALL BFFIN(LU1,1,IB,600,J,M)
+      DO 5 I=1,300
+      INDTOR(I)=IB(I)
+    5 KNTTOR(I)=IB(I+300)
+      NBATCH=(MAX0(INDSFR(KNTS)+KNTSFR(KNTS)-1,
+     1             INDTOR(KNTT)+KNTTOR(KNTT)-1)+255)/256
+      WRITE(5,1231) NBATCH
+ 1231 FORMAT('  NBATCH:',I7)
+      IF(R0.LT.R(1)) STOP 'SOURCE TOO DEEP'
+      DO 3 I=2,48
+      IF(R(I).GE.R0.AND.R(I-1).LT.R0) GO TO 4
+    3 CONTINUE
+      STOP 'SOURCE NOT BRACKETED'
+    4 IR1=I-1
+      HN=R(I)-R(I-1)
+      DR=R0-R(I-1)
+      RHN=1./HN
+      HN2=RHN*RHN
+      HN3=HN2*RHN
+      RETURN
+      END
+
+C$**********************************************************************
+C$PROG SROINS
+C$XREF
+      COMPLEX FUNCTION SROINS(OMEGA)
+      COMPLEX S,F,POLE,ZERO
+      S=CMPLX(0.0,OMEGA)
+      ZERO=(S**5)*(S+(0.1256,0.0))*(S+(50.10,0.0))*(S+(0.,1.053))*
+     1(S+(0.,-1.053))
+      POLE=(S+(4.648,3.463))*(S+(4.648,-3.463))*(S+(0.1179,0.0))*
+     1(S+(40.73,0.0))*(S+(100.,0.0))*(S+(0.1500,0.0))*(S+(264.,0.0))
+     2*(S+(3.928,0.0))*(S+(0.2820,0.0))*(S+(0.2010,0.2410))*(S+(0.2010,
+     3-0.2410))*(S+(0.1337,0.1001))*(S+(0.1337,-0.1001))*(S+(0.0251,0.0
+     4))*(S+(0.00924,0.0))*(S+(0.3334,0.2358))*(S+(0.3334,-0.2358))*
+     5(S+(0.1378,0.5873))*(S+(0.1378,-0.5873))
+      SROINS=CMPLX(9.237E+03,0.0)*(ZERO/POLE)
+      RETURN
+      END
+
+C$**********************************************************************
+      SUBROUTINE STABLS(XL,XX)
+      DIMENSION XX(8)
+      COMMON/TAB3/ FIL1(8),Z2(4),FIL2(20),P3(6),
+     1P4(6),P5(6),P6(6),P7(6),FIL3(39)
+      COMMON/AP1/ DUM1(17),F4,F5,F6,F2PF3,F2MF3,DUM2(4)
+      COMMON/IAP2/ B1C,A2C,B2C,B2S,A3C,A3S
+      X=XL*(XL+1.)
+      P3(1)=-.5*X-1.
+      P3(3)=X
+      P5(3)=-.5*X
+      P5(4)=.5*X
+      P6(3)=.5*X
+      P7(3)=.25*(X+2.)
+      Z2(3)=-.5*X
+      F62=2.*F6
+      B1C=F4*XX(3)+F5*XX(4)
+      A2C=F2MF3*XX(5)+F62*XX(6)
+      B2C=F4*XX(5)+F5*XX(6)
+      B2S=F4*XX(6)-F5*XX(5)
+      A3C=F2MF3*XX(7)+F62*XX(8)
+      A3S=F2MF3*XX(8)-F62*XX(7)
+      RETURN
+      END
+C$PROG STATN
+C$XREF
+      SUBROUTINE STATN(ID,NAME,INST,STLAT,STLONG,ILEV)
+      COMMON/STDATA/ NSRO,INDEX(90),NAMEST(90),STLA(90),STLO(90),
+     1ELEV(90)
+      COMMON/IDASTA/ NIDA,IDAIND(30),IDANAM(30),STLAI(30),
+     1STLOI(30),ELEVI(30)
+      IF(INST.EQ.3) GO TO 5
+      DO 1 I=1,NSRO
+      IF(ID.EQ.INDEX(I)) GO TO 2
+    1 CONTINUE
+      STOP 'STATION NOT IN SRO LIBRARY'
+    2 NAME=NAMEST(I)
+      STLAT=STLA(I)
+      STLONG=STLO(I)
+      ILEV=1000.*ELEV(I)+.499
+      RETURN
+    5 DO 3 I=1,NIDA
+      IF(ID.EQ.IDAIND(I)) GO TO 4
+    3 CONTINUE
+      STOP 'STATION NOT IN IDA LIBRARY'
+    4 NAME=IDANAM(I)
+      STLAT=STLAI(I)
+      STLONG=STLOI(I)
+      ILEV=ELEVI(I)+.499
+      RETURN
+      END
+
+      BLOCK DATA BLKOCN
+      COMMON/OCFN/IOC(9,36)
+      DIMENSION IOC1(9,9),IOC2(9,9),IOC3(9,9),IOC4(9,9)
+      EQUIVALENCE (IOC(1, 1),IOC1(1,1)),(IOC(1,10),IOC2(1,1))
+     1           ,(IOC(1,19),IOC3(1,1)),(IOC(1,28),IOC4(1,1))
+      DATA IOC1/
+     1   Z'AAAAAAAA',Z'AAAAAAAA',Z'AAAAAAAA',Z'AAAAA000',Z'01889999'
+     2              ,Z'9999AA99',Z'99999999',Z'10018AAA',Z'AAAAAAAA'
+     1  ,Z'55554444',Z'33332222',Z'22334468',Z'AAAAA504',Z'8AAAAAAA'
+     2              ,Z'AAAAAAAA',Z'AA720000',Z'00112110',Z'00005AAA'
+     1  ,Z'AA000000',Z'00000000',Z'00000000',Z'12221000',Z'00110253'
+     2              ,Z'4AAAAA52',Z'00000000',Z'00000000',Z'00006AAA'
+     1  ,Z'AA600000',Z'00000000',Z'00000000',Z'00000000',Z'00000000'
+     2              ,Z'55778600',Z'00000000',Z'00000000',Z'00004AAA'
+     1  ,Z'94200000',Z'00000000',Z'00000000',Z'00000000',Z'00000000'
+     2              ,Z'00000000',Z'00000000',Z'00002000',Z'00024AAA'
+     1  ,Z'30000000',Z'00000000',Z'00000000',Z'00000000',Z'00000000'
+     2              ,Z'00000000',Z'00000000',Z'00016502',Z'8AAAAA53'
+     1  ,Z'00000000',Z'00000000',Z'00000000',Z'00016885',Z'3AAAAAA8'
+     2              ,Z'22774000',Z'00000000',Z'00006A99',Z'AAAAAA40'
+     1  ,Z'00000000',Z'00000000',Z'00000000',Z'00001A90',Z'67788888'
+     2              ,Z'9AAAA610',Z'00000000',Z'000000AA',Z'AAAAAA10'
+     1  ,Z'00100022',Z'01200000',Z'00000000',Z'00001537',Z'AAAAAAAA'
+     2              ,Z'AAAAAA80',Z'00000000',Z'0000005A',Z'AAAAA730'/
+      DATA IOC2/
+     1   Z'33430355',Z'13500000',Z'00000000',Z'004664AA',Z'AAAAAAAA'
+     2              ,Z'AAAAAAA0',Z'00000000',Z'00267878',Z'AAAAAA10'
+     1  ,Z'46474420',Z'01500000',Z'00000002',Z'748908AA',Z'AAAAAAAA'
+     2              ,Z'AAAAAAA3',Z'00000000',Z'069AAAAA',Z'AAAAAA21'
+     1  ,Z'00286661',Z'00000000',Z'00000000',Z'68585AAA',Z'AAAAAAAA'
+     2              ,Z'AAAAAAAA',Z'10000000',Z'3AAAAAAA',Z'AAAAAA10'
+     1  ,Z'00000031',Z'00000000',Z'00000000',Z'A7AA8AAA',Z'AAAAAAAA'
+     2              ,Z'AAAAAAAA',Z'80000661',Z'2AAAAAAA',Z'AAAA7000'
+     1  ,Z'00000005',Z'0001A300',Z'00000000',Z'4AAA6AAA',Z'AAAAAAAA'
+     2              ,Z'AAAAAAAA',Z'A7703A44',Z'3989AAAA',Z'AAAA6000'
+     1  ,Z'00000003',Z'5027AA20',Z'1551001A',Z'5AAAA9AA',Z'AAAAAAAA'
+     2              ,Z'AAAAAAAA',Z'AA851036',Z'7697AAAA',Z'AAAA5000'
+     1  ,Z'00000000',Z'358AAA80',Z'6A75005A',Z'AAAAAAAA',Z'AAAAAAAA'
+     2              ,Z'AAAAAAAA',Z'AAAAA733',Z'85568AAA',Z'AAAA6000'
+     1  ,Z'00000000',Z'008AAAA1',Z'5A6501A7',Z'6558AAAA',Z'AAAAAAAA'
+     2              ,Z'AAAAAAAA',Z'AAAAAAA4',Z'20003AAA',Z'AAAAA500'
+     1  ,Z'97000000',Z'08AAAAAA',Z'AA9400A7',Z'927AAAAA',Z'AAAAAAAA'
+     2              ,Z'AAAAAAAA',Z'AAAAAAA5',Z'0000008A',Z'AAAAAAAA'/
+      DATA IOC3/
+     1   Z'A8000000',Z'7AAAAAAA',Z'AA981002',Z'672769AA',Z'AAAAAAAA'
+     2              ,Z'AAAAAAAA',Z'AAAAAAA7',Z'00000003',Z'6AAAAAAA'
+     1  ,Z'AA400000',Z'AAAAAAAA',Z'AAAA9767',Z'04000078',Z'8AAAAAAA'
+     2              ,Z'AAAAAAAA',Z'AAAAAAA7',Z'00000000',Z'06AAAAAA'
+     1  ,Z'AA000000',Z'74AAAAAA',Z'AAAAAAAA',Z'000009AA',Z'A9AAAAAA'
+     2              ,Z'AAAAAAAA',Z'AAAAAA89',Z'40000000',Z'2AAAAAAA'
+     1  ,Z'AA300002',Z'A0AAAAAA',Z'AAAAAA82',Z'0000005A',Z'A8AA68AA'
+     2              ,Z'AAAAAAAA',Z'AAAAAAAA',Z'A4000000',Z'2AAAAAAA'
+     1  ,Z'AA600007',Z'633AAAAA',Z'AAAAA820',Z'0000002A',Z'A9AA7AAA'
+     2              ,Z'AAAAAAAA',Z'AAAAAAAA',Z'A8000000',Z'3AAAAAAA'
+     1  ,Z'AA50004A',Z'AAAAAAAA',Z'AAAAAA60',Z'0000003A',Z'AAAA7AAA'
+     2              ,Z'AAAAAAAA',Z'AAAAAAAA',Z'A6000002',Z'8AAAAAAA'
+     1  ,Z'AA9401AA',Z'AAAAAAAA',Z'AAAAAA70',Z'0000003A',Z'AA9A6AAA'
+     2              ,Z'AAAAAAAA',Z'AAAAAAAA',Z'A300005A',Z'AAAAAAAA'
+     1  ,Z'AAAAAAAA',Z'AAAAAAAA',Z'AAAAAAAA',Z'AA84008A',Z'AA72AAAA'
+     2              ,Z'AAAAAAAA',Z'AAAAAAAA',Z'A0000AAA',Z'AAAAAAAA'
+     1  ,Z'AAAAAAAA',Z'AAAAAAAA',Z'AAAAAAAA',Z'AAAAAA7A',Z'AA3AAAAA'
+     2              ,Z'AAAAAAAA',Z'AAAAAAAA',Z'80005AAA',Z'AAAAAAAA'/
+      DATA IOC4/
+     1   Z'AAAAAAAA',Z'AAAAAAAA',Z'AAAAAAAA',Z'AAAAAAAA',Z'A49AAAAA'
+     2              ,Z'AAAAAAAA',Z'AAAAAAAA',Z'20005AAA',Z'AAAAAAAA'
+     1  ,Z'AAAAAAAA',Z'AAAAAAAA',Z'AAAAAAAA',Z'AAAAAAAA',Z'AAAAAAAA'
+     2              ,Z'AAAAAAAA',Z'AAAAAAAA',Z'60004AAA',Z'AAAAAAAA'
+     1  ,Z'AAAAAAAA',Z'AAAAAAAA',Z'AAAAAAAA',Z'AAAAAAAA',Z'AAAAAAAA'
+     2              ,Z'AAAAAAAA',Z'AAAAAAAA',Z'A86AAAAA',Z'AA8AAAAA'
+     1  ,Z'AAAAAAAA',Z'AAAAAAAA',Z'AA235677',Z'88889AAA',Z'AAAAAAAA'
+     2              ,Z'AAAAAAAA',Z'AAAAAAAA',Z'A9550000',Z'AAAAAAAA'
+     1  ,Z'55555505',Z'00000000',Z'00000000',Z'00000023',Z'31001432'
+     2              ,Z'10000000',Z'01357875',Z'21000008',Z'A8AAAA66'
+     1  ,Z'00000000',Z'00000000',Z'00000000',Z'00000000',Z'005566AA'
+     2              ,Z'AA985533',Z'22100000',Z'00000022',Z'20440000'
+     1  ,Z'00000000',Z'00000000',Z'00000000',Z'00000000',Z'00000000'
+     2              ,Z'00000000',Z'00000000',Z'00000000',Z'00000000'
+     1  ,Z'00000000',Z'00000000',Z'00000000',Z'00000000',Z'00000000'
+     2              ,Z'00000000',Z'00000000',Z'00000000',Z'00000000'
+     1  ,Z'00000000',Z'00000000',Z'00000000',Z'00000000',Z'00000000'
+     2              ,Z'00000000',Z'00000000',Z'00000000',Z'00000000'/
+      END
+
+      BLOCK DATA BLKCOEF
+      COMMON/TAB3/ H1(2),H2(2),Z1(4),Z2(4),Z3(4),Z4(4),P1(6),P2(6),
+     1P3(6),P4(6),P5(6),P6(6),P7(6),P8(6),P9(6),P10(6),Q1(3),
+     2Q2(3),Q3(3),Q4(3),Q5(3),Q6(3),Q7(3)
+      DATA H1/1.,0./
+      DATA H2/-1.,1./
+      DATA Z1/0.,1.,2*0./
+      DATA Z2/1.,3*0./
+      DATA Z3/1.,0.,-1.,1./
+      DATA Z4/2*0.,1.,0./
+      DATA Q1/1.,-1.,0./
+      DATA Q2/-2.,2*0./
+      DATA Q3/1.,2*0./
+      DATA Q4/2*0.,1./
+      DATA Q5/3*0./
+      DATA Q6/0.,-1.,0./
+      DATA Q7/3*0./
+      DATA P1/-1.,1.,1.,-1.,2*0./
+      DATA P2/1.,0.,-2.,3*0./
+      DATA P3/0.,1.,4*0./
+      DATA P4/2*0.,-1.,1.,2*0./
+      DATA P5/1.,-1.,4*0./
+      DATA P6/-1.,2*0.,-1.,2*0./
+      DATA P7/-1.,5*0./
+      DATA P8/4*0.,1.,0./
+      DATA P9/5*0.,1./
+      DATA P10/2*0.,1.,3*0./
+      END
+

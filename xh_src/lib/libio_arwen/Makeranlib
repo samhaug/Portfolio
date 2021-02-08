@@ -1,0 +1,1 @@
+$(LIBDIR)/$(LIB).a: ; ranlib $(LIBDIR)/$(LIB).a

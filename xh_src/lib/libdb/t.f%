@@ -1,0 +1,76 @@
+      parameter (MXBIG=10000)
+      integer bigsize
+      common/bigspa/nexbig,bigsize,ibig(0:MXBIG)
+      data bigsize/MXBIG/
+
+      logical trfind,trnext,x
+      character*80 exname
+      common/dbhot/ithot
+      
+
+
+      nstak=3
+      maxlev=3
+      mord=5
+      lkey=5
+      linfo=0
+      ityp=2
+      exname='*'
+      call tropnn(-1,'root',3,4,ierr
+     1   ,nstak,maxlev,itroot
+     1  ,mord,lkey,linfo,ityp,exname)
+
+      nstak=7
+      maxlev=7
+      mord=21
+      lkey=1
+      linfo=0
+      ityp=0
+      exname='*'
+      call tropnn(itroot,'comments',3,4,ierr
+     1   ,nstak,maxlev,itre
+     1  ,mord,lkey,linfo,ityp,exname)
+
+      ithot=itre
+c add 21
+      do key=1,23
+        if(trfind(itre,key,1,iok,ioi)) then
+          write(6,*) key,'unexpectedly  found'
+        else
+          call traddk(itre,key,1,info,0)
+          write(6,*) key, '  added'
+        endif
+      enddo
+c delete 2
+      do key=8,9
+        if(trfind(itre,key,1,iok,ioi)) then
+          call trdelk(itre)
+          write(6,*) key,'  deleted'
+        else
+          write(6,*) key,' unexpectedly not found'
+        endif
+      enddo
+c add 2
+      do key=8,9
+        if(trfind(itre,key,1,iok,ioi)) then
+          write(6,*) key,'unexpectedly  found'
+        else
+          call traddk(itre,key,1,info,0)
+          write(6,*) key, '  added'
+        endif
+      enddo
+
+c delete 3
+      do key=12,15
+        if(trfind(itre,key,1,iok,ioi)) then
+          call trdelk(itre)
+          write(6,*) key,'  deleted'
+        else
+          write(6,*) key,'  unexpectedly not found'
+        endif
+      enddo
+
+
+ 
+      end
+

@@ -1,0 +1,43 @@
+
+C$**********************************************************************
+CPROG SETUP1
+CXREF
+      SUBROUTINE SETUP1(R0)
+      save
+      DIMENSION B(1024)
+      COMMON/TAPE/ R(49),BUFF(201),INDSFR(330),INDTOR(300),
+     1KNTSFR(330),KNTTOR(300),KNTS,KNTT,LU1,NBATCH
+      COMMON/SPLIN/ DR,HN,HN2,HN3,RHN,IR1
+      COMMON/BIGSPA/ IB(1024),FILL(16652)
+      EQUIVALENCE (B(1),IB(1))
+      CALL REWFL(LU1)
+      CALL BFFIN(LU1,1,IB,51,J,M)
+      KNTS=IB(2)
+      KNTT=IB(3)
+      DO 1 I=1,48
+    1 R(I)=B(I+3)
+      CALL BFFIN(LU1,1,IB,660,J,M)
+      DO 2 I=1,330
+      INDSFR(I)=IB(I)
+    2 KNTSFR(I)=IB(I+330)
+      CALL BFFIN(LU1,1,IB,600,J,M)
+      DO 5 I=1,300
+      INDTOR(I)=IB(I)
+    5 KNTTOR(I)=IB(I+300)
+      NBATCH=(MAX0(INDSFR(KNTS)+KNTSFR(KNTS)-1,
+     1             INDTOR(KNTT)+KNTTOR(KNTT)-1)+255)/256
+      WRITE(6,1231) NBATCH
+ 1231 FORMAT('  NBATCH:',I7)
+      IF(R0.LT.R(1)) STOP 'SOURCE TOO DEEP'
+      DO 3 I=2,48
+      IF(R(I).GE.R0.AND.R(I-1).LT.R0) GO TO 4
+    3 CONTINUE
+      STOP 'SOURCE NOT BRACKETED'
+    4 IR1=I-1
+      HN=R(I)-R(I-1)
+      DR=R0-R(I-1)
+      RHN=1./HN
+      HN2=RHN*RHN
+      HN3=HN2*RHN
+      RETURN
+      END

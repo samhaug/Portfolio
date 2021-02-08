@@ -1,0 +1,853 @@
+%!
+/beginp
+{
+  /landscape exch def
+  /botmargin exch def
+  /topmargin exch def
+  /leftmargin exch def
+  /lspfac exch def
+  /points exch def
+
+  /Courier findfont
+  points scalefont
+  setfont
+
+  /ycorner 840 def
+  /height 843 def
+  /lspace points lspfac mul def
+  landscape
+  {
+    90 rotate
+    /ycorner 0 def
+    /height 602 def
+  } if
+
+  /lpp height topmargin botmargin add sub lspace div cvi def
+  /lines 0 def
+  /ypos ycorner topmargin sub def
+  save
+} def
+
+/topp
+{
+  showpage restore save
+} def
+
+/nl
+{
+  /ypos ypos lspace sub def
+  leftmargin ypos moveto
+  show
+  /lines lines 1 add def
+  lines lpp ge {topp} if
+} def
+
+
+/endp
+{
+  showpage
+} def
+
+    7.00000
+    1.10000
+  50
+  52
+  68
+false
+beginp
+(      SUBROUTINE HECNTI\(GRID,IGRID,IKY,IKX,NSHD,Z1,Z2,XB1,XB2,YB1,YB2) nl
+(     1      ,IFCLIP,CX,CY,INCC,NPTS,IFMAP,MAPFUN) nl
+(     1      ,XS,YS,INC,IXMAX,IS,IND,ILEV,ISMAX,WK,NWK\)) nl
+(      EXTERNAL MAPFUN) nl
+(      DIMENSION XS\(INC,IXMAX\),YS\(INC,IXMAX\),IND\(ISMAX\),ILEV\(ISMAX\)) nl
+(      DIMENSION INDDUM\(2\),WK\(NWK\),CX\(INCC,IXMAX\),CY\(INCC,IXMAX\)) nl
+(      EQUIVALENCE \(IPWK,RIPWK\)) nl
+(      EQUIVALENCE \(ITEMP,TEMP\)) nl
+(      COMMON /MESH/ NX,NX1,NX2,NX3,NY,NY1,NY2,NY3) nl
+(      COMMON /CTRING/ NPAUSE,ISIZE,LABEL,XDUM,YDUM) nl
+(      DIMENSION JCON\(2000\)) nl
+(      DIMENSION CON\(3\),GRID\(IGRID,1\)) nl
+(C     IF\(IFCLIP.EQ.0\) THEN) nl
+(C       RCLL=1.+FLOAT\(NSHD\)*\(GRID\(IKY,1\)-Z1\)/\(Z2-Z1\)) nl
+(C     ELSE) nl
+(C       IX1=1.+FLOAT\(IKX-1\)*\(XREF-XB1\)/\(XB2-XB1\)) nl
+(C       IY1=1.+FLOAT\(IKY-1\)*\(YREF-YB1\)/\(YB2-YB1\)) nl
+(C       Z00=GRID\(IY1,IX1\)) nl
+(C       Z10=GRID\(IY1,IX1+1\)) nl
+(C       Z01=GRID\(IY1+1,IX1\)) nl
+(C       Z11=GRID\(IY1+1,IX1+1\)) nl
+(C       FIP=FLOAT\(IKX-1\)*\(CX\(1,1\)-XB1\)/\(XB2-XB1\)-FLOAT\(IX1-1\)) nl
+(C       FJP=FLOAT\(IKY-1\)*\(CY\(1,1\)-YB1\)/\(YB2-YB1\)-FLOAT\(IY1-1\)) nl
+(C       Z=\(Z00*\(1.-FIP\)+Z10*FIP\)*\(1.-FJP\)+\(Z01*\(1.-FIP\)+Z11*FIP\)*FJP) nl
+(C       RCLL=1.+FLOAT\(NSHD\)*\(Z-Z1\)/\(Z2-Z1\)) nl
+(C     ENDIF) nl
+(      IF\(IFCLIP.NE.0\) THEN) nl
+(      DO I=1,IKX) nl
+(        II=1+MOD\(I+IKX/2,IKX\)) nl
+(        XREF=XB1+\(XB2-XB1\)*FLOAT\(II-1\)/FLOAT\(IKX-1\)) nl
+(        DO J=1,IKY) nl
+(          JJ=1+MOD\(J+IKY/2,IKY\)) nl
+(          YREF=YB1+\(YB2-YB1\)*FLOAT\(JJ-1\)/FLOAT\(IKY-1\)) nl
+(          XREF1=XREF) nl
+(          YREF1=YREF) nl
+(          IF\(IFMAP.NE.0\) CALL MAPFUN\(XREF1,YREF1\)) nl
+(          CALL CUTS\(CX,CY,INCC,NPTS,XREF1,YREF1) nl
+(     1     ,XREF1+1,YREF1+1,WK\(1\),WK\(2\),3,WK\(3\),50) nl
+(     1     ,NC1,NC2,NC3,WK\(151\),WK\(151\),100\)) nl
+(        IF\(MOD\(NC1+NC2+NC3,2\).NE.0\) PAUSE 'HECNTI: BOUNDARY NOT CLOSED') nl
+(        IF\(MOD\(NC1,2\).EQ.1\) GOTO 44) nl
+(        ENDDO) nl
+(      ENDDO) nl
+(      PAUSE 'HECNTI: REFERENCE POINT NOT FOUND') nl
+(      ELSE) nl
+(      JJ=IKY/2) nl
+(      II=IKX/2) nl
+(      XREF=XB1+\(XB2-XB1\)*FLOAT\(II-1\)/FLOAT\(IKX-1\)) nl
+(      YREF=YB1+\(YB2-YB1\)*FLOAT\(JJ-1\)/FLOAT\(IKY-1\)) nl
+(      ENDIF) nl
+(   44 RCLL=1.+FLOAT\(NSHD\)*\(GRID\(JJ,II\)-Z1\)/\(Z2-Z1\)) nl
+() nl
+() nl
+(      IF\(RCLL.GE.0\) THEN) nl
+(        ICLL=IFIX\(RCLL\)) nl
+(      ELSE) nl
+(        ICLL=-1+IFIX\(RCLL\)) nl
+(      ENDIF) nl
+(      ICLL=MAX0\(0,MIN0\(NSHD+1,ICLL\)\)) nl
+(      INX=IKY+2) nl
+(      INY=IKX+2) nl
+(      NSWAP=\(IKY+1\)/2) nl
+(      DO 13 I=1,NSWAP) nl
+(      II1=IKY+2-I) nl
+(      DO 13 J=1,IKX) nl
+(      TEMP=0.) nl
+(      IF\(II1.LE.IKY\) TEMP=GRID\(II1,J\)) nl
+(      GRID\(II1,J\)=GRID\(I,J\)) nl
+(      GRID\(I,J\)=TEMP) nl
+(   13 CONTINUE) nl
+(      DO 14 J=1,IKX) nl
+(      JJ1=1+IKX-J) nl
+(      JJ2=JJ1+1) nl
+(      DO 14 I=2,IKY+1) nl
+(   14 GRID\(I,JJ2\)=GRID\(I,JJ1\)) nl
+(      ICON = 500) nl
+(      NDEV=0) nl
+(      NOVERR=NSHD) nl
+(      SO=Z1) nl
+(      DELS=\(Z2-Z1\)/FLOAT\(NSHD\)) nl
+(      NPAUSE=0) nl
+(      ISIZE=3) nl
+(      LABEL=0) nl
+(C) nl
+(      NX1=INX-2) nl
+(      NY1=INY-2) nl
+(      NX2 = NX1 + 1) nl
+(      NX3 = NX2 + 1) nl
+(      NX  = NX1 - 1) nl
+(      NY2 = NY1 + 1) nl
+(      NY3 = NY2 + 1) nl
+(      NY  = NY1 - 1) nl
+(C) nl
+(C     Enter here to contour) nl
+(C) nl
+(      CON\(2\) = DELS) nl
+(      CON\(1\) = SO) nl
+(C) nl
+(C    Mesh point in the range 2 < X < NX2, 2 < y < NY2 are plotted) nl
+(C) nl
+() nl
+(      CALL CNTORGI\(GRID,CON,JCON,ICON,NOVERR,2,NX2,IGRID) nl
+(     1      ,2,NY2,NY3) nl
+(     1      ,WK\(2501\),WK\(2502\),2,NWK/2-2500,ISWK,WK\(2001\),WK\(2251\),250\)) nl
+(      RIPWK=WK\(2000+ISWK+1\)) nl
+(      IPWK=IPWK-1) nl
+(C     WRITE\(5,"\('ISWK, IPWK',2I12\)"\) ISWK,IPWK) nl
+(      CMX=\(XB2-XB1\)/FLOAT\(IKX-1\)) nl
+(      CMY=\(YB2-YB1\)/FLOAT\(IKY-1\)) nl
+(      K=2500) nl
+(      DO I=1,IPWK) nl
+(        K=K+1) nl
+(        WK\(K\)=XB1+CMX*WK\(K\)) nl
+(        K=K+1) nl
+(        WK\(K\)=YB2-CMY*WK\(K\)) nl
+(      ENDDO) nl
+() nl
+(      IF\(IFCLIP.EQ.0\) THEN) nl
+(        CALL DRAWCI\(0.,0.,0,1) nl
+(     1        ,WK\(1\),WK\(2\),2,500,ISBDY,INDDUM,2\)) nl
+(        DO I=1,IKX) nl
+(        CALL DRAWCI\(FLOAT\(I-1\),0.,1,0) nl
+(     1        ,WK\(1\),WK\(2\),2,500,ISBDY,INDDUM,2\)) nl
+(        ENDDO) nl
+(        DO I=1,IKY) nl
+(        CALL DRAWCI\(FLOAT\(IKX-1\),FLOAT\(I-1\),1,0) nl
+(     1        ,WK\(1\),WK\(2\),2,500,ISBDY,INDDUM,2\)) nl
+(        ENDDO) nl
+(        DO I=1,IKX) nl
+(        CALL DRAWCI\(FLOAT\(IKX-I\),FLOAT\(IKY-1\),1,0) nl
+(     1        ,WK\(1\),WK\(2\),2,500,ISBDY,INDDUM,2\)) nl
+(        ENDDO) nl
+(        DO I=1,IKY) nl
+(        CALL DRAWCI\(0.,FLOAT\(IKY-I\),1,0) nl
+(     1        ,WK\(1\),WK\(2\),2,500,ISBDY,INDDUM,2\)) nl
+(        ENDDO) nl
+() nl
+(        K=0) nl
+(        DO I=1,INDDUM\(ISBDY+1\)-1) nl
+(          K=K+1) nl
+(          WK\(K\)=XB1+CMX*WK\(K\)) nl
+(          K=K+1) nl
+(          WK\(K\)=YB2-CMY*WK\(K\)) nl
+(        ENDDO) nl
+(        CALL JOICNT\(WK\(1\),WK\(2\),2,INDDUM\(2\)-1,WK\(2501\),WK\(2502\),2,ISWK) nl
+(     1     ,WK\(2001\),WK\(2251\)) nl
+(     1     ,XS,YS,INC,IXMAX,IS,IND,ILEV,ISMAX) nl
+(     1     ,ICLL,XREF,YREF) nl
+(     1     ,WK\(1001\),WK\(1001\),1000\)) nl
+(        IF\(IFMAP.NE.0\) THEN) nl
+(          DO I=1,IND\(IS+1\)-1) nl
+(            CALL MAPFUN\(XS\(1,I\),YS\(1,I\)\)) nl
+(          ENDDO) nl
+(        ENDIF) nl
+(      ELSE) nl
+(      IA1=2500+2*IPWK+1) nl
+(      XXR=XREF) nl
+(      YYR=YREF) nl
+(      IF\(IFMAP.NE.0\) THEN) nl
+(        DO I=1,IPWK) nl
+(          II=2500+2*I-1) nl
+(          CALL MAPFUN\(WK\(II\),WK\(II+1\)\)) nl
+(        ENDDO) nl
+(      CALL MAPFUN\(XXR,YYR\)) nl
+(      ENDIF) nl
+(C&     CALL CHTERM\(5,5\)) nl
+(C&     CALL TWINDO\(500,3500,100,3100\)) nl
+(C&     CALL DWINDO\(-8000.,8000.,-8000.,8000.\)) nl
+(C&     CALL MOVEA\(CX\(1,1\),CY\(1,1\)\)) nl
+(C&     DO I=2,NPTS) nl
+(C&       CALL DRAWA\(CX\(1,I\),CY\(1,I\)\)) nl
+(C&     ENDDO) nl
+(C&     CALL TSEND) nl
+(C     PAUSE 'BOUNDARY PLOTTED') nl
+(C&     DO J=1,ISWK) nl
+(C&     TEMP=WK\(2000+J\)) nl
+(C&     IP1=ITEMP) nl
+(C&     TEMP=WK\(2000+J+1\)) nl
+(C&     IP2=ITEMP-1) nl
+(C&     CALL MOVEA\(WK\(2500+2*IP1-1\),WK\(2500+2*IP1\)\)) nl
+(C&     DO IP=IP1,IP2) nl
+(C&     CALL DRAWA\(WK\(2500+2*IP-1\),WK\(2500+2*IP\)\)) nl
+(C&     ENDDO) nl
+(C&     CALL TSEND) nl
+(C     WRITE\(5,"\('SEG',I3,':',3I5\)"\) J,IP1,IP2,IP2-IP1+1) nl
+(C     PAUSE) nl
+(C&     ENDDO) nl
+(C&     CALL TSEND) nl
+(C     PAUSE 'SEGMENTS PLOTTED') nl
+() nl
+(C     WRITE\(5,"\('NWK,IA1',2I12\)"\) NWK,IA1) nl
+(C     WRITE\(5,"\('ISWK, IPWK',2I12\)"\) ISWK,IPWK) nl
+(      CALL CLPSEG\(CX,CY,INCC,NPTS,WK\(2501\),WK\(2502\),2) nl
+(     1   ,ISWK,WK\(2001\),WK\(2251\)) nl
+(     1   ,WK\(IA1\),WK\(IA1+1\),2,NWK/2-IA1+1) nl
+(     1   ,ISSWK,WK\(1\),WK\(251\),250,WK\(501\),500,0\)) nl
+(C&     CALL CHTERM\(5,5\)) nl
+(C&     CALL TWINDO\(100,3100,50,3050\)) nl
+(C&     CALL DWINDO\(-8000.,8000.,-8000.,8000.\)) nl
+(C&     DO J=1,ISSWK) nl
+(C&     TEMP=WK\(J\)) nl
+(C&     IP1=ITEMP) nl
+(C&     TEMP=WK\(J+1\)) nl
+(C&     IP2=ITEMP-1) nl
+(C&     CALL MOVEA\(WK\(IA1-1+2*IP1-1\),WK\(IA1-1+2*IP1\)\)) nl
+(C&     DO IP=IP1,IP2) nl
+(C&     CALL DRAWA\(WK\(IA1-1+2*IP-1\),WK\(IA1-1+2*IP\)\)) nl
+(C&     ENDDO) nl
+(C&     CALL TSEND) nl
+(C     WRITE\(5,"\('SEG',I3,':',3I5\)"\) J,IP1,IP2,IP2-IP1+1) nl
+(C     PAUSE) nl
+(C&     ENDDO) nl
+(C     PAUSE 'CLIPPED SEGMENTS PLOTTED') nl
+() nl
+(        CALL JOICNT\(CX,CY,INCC,NPTS,WK\(IA1\),WK\(IA1+1\),2,ISSWK) nl
+(     1     ,WK\(1\),WK\(251\)) nl
+(     1     ,XS,YS,INC,IXMAX,IS,IND,ILEV,ISMAX) nl
+(     1     ,ICLL,XXR,YYR) nl
+(     1     ,WK\(1001\),WK\(1001\),1000\)) nl
+() nl
+(      ENDIF) nl
+() nl
+(      RETURN) nl
+(      END) nl
+() nl
+(      SUBROUTINE CNTORGI\(WORK,CON,JCON,ICON,NOVERR,M1,M2,M3) nl
+(     1      ,N1,N2,N3) nl
+(     1      ,XS,YS,INC,IXMAX,IS,IND,ILEV,ISMAX\)) nl
+(      DIMENSION XS\(INC,IXMAX\),YS\(INC,IXMAX\),IND\(ISMAX\),ILEV\(ISMAX\)) nl
+(      DIMENSION ILIN\(1\)) nl
+(      COMMON /MESH/ NX,NX1,NX2,NX3,NY,NY1,NY2,NY3) nl
+(      COMMON /CTRING/ NPAUSE,ISIZE,LABEL,XDUM,YDUM) nl
+(      DIMENSION  WORK\(M3,N3\),CON\(3\)) nl
+(      DIMENSION JCON\(ICON\)) nl
+(      RNX=FLOAT\(M2-M1\)) nl
+(      RNY=FLOAT\(N2-N1\)) nl
+(C) nl
+(C     The next part of the program inserts the buffer points) nl
+(C     on the matrix WORK \(needed for contouring\).) nl
+(C) nl
+(      DO 16 I = 1,M2) nl
+(16    WORK\(I,1\) = I - 2) nl
+(      DO 7 J = 1,N2) nl
+(C) nl
+(C     Correct maximum and minimum contour levels are prepared) nl
+(C     for the contouring subroutine.) nl
+(C) nl
+( 7    WORK\(1,J\) = J - 2) nl
+(C     WORK\(2,1\)=WORK\(2,1\)-.5) nl
+(C     WORK\(M2,1\)=WORK\(M2,1\)+.5) nl
+(C     WORK\(1,2\)=WORK\(1,2\)-.5) nl
+(C     WORK\(1,N2\)=WORK\(1,N2\)+.5) nl
+(      XMINEFF=CON\(1\)) nl
+(      IF \(NOVERR.LT.0\) NOVERR=-NOVERR) nl
+(      XMAX=CON\(1\)+NOVERR*CON\(2\)) nl
+(      IF \(XMINEFF.LE.XMAX\) GOTO 88) nl
+(      XMAX=CON\(1\)) nl
+(      XMINEFF=CON\(1\)+NOVERR*CON\(2\)) nl
+(   88 NOVERR=NOVERR+1) nl
+(C) nl
+(C     Rows are plotted vertically!) nl
+(C) nl
+(      CALL PECNTGI\(WORK,M2,N2,M3,XMINEFF,XMAX,NOVERR,JCON,0,0) nl
+(     1      ,XS,YS,INC,IXMAX,IS,IND,ILEV,ISMAX\)) nl
+(C     WRITE\(5,"\('FROM PECNTGI IS,IND\(IS+1\)',2I12\)"\) IS,IND\(IS+1\)) nl
+(      RETURN) nl
+(      END) nl
+() nl
+(      SUBROUTINE PECNTGI\(ARRAY,MDIM,NDIM,IDIMA,LOCNTR,HICNTR) nl
+(     1      ,NCNTR,WKAREA,EXSC,EXLF) nl
+(     1      ,XS,YS,INC,IXMAX,IS,IND,ILEV,ISMAX\)) nl
+(      DIMENSION XS\(INC,IXMAX\),YS\(INC,IXMAX\),IND\(ISMAX\),ILEV\(ISMAX\)) nl
+(C) nl
+(C ********  THE SLAC UNIFIED GRAPHICS SYSTEM \(VAX-11 VERSION\)  ********) nl
+(C *                      CONTOUR PLOT SUBROUTINE                      *) nl
+(C *                                                                   *) nl
+(C *                                                                   *) nl
+(C *  THE CALLING SEQUENCE IS:                                         *) nl
+(C *  ARRAY IS A RECTANGULAR FLOATING POINT ARRAY OF DIMENSION MDIM    *) nl
+(C *  AND NDIM; MDIM AND NDIM ARE FIXED POINT; LOCNTR AND HICNTR ARE   *) nl
+(C *  FLOATING POINT; NCTR IS FIXED POINT; WKAREA IS A FIXED POINT     *) nl
+(C *  ARRAY OF APPROXIMATE DIMENSION MDIM*NDIM/7;         *) nl
+(C *                                                                   *) nl
+(C *                          ROBERT C. BEACH                          *) nl
+(C *                    COMPUTATION RESEARCH GROUP                     *) nl
+(C *                STANFORD LINEAR ACCELERATOR CENTER                 *) nl
+(C *                                                                   *) nl
+(C *********************************************************************) nl
+(C) nl
+(      INTEGER       MDIM,NDIM) nl
+(      INTEGER       LINES\(4\)) nl
+(      REAL          ARRAY\(IDIMA,1\)) nl
+(      REAL          LOCNTR,HICNTR) nl
+(      INTEGER       NCNTR) nl
+(      INTEGER*4     WKAREA\(1\)) nl
+(      REAL*4        EXXR,EXXL,EXXV,EXYV) nl
+(      INTEGER*2     EXSC,EXLF) nl
+(      INTEGER       NCNT,ICNT,MCNT,IROW,ICOL,ISID) nl
+(      REAL          ZCNT) nl
+(      REAL          XPNT,YPNT,TPNT,XLBL,YLBL) nl
+(      INTEGER       JROW,JCOL,JSID) nl
+(      INTEGER       KROW,KCOL,KSID) nl
+(      INTEGER       BBIT,BDFG,INFG,MKFG) nl
+(      REAL          IVR1,IVR2,DVR1,DVR2) nl
+(      REAL          XSAV,YSAV) nl
+(      INTEGER*4     PWRS\(31\)) nl
+(      INTEGER       XMNB,XMNW,XMNO,XMWD,XMLP,XMUP,XMP0,XMP1) nl
+(      INTEGER       IRET,JRET,KRET) nl
+(C) nl
+(      INTEGER       INT1,INT2) nl
+(C) nl
+(      COMMON /PLOTC/ L) nl
+(      COMMON /CTRING/ NPAUSE,ISIZE,LABEL,EXINC,IFROT) nl
+(      DATA          PWRS/) nl
+(     X            1,          2,          4,          8,) nl
+(     X           16,         32,         64,        128,) nl
+(     X          256,        512,       1024,       2048,) nl
+(     X         4096,       8192,      16384,      32768,) nl
+(     X        65536,     131072,     262144,     524288,) nl
+(     X      1048576,    2097152,    4194304,    8388608,) nl
+(     X     16777216,   33554432,   67108864,  134217728,) nl
+(     X    268435456,  536870912, 1073741824/) nl
+(C     DATA          LINES/     0,   334,  3336,    34/) nl
+(      IFINIT=1) nl
+(      IS=0) nl
+(      EXXR=-1.0) nl
+(      EXXL=-1.0) nl
+(      EXXV=-1.0) nl
+(      EXYV=1.0) nl
+(      IF\(\(NDIM.LT.3\).OR.\(MDIM.LT.3\)\) GOTO 301) nl
+(C  COMPUTE THE CONTOUR COUNT.) nl
+(      KDIM = \(\(MDIM-2\)*\(NDIM-1\)+NDIM+13\)/15) nl
+(      INT1=MAX0\(NCNTR,2\)) nl
+(      NCNT=INT1+\(INT1-1\)*EXSC) nl
+(C) nl
+(C  LOOP FOR EACH CONTOUR.) nl
+(      DO 112 IICNT=1,NCNT) nl
+(      ICNT=IICNT) nl
+(C     WRITE\(5,"\('LOOP IN PECNTGI: IS=',I12\)"\) IS) nl
+(C       L=LINES\(MOD\(ICNT,4\)+1\)) nl
+(C       L=LINES\(MOD\(ICNT-1,KLIN\)+1\)) nl
+(        L=0) nl
+(        ZCNT=LOCNTR+FLOAT\(ICNT-1\)*\(HICNTR-LOCNTR\)/FLOAT\(NCNT-1\)) nl
+(      IF \(NPAUSE .NE. 0\) PAUSE 'CHANGE PEN') nl
+(        MCNT=MOD\(ICNT-1,EXSC+1\)) nl
+(C  GENERATE LABEL IF NECESSARY.) nl
+(C  CLEAR SEGMENT BIT MAP.) nl
+(        DO 101 INT1=1,KDIM) nl
+(          WKAREA\(INT1\)=0) nl
+(  101   CONTINUE) nl
+(C  SET FLAG TO INDICATE BOUNDARYS BEING PROCESSED.) nl
+(        BDFG=1) nl
+(C  PROCESS LOWER AND UPPER BOUNDARY.) nl
+(        DO 104 IICOL=3,NDIM) nl
+(        ICOL=IICOL) nl
+(          IROW=3) nl
+(          ISID=1) nl
+(          IRET=1) nl
+(C         GO TO 401) nl
+(      CALL SUB401\(JROW,IROW,JCOL,ICOL,JSID,ISID) nl
+(     1 ,MKFG,JRET,INFG,BBIT,NDIM,MDIM) nl
+(     1 ,DVR1,ARRAY,DVR2,XPNT,YPNT,IVR1,IVR2,ZCNT,TPNT,IDIMA) nl
+(     1 ,BDFG,EXLF,MCNT,LABEL,XLBL,YLBL,EXINC,ANGLE,ISIZE) nl
+(     1 ,L,IFINIT,XS,YS,INC,IXMAX,IS,IND,ISMAX,ILEV) nl
+(     1 ,ICNT,XSAV,YSAV,KROW,KCOL,KSID,XMNB,XMNW,XMNO,XMP0,XMWD) nl
+(     1 ,XMUP,XMLP,XMP1,WKAREA\)) nl
+(C     WRITE\(5,"\('102 IS=',I10\)"\) IS) nl
+(  102     IROW=MDIM) nl
+(          ISID=3) nl
+(          IRET=2) nl
+(C         GO TO 401) nl
+(      CALL SUB401\(JROW,IROW,JCOL,ICOL,JSID,ISID) nl
+(     1 ,MKFG,JRET,INFG,BBIT,NDIM,MDIM) nl
+(     1 ,DVR1,ARRAY,DVR2,XPNT,YPNT,IVR1,IVR2,ZCNT,TPNT,IDIMA) nl
+(     1 ,BDFG,EXLF,MCNT,LABEL,XLBL,YLBL,EXINC,ANGLE,ISIZE) nl
+(     1 ,L,IFINIT,XS,YS,INC,IXMAX,IS,IND,ISMAX,ILEV) nl
+(     1 ,ICNT,XSAV,YSAV,KROW,KCOL,KSID,XMNB,XMNW,XMNO,XMP0,XMWD) nl
+(     1 ,XMUP,XMLP,XMP1,WKAREA\)) nl
+(C     WRITE\(5,"\('103 IS=',I10\)"\) IS) nl
+(  103     CONTINUE) nl
+(  104   CONTINUE) nl
+(C  PROCESS LEFT AND RIGHT BOUNDARY.) nl
+(        DO 107 IIROW=3,MDIM) nl
+(          IROW=IIROW) nl
+(          ICOL=3) nl
+(          ISID=0) nl
+(          IRET=3) nl
+(C         GO TO 401) nl
+(      CALL SUB401\(JROW,IROW,JCOL,ICOL,JSID,ISID) nl
+(     1 ,MKFG,JRET,INFG,BBIT,NDIM,MDIM) nl
+(     1 ,DVR1,ARRAY,DVR2,XPNT,YPNT,IVR1,IVR2,ZCNT,TPNT,IDIMA) nl
+(     1 ,BDFG,EXLF,MCNT,LABEL,XLBL,YLBL,EXINC,ANGLE,ISIZE) nl
+(     1 ,L,IFINIT,XS,YS,INC,IXMAX,IS,IND,ISMAX,ILEV) nl
+(     1 ,ICNT,XSAV,YSAV,KROW,KCOL,KSID,XMNB,XMNW,XMNO,XMP0,XMWD) nl
+(     1 ,XMUP,XMLP,XMP1,WKAREA\)) nl
+(C     WRITE\(5,"\('105 IS=',I10\)"\) IS) nl
+(  105     ICOL=NDIM) nl
+(          ISID=2) nl
+(          IRET=4) nl
+(C         GO TO 401) nl
+(      CALL SUB401\(JROW,IROW,JCOL,ICOL,JSID,ISID) nl
+(     1 ,MKFG,JRET,INFG,BBIT,NDIM,MDIM) nl
+(     1 ,DVR1,ARRAY,DVR2,XPNT,YPNT,IVR1,IVR2,ZCNT,TPNT,IDIMA) nl
+(     1 ,BDFG,EXLF,MCNT,LABEL,XLBL,YLBL,EXINC,ANGLE,ISIZE) nl
+(     1 ,L,IFINIT,XS,YS,INC,IXMAX,IS,IND,ISMAX,ILEV) nl
+(     1 ,ICNT,XSAV,YSAV,KROW,KCOL,KSID,XMNB,XMNW,XMNO,XMP0,XMWD) nl
+(     1 ,XMUP,XMLP,XMP1,WKAREA\)) nl
+(C     WRITE\(5,"\('106 IS=',I10\)"\) IS) nl
+(  106     CONTINUE) nl
+(  107   CONTINUE) nl
+(C  SET FLAG TO INDICATE BOUNDARYS NOT BEING PROCESSED.) nl
+(        BDFG=0) nl
+(C  PROCESS INTERIOR SIDES OF SURFACE PATCHES.) nl
+(        IF \(NDIM.LT.4\) GO TO 111) nl
+(        DO 110 IICOL=4,NDIM) nl
+(        ICOL=IICOL) nl
+(          DO 109 IIROW=3,MDIM) nl
+(            IROW=IIROW) nl
+(            ISID=0) nl
+(            IRET=5) nl
+(C           GO TO 401) nl
+(      CALL SUB401\(JROW,IROW,JCOL,ICOL,JSID,ISID) nl
+(     1 ,MKFG,JRET,INFG,BBIT,NDIM,MDIM) nl
+(     1 ,DVR1,ARRAY,DVR2,XPNT,YPNT,IVR1,IVR2,ZCNT,TPNT,IDIMA) nl
+(     1 ,BDFG,EXLF,MCNT,LABEL,XLBL,YLBL,EXINC,ANGLE,ISIZE) nl
+(     1 ,L,IFINIT,XS,YS,INC,IXMAX,IS,IND,ISMAX,ILEV) nl
+(     1 ,ICNT,XSAV,YSAV,KROW,KCOL,KSID,XMNB,XMNW,XMNO,XMP0,XMWD) nl
+(     1 ,XMUP,XMLP,XMP1,WKAREA\)) nl
+(C     WRITE\(5,"\('108 IS=',I10\)"\) IS) nl
+(  108       CONTINUE) nl
+(  109     CONTINUE) nl
+(  110   CONTINUE) nl
+(  111   CONTINUE) nl
+(  112 CONTINUE) nl
+(      GOTO 201) nl
+( 301  WRITE\(6,302\) NDIM,MDIM) nl
+( 302  FORMAT\(1X,'NO CONTOURING: NDIM = ',I3,' MDIM = ',I3\)) nl
+( 201  RETURN) nl
+(      END) nl
+() nl
+(      SUBROUTINE SUB401\(JROW,IROW,JCOL,ICOL,JSID,ISID) nl
+(     1 ,MKFG,JRET,INFG,BBIT,NDIM,MDIM) nl
+(     1 ,DVR1,ARRAY,DVR2,XPNT,YPNT,IVR1,IVR2,ZCNT,TPNT,IDIMA) nl
+(     1 ,BDFG,EXLF,MCNT,LABEL,XLBL,YLBL,EXINC,ANGLE,ISIZE) nl
+(     1 ,L,IFINIT,XS,YS,INC,IXMAX,IS,IND,ISMAX,ILEV) nl
+(     1 ,ICNT,XSAV,YSAV,KROW,KCOL,KSID,XMNB,XMNW,XMNO,XMP0,XMWD) nl
+(     1 ,XMUP,XMLP,XMP1,WKAREA\)) nl
+(      DIMENSION XS\(INC,IXMAX\),YS\(INC,IXMAX\),IND\(ISMAX\),ILEV\(ISMAX\)) nl
+(C   $$) nl
+(C     CALL SUB501\(MKFG,JSID,DVR1,ARRAY,JROW,JCOL,DVR2,XPNT,YPNT) nl
+(C    1  ,IVR1,IVR2,ZCNT,TPNT,INFG,IDIMA\)) nl
+(C     CALL SUB601\(BDFG,EXLF,MCNT,LABEL,XLBL,XPNT) nl
+(C    1  ,YLBL,YPNT,JSID,EXINC,ANGLE,ISIZE,ZCNT\)) nl
+(C     CALL SUB701\(BBIT,L,XPNT,YPNT,IFINIT) nl
+(C    1 ,XS,YS,INC,IXMAX,IS,IND,ISMAX,ILEV) nl
+(C    1 ,ICNT,XSAV,YSAV\)) nl
+(C     CALL SUB801\(1,MKFG,KROW,JROW,KCOL,JCOL,KSID) nl
+(C    1 ,JSID,XMNB,NDIM,XMNW,XMNO,XMP0,XMWD,XMUP,XMLP,XMP1) nl
+(C    1 ,WKAREA\)) nl
+(C   $$) nl
+(C  INTERNAL ROUTINE TO PROCESS THE ISID-TH SIDE OF THE) nl
+(C  \(IROW,ICOL\)-TH SURFACE PATCH.  IF THE SIDE HAS NOT BEEN) nl
+(C  CHECKED BEFORE, THEN THE CONTOUR IS EXAMINED TO SEE IF IT) nl
+(C  CROSSES THE SIDE.  IF IT DOES NOT, THE SIDE IS MARKED AS) nl
+(C  HAVING BEEN CHECKED.  IF THE CONTOUR CROSSES THE SIDE, THE) nl
+(C  CONTOUR IS FOLLOWED UNTIL IT IS COMPLETE AND ALL AFFECTED) nl
+(C  SIDES ARE MARKED AS HAVING BEEN CHECKED.) nl
+(      REAL          ARRAY\(IDIMA,1\)) nl
+(      REAL          LOCNTR,HICNTR) nl
+(      INTEGER*4     WKAREA\(1\)) nl
+(      INTEGER*2     EXSC,EXLF) nl
+(      INTEGER       BBIT,BDFG,INFG,MKFG) nl
+(      REAL          IVR1,IVR2,DVR1,DVR2) nl
+(      REAL          XSAV,YSAV) nl
+(      INTEGER       XMNB,XMNW,XMNO,XMWD,XMLP,XMUP,XMP0,XMP1) nl
+(  401 JROW=IROW) nl
+(      JCOL=ICOL) nl
+(      JSID=ISID) nl
+(C  DO ANY CONTOURS BEGIN AT THIS SIDE?) nl
+(      KRET=1) nl
+(C     GO TO 851) nl
+(      CALL SUB801\(1,MKFG,KROW,JROW,KCOL,JCOL,KSID) nl
+(     1 ,JSID,XMNB,NDIM,XMNW,XMNO,XMP0,XMWD,XMUP,XMLP,XMP1) nl
+(     1 ,WKAREA\)) nl
+(  402 IF \(MKFG.EQ.1\) GO TO 471) nl
+(      JRET=1) nl
+(C     GO TO 501) nl
+(      CALL SUB501\(MKFG,JSID,DVR1,ARRAY,JROW,JCOL,DVR2,XPNT,YPNT) nl
+(     1  ,IVR1,IVR2,ZCNT,TPNT,INFG,IDIMA\)) nl
+(  403 IF \(INFG.EQ.0\) GO TO 463) nl
+(C  START DRAWING THE CONTOUR CURVE.) nl
+(      JRET=1) nl
+(C     GO TO 601) nl
+(      CALL SUB601\(BDFG,EXLF,MCNT,LABEL,XLBL,XPNT) nl
+(     1  ,YLBL,YPNT,JSID,EXINC,ANGLE,ISIZE,ZCNT\)) nl
+(  404 BBIT=2) nl
+(      JRET=1) nl
+(C     GO TO 701) nl
+(      CALL SUB701\(BBIT,L,XPNT,YPNT,IFINIT) nl
+(     1 ,XS,YS,INC,IXMAX,IS,IND,ISMAX,ILEV) nl
+(     1 ,ICNT,XSAV,YSAV\)) nl
+(  405 BBIT=0) nl
+(C  FIND THE OTHER SIDE OF THE PATCH.) nl
+(  411 JSID=MOD\(JSID+2,4\)) nl
+(      KRET=2) nl
+(C     GO TO 851) nl
+(      CALL SUB801\(1,MKFG,KROW,JROW,KCOL,JCOL,KSID) nl
+(     1 ,JSID,XMNB,NDIM,XMNW,XMNO,XMP0,XMWD,XMUP,XMLP,XMP1) nl
+(     1 ,WKAREA\)) nl
+(  412 IF \(MKFG.EQ.1\) GO TO 414) nl
+(      JRET=2) nl
+(C     GO TO 501) nl
+(      CALL SUB501\(MKFG,JSID,DVR1,ARRAY,JROW,JCOL,DVR2,XPNT,YPNT) nl
+(     1  ,IVR1,IVR2,ZCNT,TPNT,INFG,IDIMA\)) nl
+(  413 IF \(INFG.NE.0\) GO TO 421) nl
+(      KRET=3) nl
+(C     GO TO 801) nl
+(      CALL SUB801\(0,MKFG,KROW,JROW,KCOL,JCOL,KSID) nl
+(     1 ,JSID,XMNB,NDIM,XMNW,XMNO,XMP0,XMWD,XMUP,XMLP,XMP1) nl
+(     1 ,WKAREA\)) nl
+(  414 JSID=MOD\(JSID+1,4\)) nl
+(      KRET=4) nl
+(C     GO TO 851) nl
+(      CALL SUB801\(1,MKFG,KROW,JROW,KCOL,JCOL,KSID) nl
+(     1 ,JSID,XMNB,NDIM,XMNW,XMNO,XMP0,XMWD,XMUP,XMLP,XMP1) nl
+(     1 ,WKAREA\)) nl
+(  415 IF \(MKFG.EQ.1\) GO TO 417) nl
+(      JRET=3) nl
+(C     GO TO 501) nl
+(      CALL SUB501\(MKFG,JSID,DVR1,ARRAY,JROW,JCOL,DVR2,XPNT,YPNT) nl
+(     1  ,IVR1,IVR2,ZCNT,TPNT,INFG,IDIMA\)) nl
+(  416 IF \(INFG.NE.0\) GO TO 421) nl
+(      KRET=5) nl
+(C     GO TO 801) nl
+(      CALL SUB801\(0,MKFG,KROW,JROW,KCOL,JCOL,KSID) nl
+(     1 ,JSID,XMNB,NDIM,XMNW,XMNO,XMP0,XMWD,XMUP,XMLP,XMP1) nl
+(     1 ,WKAREA\)) nl
+(  417 JSID=MOD\(JSID+2,4\)) nl
+(      KRET=6) nl
+(C     GO TO 851) nl
+(      CALL SUB801\(1,MKFG,KROW,JROW,KCOL,JCOL,KSID) nl
+(     1 ,JSID,XMNB,NDIM,XMNW,XMNO,XMP0,XMWD,XMUP,XMLP,XMP1) nl
+(     1 ,WKAREA\)) nl
+( 418  JRET=4) nl
+(C     GO TO 501) nl
+(      CALL SUB501\(MKFG,JSID,DVR1,ARRAY,JROW,JCOL,DVR2,XPNT,YPNT) nl
+(     1  ,IVR1,IVR2,ZCNT,TPNT,INFG,IDIMA\)) nl
+( 419  CONTINUE) nl
+(C  DRAW CURRENT PART OF THE CONTOUR.) nl
+(  421 JRET=2) nl
+(C     GO TO 701) nl
+(      CALL SUB701\(BBIT,L,XPNT,YPNT,IFINIT) nl
+(     1 ,XS,YS,INC,IXMAX,IS,IND,ISMAX,ILEV) nl
+(     1 ,ICNT,XSAV,YSAV\)) nl
+(C  MARK THE LINE PROCESSED.) nl
+(  431 KRET=7) nl
+(C     GO TO 801) nl
+(      CALL SUB801\(0,MKFG,KROW,JROW,KCOL,JCOL,KSID) nl
+(     1 ,JSID,XMNB,NDIM,XMNW,XMNO,XMP0,XMWD,XMUP,XMLP,XMP1) nl
+(     1 ,WKAREA\)) nl
+(C  FIND THE ADJACENT SURFACE PATCH.) nl
+(  441 IF \(JSID.EQ.3\) GO TO 444) nl
+(      IF \(JSID.EQ.2\) GO TO 443) nl
+(      IF \(JSID.EQ.1\) GO TO 442) nl
+(      IF \(JCOL.LE.3\) GO TO 461) nl
+(      JCOL=JCOL-1) nl
+(      JSID=2) nl
+(      GO TO 451) nl
+(  442 IF \(JROW.LE.3\) GO TO 461) nl
+(      JROW=JROW-1) nl
+(      JSID=3) nl
+(      GO TO 451) nl
+(  443 IF \(JCOL.GE.NDIM\) GO TO 461) nl
+(      JCOL=JCOL+1) nl
+(      JSID=0) nl
+(      GO TO 451) nl
+(  444 IF \(JROW.GE.MDIM\) GO TO 461) nl
+(      JROW=JROW+1) nl
+(      JSID=1) nl
+(C  CHECK FOR CLOSURE OF THE CONTOUR LINE.) nl
+(  451 IF \(\(JROW.EQ.IROW\).AND.\(JCOL.EQ.ICOL\).AND.\(JSID.EQ.ISID\)\)) nl
+(     X  GO TO 471) nl
+(      GO TO 411) nl
+(C  FINISH AN OPEN CURVE.) nl
+(  461 JRET=2) nl
+(C     GO TO 601) nl
+(      CALL SUB601\(BDFG,EXLF,MCNT,LABEL,XLBL,XPNT) nl
+(     1  ,YLBL,YPNT,JSID,EXINC,ANGLE,ISIZE,ZCNT\)) nl
+(  462 JROW=IROW) nl
+(      JCOL=ICOL) nl
+(      JSID=ISID) nl
+(  463 KRET=8) nl
+(C     GO TO 801) nl
+(      CALL SUB801\(0,MKFG,KROW,JROW,KCOL,JCOL,KSID) nl
+(     1 ,JSID,XMNB,NDIM,XMNW,XMNO,XMP0,XMWD,XMUP,XMLP,XMP1) nl
+(     1 ,WKAREA\)) nl
+(C  THE CONTOUR LINE IS NOW COMPLETE.) nl
+(C 471 GO TO \(102,103,105,106,108\),IRET) nl
+(  471 RETURN) nl
+(      END) nl
+() nl
+(      SUBROUTINE SUB501\(MKFG,JSID,DVR1,ARRAY,JROW,JCOL,DVR2,XPNT,YPNT) nl
+(     1  ,IVR1,IVR2,ZCNT,TPNT,INFG,IDIMA\)) nl
+(      REAL          ARRAY\(IDIMA,1\)) nl
+(      REAL          IVR1,IVR2,DVR1,DVR2) nl
+(C) nl
+(C  INTERNAL ROUTINE TO DETERMINE IF THE \(JROW,JCOL,JSID\)-TH) nl
+(C  SIDE IS INTERSECTED BY THE CURRENT CONTOUR LINE.  IF THE) nl
+(C  ANSWER IS YES, INFG IS SET TO ONE AND THE COORDINATES) nl
+(C  OF THE INTERSECTION ARE SAVED IN \(XPNT,YPNT\).) nl
+(C  FIRST, OBTAIN THE INDEPENDENT AND DEPENDENT VARIABLES.) nl
+( 501  CONTINUE) nl
+(      IF \(MKFG.NE.0\) GO TO 510) nl
+(      IF \(JSID.EQ.3\) GO TO 505) nl
+(      IF \(JSID.EQ.2\) GO TO 503) nl
+(      IF \(JSID.EQ.1\) GO TO 502) nl
+(      DVR1=ARRAY\(JROW-1,JCOL-1\)) nl
+(      DVR2=ARRAY\(JROW,JCOL-1\)) nl
+(      XPNT=ARRAY\(1,JCOL-1\)) nl
+(      GO TO 504) nl
+(  502 DVR1=ARRAY\(JROW-1,JCOL-1\)) nl
+(      DVR2=ARRAY\(JROW-1,JCOL\)) nl
+(      YPNT=ARRAY\(JROW-1,1\)) nl
+(      GO TO 506) nl
+(  503 DVR1=ARRAY\(JROW-1,JCOL\)) nl
+(      DVR2=ARRAY\(JROW,JCOL\)) nl
+(      XPNT=ARRAY\(1,JCOL\)) nl
+(  504 IVR1=ARRAY\(JROW-1,1\)) nl
+(      IVR2=ARRAY\(JROW,1\)) nl
+(      GO TO 507) nl
+(  505 DVR1=ARRAY\(JROW,JCOL-1\)) nl
+(      DVR2=ARRAY\(JROW,JCOL\)) nl
+(      YPNT=ARRAY\(JROW,1\)) nl
+(  506 IVR1=ARRAY\(1,JCOL-1\)) nl
+(      IVR2=ARRAY\(1,JCOL\)) nl
+(C  CHECK FOR AN INTERSECTION.) nl
+( 507  CONTINUE) nl
+(      IF \(\(\(DVR1.LT.ZCNT\).AND.\(DVR2.LT.ZCNT\)\).OR.) nl
+(     X  \(\(DVR1.GE.ZCNT\).AND.\(DVR2.GE.ZCNT\)\)\) GO TO 510) nl
+(C  COMPUTE THE OTHER COORDINATE.) nl
+(      TPNT=IVR1+\(ZCNT-DVR1\)*\(IVR2-IVR1\)/\(DVR2-DVR1\)) nl
+(      IF \(MOD\(JSID,2\).EQ.0\) GO TO 508) nl
+(      XPNT=TPNT) nl
+(      GO TO 509) nl
+(  508 YPNT=TPNT) nl
+(C  RETURN WITH INTERSECTION.) nl
+(  509 INFG=1) nl
+(      GO TO 511) nl
+(C  RETURN WITHOUT INTERSECTION.) nl
+(  510 INFG=0) nl
+( 511  CONTINUE) nl
+(C     GO TO \(403,413,416,419\),JRET) nl
+(      RETURN) nl
+(      END) nl
+() nl
+(      SUBROUTINE SUB601\(BDFG,EXLF,MCNT,LABEL,XLBL,XPNT) nl
+(     1  ,YLBL,YPNT,JSID,EXINC,ANGLE,ISIZE,ZCNT\)) nl
+(      INTEGER       BBIT,BDFG,INFG,MKFG) nl
+(      INTEGER*2     EXSC,EXLF) nl
+(C) nl
+(C  INTERNAL ROUTINE TO LABEL A CONTOUR IF A LABEL IS) nl
+(C  REQUIRED.  THE LABEL IS POSITIONED AT THE PROPER OFFSET) nl
+(C  FROM \(XPNT,YPNT\).) nl
+(  601 IF \(\(BDFG.EQ.0\).OR.\(EXLF.NE.0\).OR.\(MCNT.NE.0\).OR.\(LABEL.EQ.0\)\)) nl
+(     X  GO TO 606) nl
+(      XLBL=XPNT) nl
+(      YLBL=YPNT) nl
+(C  GET THE COORDINATES OF THE LABEL.) nl
+(      IF \(JSID.EQ.3\) GO TO 604) nl
+(      IF \(JSID.EQ.2\) GO TO 603) nl
+(      IF \(JSID.EQ.1\) GO TO 602) nl
+(      XLBL=XLBL-3.5*EXINC) nl
+(      ANGLE=0.0) nl
+(      GO TO 605) nl
+(  602 YLBL=YLBL-3.5*EXINC) nl
+(      ANGLE=90.0) nl
+(      GO TO 605) nl
+(  603 XLBL=XLBL+0.5*EXINC) nl
+(      ANGLE=0.0) nl
+(      GO TO 605) nl
+(  604 YLBL=YLBL+0.5*EXINC) nl
+(      ANGLE=90.0) nl
+(C  PRODUCE THE LABEL.) nl
+(  605 CALL NUMBERI\(XLBL,YLBL,ISIZE,ZCNT,ANGLE,'\(F5.0\)'\)) nl
+(C 606 GO TO \(404,462\),JRET) nl
+(  606 RETURN) nl
+(      END) nl
+() nl
+(      SUBROUTINE SUB701\(BBIT,L,XPNT,YPNT,IFINIT) nl
+(     1 ,XS,YS,INC,IXMAX,IS,IND,ISMAX,ILEV) nl
+(     1 ,ICNT,XSAV,YSAV\)) nl
+(      DIMENSION XS\(INC,IXMAX\),YS\(INC,IXMAX\),IND\(ISMAX\),ILEV\(ISMAX\)) nl
+(      INTEGER       BBIT) nl
+(C  INTERNAL PROCEDURE TO DRAW A LINE TO THE POINT \(XPNT,YPNT\).) nl
+(  701 IF \(BBIT.EQ.0.AND.L.NE.0\) GO TO 703) nl
+(      ISS=IS) nl
+(      CALL PLOTI\(XPNT,YPNT,BBIT,IFINIT) nl
+(     1      ,XS,YS,INC,IXMAX,IS,IND,ISMAX\)) nl
+(      IF\(IS.NE.0.AND.IS.NE.ISS\) ILEV\(IS\)=ICNT) nl
+(      GO TO 704) nl
+( 703  ISS=IS) nl
+(      CALL PLOTI\(XPNT,YPNT,4,IFINIT) nl
+(     1      ,XS,YS,INC,IXMAX,IS,IND,ISMAX\)) nl
+(      IF\(IS.NE.0.AND.IS.NE.ISS\) ILEV\(IS\)=ICNT) nl
+( 704  XSAV=XPNT) nl
+(      YSAV=YPNT) nl
+(C     GO TO \(405,431\),JRET) nl
+(      RETURN) nl
+(      END) nl
+() nl
+(      SUBROUTINE SUB801\(ISKIP,MKFG,KROW,JROW,KCOL,JCOL,KSID) nl
+(     1 ,JSID,XMNB,NDIM,XMNW,XMNO,XMP0,XMWD,XMUP,XMLP,XMP1) nl
+(     1 ,WKAREA\)) nl
+(      INTEGER*4     WKAREA\(1\)) nl
+(      INTEGER*4     PWRS\(31\)) nl
+(      INTEGER       XMNB,XMNW,XMNO,XMWD,XMLP,XMUP,XMP0,XMP1) nl
+(      DATA          PWRS/) nl
+(     X            1,          2,          4,          8,) nl
+(     X           16,         32,         64,        128,) nl
+(     X          256,        512,       1024,       2048,) nl
+(     X         4096,       8192,      16384,      32768,) nl
+(     X        65536,     131072,     262144,     524288,) nl
+(     X      1048576,    2097152,    4194304,    8388608,) nl
+(     X     16777216,   33554432,   67108864,  134217728,) nl
+(     X    268435456,  536870912, 1073741824/) nl
+(C) nl
+(C  801 IS AN INTERNAL ROUTINE TO MARK THE \(JROW,JCOL,JSID\)-TH) nl
+(C  LINE AS HAVING BEEN PROCESSED.  851 IS AN INTERNAL ROUTINE) nl
+(C  TO TEST IF THE \(JROW,JCOL,JSID\)-TH LINE HAS BEEN MARKED.  IF) nl
+(C  IT HAS, MKFG IS SET TO ONE.) nl
+(      IF\(ISKIP.NE.0\) GOTO 851) nl
+(  801 MKFG=0) nl
+(      GO TO 852) nl
+(  851 MKFG=1) nl
+(  852 KROW=JROW) nl
+(      KCOL=JCOL) nl
+(      KSID=JSID) nl
+(      IF \(KSID.NE.2\) GO TO 853) nl
+(      KSID=0) nl
+(      KCOL=KCOL+1) nl
+(      GO TO 854) nl
+(  853 IF \(KSID.NE.3\) GO TO 854) nl
+(      KSID=1) nl
+(      KROW=KROW+1) nl
+(  854 XMNB=2*\(\(KROW-3\)*\(NDIM-1\)+\(KCOL-3\)\)+KSID) nl
+(      XMNW=1+XMNB/30) nl
+(      XMNO=1+MOD\(XMNB,30\)) nl
+(      XMP0=PWRS\(XMNO\)) nl
+(      XMWD=WKAREA\(XMNW\)) nl
+(      IF \(MKFG.EQ.0\) GO TO 855) nl
+(      XMUP=XMWD/XMP0) nl
+(      IF \(MOD\(XMUP,2\).EQ.0\) MKFG=0) nl
+(      GO TO 856) nl
+(  855 XMP1=PWRS\(XMNO+1\)) nl
+(      XMLP=MOD\(XMWD,XMP0\)) nl
+(      XMUP=XMWD/XMP1) nl
+(      WKAREA\(XMNW\)=XMUP*XMP1+XMP0+XMLP) nl
+(C 856 GO TO \(402,412,414,415,417,418,441,471\),KRET) nl
+(  856 RETURN) nl
+(      END) nl
+() nl
+(      SUBROUTINE PLOTI\(X,Y,N,IFINIT) nl
+(     1      ,XS,YS,INC,IXMAX,IS,IND,ISMAX\)) nl
+(      COMMON /PLOTC/ L) nl
+(      NN = N + 1) nl
+(      GOTO \(1,2,3,4,5,6\),NN) nl
+( 1    CALL DRAWCI\(X,Y,1,IFINIT) nl
+(     1      ,XS,YS,INC,IXMAX,IS,IND,ISMAX\)) nl
+(      IFINIT=0) nl
+(      RETURN) nl
+( 2    CALL DRAWCIR\(X,Y,1,IFINIT) nl
+(     1      ,XS,YS,INC,IXMAX,IS,IND,ISMAX\)) nl
+(      IFINIT=0) nl
+(      RETURN) nl
+( 3    CALL DRAWCI\(X,Y,0,IFINIT) nl
+(     1      ,XS,YS,INC,IXMAX,IS,IND,ISMAX\)) nl
+(      IFINIT=0) nl
+(      RETURN) nl
+( 4    CALL DRAWCIR\(X,Y,0,IFINIT) nl
+(     1      ,XS,YS,INC,IXMAX,IS,IND,ISMAX\)) nl
+(      IFINIT=0) nl
+(      RETURN) nl
+( 5    CALL DASHA\(X,Y,1,IFINIT) nl
+(     1      ,XS,YS,INC,IXMAX,IS,IND,ISMAX\)) nl
+(      IFINIT=0) nl
+(      RETURN) nl
+( 6    CALL DRAWCIR\(X,Y,1,IFINIT) nl
+(     1      ,XS,YS,INC,IXMAX,IS,IND,ISMAX\)) nl
+(      IFINIT=0) nl
+(      RETURN) nl
+(      END) nl
+() nl
+(      SUBROUTINE NUMBERI) nl
+(      RETURN) nl
+(      END) nl
+endp

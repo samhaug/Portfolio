@@ -1,0 +1,128 @@
+      subroutine sotors
+      common/intap/ jstat,itype,icomp,ifact,jter,neig,npoint
+     1   ,jifdep,jnstr,jtrans,j1s,j1f,j2s,j2f,jnpar,jiftwo
+      common/iap5/ synt(514,10),addf(7710)
+      common/ap1/ t0,dt,ommax
+     1     ,theta,caz,saz,epc(2,4)
+     1     ,f(6),f2pf3,f2mf3,dum2(4)
+
+      common/ap2/ xl(437),omega(437),qbar(437),grv(437),elp(437),
+     1  u(3,437),sp(12,437)
+      common/iap1/ psfer(8,2),ptors(8,2)
+c      dimension psfer(8,2),ptors(8,2)
+      common/inter/ knt,xj,zz1,zz2
+
+      common/tab3/h1(2),h2(2),z1(4),z2(4),z3(4),z4(4)
+     1 ,p1(6),p2(6),p3(6),p4(6),p5(6),p6(6),p7(6),p8(6),p9(6),p10(6)
+     1 ,q1(3),q2(3),q3(3),q4(3),q5(3),q6(3),q7(3)
+
+cc#include "tab3.h"
+
+      common/iap4/ b1st,a2st,b2ct,b2st,a3ct,a3st
+
+
+      complex a0,step
+      dimension xaux(514),yaux(514),c(3,20),xmul(10),cc(3,20,2)
+     1   ,fact(10)
+      nc=3*ifact
+      do nn=1,437
+        x=xl(nn)
+        if(x.lt.0.) go to 99
+        om=omega(nn)
+        if(om.gt.ommax) go to 100
+        if(x.ne.xj) then
+          knt=0
+          xj=x
+          l=xj+.001
+          call sphars(l,theta,caz,saz,epc,icomp,psfer,ptors)
+          call fvclr(c,1,3*20)
+          call fvclr(xmul,1,10)
+          call fvclr(cc,1,3*20*2)
+          do k=1,2
+c           call ttabls(xj,psfer(1,k))
+            xj2=xj*(xj+1.)
+            q5(1)=-5.*xj2
+            q5(2)=.5*xj2
+            q6(1)=.5*xj2
+            q7(1)=-.25*(xj2-2.)
+            f62=2.*f(6)
+            b1st=f(4)*ptors(4,k)-f(5)*ptors(3,k)
+            a2st=f2mf3*ptors(6,k)-f62*ptors(5,k)
+            b2ct=f(4)*ptors(5,k)+f(5)*ptors(6,k)
+            b2st=f(4)*ptors(6,k)-f(5)*ptors(5,k)
+            a3ct=f2mf3*ptors(7,k)+f62*ptors(8,k)
+            a3st=f2mf3*ptors(8,k)-f62*ptors(7,k)
+            do i=1,neig
+c             call tcoefs(jter,i,xmul,psfer(1,k))
+              call fvclr(xmul,1,10)
+              if(i.le.2) then
+                if(jter.lt.0) then
+                  xmul(1)=a2st*h1(i)-b1st*h2(i)
+                  goto 300
+                else
+                  xmul(2)=ptors(6,k)*h1(i)
+                  xmul(3)=-xmul(2)
+                  xmul(4)=-ptors(4,k)*h2(i)
+                  xmul(5)=ptors(3,k)*h2(i)
+                  xmul(6)=-2.*ptors(5,k)*h1(i)
+                  if(jter.eq.0) goto 300
+                endif
+              endif
+              q41=q4(i)+q1(i)
+              f167=-f(1)*q1(i)+f(2)*q6(i)+f2pf3*q7(i)
+              f55=f(5)*q5(i)
+              q21=q2(i)-q1(i)
+              f66=f(6)*q6(i)
+              f45=f(4)*q5(i)
+              f176=f(1)*q1(i)-f2pf3*q7(i)-f(3)*q6(i)
+              xmul(7)=-b1st*q41-a2st*q1(i)
+              xmul(8)=ptors(1,k)*f55+ptors(4,k)*f167
+     1            +b2st*q21-a3st*q3(i)-ptors(3,k)*f66
+              xmul(9)=-ptors(1,k)*f45+ptors(3,k)*f176
+     1            -b2ct*q21+a3ct*q3(i)+ptors(4,k)*f66
+ 300          continue
+              do j=1,ifact
+                cc(i,j,k)=xmul(j)
+              enddo
+            enddo
+          enddo
+        endif
+c skip processing fundamental modes in the case of body waves
+        if(knt.eq.0.and.dt.lt.20.) go to 100
+        call adjuss(x,om,grv(nn),elp(nn),sp(1,nn),dtheta)
+        qb=-.5*qbar(nn)
+#if ( Machine == S )
+        arg2=om*t0
+        xmul2=om*dt
+        arg2=arg2-xmul2
+        arg1=arg2*qb
+        xmul1=xmul2*qb
+        do i=1,npoint
+          xaux(i)=-0.95179*exp(arg1+xmul1*i)*cos(arg2+xmul2*i)
+        enddo
+c        call mtrace((-0.95179,0.),cmplx(om,-qb*om)
+c     1                 ,t0,dt,npoint,8,xaux,yaux)
+#else
+        arg=om*t0
+        a0=-cmplx(.95179,0.)*cexp(cmplx(qb*arg,arg))
+        arg=om*dt
+        step=cexp(cmplx(qb*arg,arg))
+        do i=1,npoint
+          xaux(i)=real(a0)
+          a0=a0*step
+        enddo
+#endif
+        call fvsma1(cc(1,1,2),dtheta,cc(1,1,1),c(1,1),nc)
+
+ccC$DIR PARALLEL
+        do i=1,ifact
+          call fdotpr(c(1,i),1,u(1,nn),1,fact(i),neig)
+          call fvsma2(xaux,fact(i),synt(1,i),npoint)
+        enddo
+
+  100   knt=knt+1
+      enddo
+      return
+   99 jstat=-1
+      return
+      end

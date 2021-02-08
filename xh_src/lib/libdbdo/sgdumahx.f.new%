@@ -1,0 +1,383 @@
+      subroutine sgdumpahx(name,lname,isub,iagram)
+      include 'gramblock.h'
+      include '/home/eeyore1/john/eq/src/libdb/dblib.h'
+      include 'seedparam.h'
+      parameter (LENFLT=1)
+      include 'rspaddrs.h'
+      character*200 str
+      character*5 sta
+      character*2 lid
+      character*3 cha
+      character*80 name
+      character*95 instf,sacf
+
+c define instrument and sac file name
+      ica=4*(iagram+OGSTNAM)
+      k=0
+      do i=ica,ica+4
+         k=k+1
+         sta(k:k)=cbig(i)
+      enddo
+      iach=iagram+ibig(iagram+OGSTCHO+isub-1)
+      k=0
+      ica=4*(iach+OGCHLID)
+      do i=ica,ica+1
+        k=k+1
+        lid(k:k)=cbig(i)
+      enddo
+      k=0
+      ica=4*(iach+OGCHCID)
+      do i=ica,ica+2
+         k=k+1
+         cha(k:k)=cbig(i)
+      enddo
+      ksub=ibig(iach+OGCHSUB)
+      if(ksub.eq.0) then
+      else if(ksub.eq.1.and.cha(3:3).eq.' ') then
+        cha(3:3)='Z'
+      else if(ksub.eq.2.and.cha(3:3).eq.' ') then
+        cha(3:3)='N'
+      else if(ksub.eq.3.and.cha(3:3).eq.' ') then
+        cha(3:3)='E'
+      else
+        write(6,*) 'sgdumpah: Trouble reformatting channel name', cha,' ksub=',' isub=',isub
+      endif
+
+      if(name(lname:lname).ne.'/') then
+        sacf=name(1:lname)//'.'//sta//lid//cha//'.ahx'
+        instf=name(1:lname)//'.'//sta//lid//cha//'.i'
+      else
+        sacf=name(1:lname)//sta//lid//cha//'.ahx'
+        instf=name(1:lname)//sta//lid//cha//'.i'
+      endif
+      lsacf=istlen(sacf)
+      linstf=istlen(instf)
+      do i=1,lsacf
+        if(sacf(i:i).eq.' ') sacf(i:i)='_'
+      enddo
+      do i=1,linstf
+        if(instf(i:i).eq.' ') instf(i:i)='_'
+      enddo
+
+c open and write instrument file
+      lu=10
+      open(lu,file=instf(1:linstf))
+      call sgstation(iagram,str,lstr)
+      write(lu,"(200a1)") (str(i:i),i=1,lstr)
+      call sgchannel(isub,iagram,str,lstr)
+      write(lu,"(200a1)") (str(i:i),i=1,lstr)
+      write(str,"(i6)") ibig(iach+OGRSREF)
+      ip=iststa(str(1:6))
+      str(7:12)=str(ip:6)
+      iaresp=iach+ibig(iach+OGRSBLO)
+
+
+      ipi=iaresp
+      ipf=iaresp/LENFLT
+      ipi0=iaresp
+      nstage=ibig(ipi+IRSNCS)
+      ipow=ibig(ipi+IRSPOW)
+
+      write(lu,"('  Response cr.',a6,' has',i2,' stages. Units are ',a5
+     1     ,'.',' Rate is ',f8.4,'Hz.  DS=',1pe13.5,' at ',0pf8.4,'Hz.')") 
+     1  str(7:12),nstage,utext(ipow),rbig(ipf+FRSSRT),rbig(ipf+FRSOSN),rbig(ipf+FRSFOV)
+      del=1./rbig(ipf+FRSSRT)
+      ipi=ipi+ILENRS
+      ipf=ipi/LENFLT
+      do istage=1,nstage
+        if(rbig(ipf+FSGINR).lt.1000.) then
+          write(lu,"('  Stage:',i2,'. ',2i1,2i2,1pe13.5,0p2f8.4,2i4,2f10.4)")
+     1        istage, ibig(ipi+ISGPZC),ibig(ipi+ISGABD)
+     1       ,ibig(ipi+ISGINU),ibig(ipi+ISGOUU),rbig(ipf+FSGGAI),rbig(ipf+FSGFGA)
+     1       ,rbig(ipf+FSGINR),ibig(ipi+ISGDCF),ibig(ipi+ISGDCO)
+     1       ,rbig(ipf+FSGEDL),rbig(ipf+FSGCAP)
+        else
+          write(lu,"('  Stage:',i2,'. ',2i1,2i2,1pe13.5,0pf8.4,f8.3,2i4,2f10.4)")
+     1        istage, ibig(ipi+ISGPZC),ibig(ipi+ISGABD)
+     1       ,ibig(ipi+ISGINU),ibig(ipi+ISGOUU),rbig(ipf+FSGGAI),rbig(ipf+FSGFGA)
+     1       ,rbig(ipf+FSGINR),ibig(ipi+ISGDCF),ibig(ipi+ISGDCO)
+     1       ,rbig(ipf+FSGEDL),rbig(ipf+FSGCAP)
+        endif
+        ipzco=ibig(ipi+ISGPZC)
+        if(ipzco.eq.STRPZS) then
+          write(lu,"(3x,'a0=',1pe13.5,' at ',0pf8.4,'Hz')") rbig(ipf+FSGAZE),rbig(ipf+FSGFAZ)
+          ntop=ibig(ipi+ISGNTP)
+          nbot=ibig(ipi+ISGNBT)
+          write(lu,"(i4,' zeros')") ntop
+          ipf1=ipf+FLENSG
+          if(ntop.ne.0) write(lu,"(4x,1p6e13.5)") (rbig(ipf1+i-1),i=1,2*ntop)
+          write(lu,"(i4,' poles')") nbot
+          ipf1=ipf1+ibig(ipi+ISGLNT)
+          if(nbot.ne.0) write(lu,"(4x,1p6e13.5)") (rbig(ipf1+i-1),i=1,2*nbot)
+        else if(ipzco.eq.STRCOF) then
+          ntop=ibig(ipi+ISGNTP)
+          nbot=ibig(ipi+ISGNBT)
+          write(lu,"(i4,' numerator coefficients')") ntop
+          ipf1=ipf+FLENSG
+          if(ntop.ne.0) write(lu,"(4x,1p6e13.5)") (rbig(ipf1+i-1),i=1,ntop)
+          ipf1=ipf1+ibig(ipi+ISGLNT)
+          write(lu,"(i4,' denominator coefficients')") nbot
+          if(nbot.ne.0) write(lu,"(4x,1p6e13.5)") (rbig(ipf1+i-1),i=1,nbot)
+        else 
+          pause 'sgdumpascii: unknown response format'
+        endif
+        ipi=ipi0+ibig(ipi+ISGADN)
+        ipf=ipi/LENFLT
+      enddo
+      close(lu)   
+
+
+
+      luo=-1
+      call opnflc(luo,sacf(1:lsacf),4,0,0,iostat,-1,2)
+      call sgdumahx1(luo,isub,iagram)
+      call closfl(luo,iostat)
+
+      return
+      end
+
+c-------------------------------------------------------------
+      subroutine sgdumahx1(luo,isub,iagram)
+      include 'gramblock.h'
+      include '/home/eeyore1/john/eq/src/libdb/dblib.h'
+      include 'phstable.h'
+      include 'seedparam.h'
+      parameter (LENFLT=1)
+      include 'rspaddrs.h'
+      include 'ahheader.h'
+      character*5 sta
+      character*2 lid
+      character*3 cha
+
+
+c     Write ah data file
+
+c     Initialize header
+      call balloc(LAHHDR,iaahh)
+      do i=0,LAHHDR-1
+        ibig(iaahh+i)=0
+      enddo
+      ibig(iaahh+AAHLCD)=6
+      ibig(iaahh+AAHLCH)=6
+      ibig(iaahh+AAHLTP)=8
+      ibig(iaahh+AAHLEC)=80
+      ibig(iaahh+AAHLDC)=80
+      ibig(iaahh+AAHLLG)=202
+      ibig(iaahh+AAHNXR)=MAHXRS
+
+
+
+c     Get station and channel names
+      ica=4*(iagram+OGSTNAM)
+      k=0
+      do i=ica,ica+4
+         k=k+1
+         sta(k:k)=cbig(i)
+      enddo
+      iach=iagram+ibig(iagram+OGSTCHO+isub-1)
+      k=0
+      ica=4*(iach+OGCHLID)
+      do i=ica,ica+1
+        k=k+1
+        lid(k:k)=cbig(i)
+      enddo
+      k=0
+      ica=4*(iach+OGCHCID)
+      do i=ica,ica+2
+         k=k+1
+         cha(k:k)=cbig(i)
+      enddo
+      ksub=ibig(iach+OGCHSUB)
+      if(ksub.eq.0) then
+      else if(ksub.eq.1.and.cha(3:3).eq.' ') then
+        cha(3:3)='Z'
+      else if(ksub.eq.2.and.cha(3:3).eq.' ') then
+        cha(3:3)='N'
+      else if(ksub.eq.3.and.cha(3:3).eq.' ') then
+        cha(3:3)='E'
+      else
+        write(6,*) 'sgdumpah: Trouble reformatting channel name', cha,' ksub=',' isub=',isub
+      endif
+
+      iads=iach+ibig(iach+OGCHSGA)
+      nsamp=ibig(iach+OGCHSGL)
+      iaresp=iach+ibig(iach+OGRSBLO)
+
+      call loadchr(ibig(iaahh+AAHACD),2,sta(1:4)//'\0\0\0\0')
+      call loadchr(ibig(iaahh+AAHACH),2,cha(1:3)//'\0\0\0\0\0')
+      rbig(iaahh+AAHSLT)=rbig(iaresp+FRSLAT)
+      rbig(iaahh+AAHSLN)=rbig(iaresp+FRSLON)
+      rbig(iaahh+AAHSEL)=rbig(iaresp+FRSELV)
+c event if present
+      if(nevt.gt.0) then
+        ievt=1  ! only one event is defined
+        rbig(iaahh+AAHELT)=xlatevs(ievt)
+	rbig(iaahh+AAHELN)=xlonevs(ievt)
+	rbig(iaahh+AAHEDP)=xdepevs(ievt)
+        call sectim(itimevs(1,ievt),jye,jde,ihe,ime,fsece)
+        fsece=fsece+1.e-4*ishft(itimevs(2,ievt),-16)
+
+  
+        call juldat(jye,jde,imoe,idme)
+	ibig(iaahh+AAHEYR)=jye
+	ibig(iaahh+AAHEMO)=imoe
+	ibig(iaahh+AAHEDA)=idme
+	ibig(iaahh+AAHEHR)=ihe
+	ibig(iaahh+AAHEMI)=ime
+	rbig(iaahh+AAHESC)=fsece
+      endif
+      call loadchr(ibig(iaahh+AAHAEC),20,' ')
+
+      if(nstage.ne.1) then
+        write(6,'(a)') 'sgdumpah: *** Warning: can only enter 1 stage response ***'
+        rbig(iaahh+AAHDSN)=1.
+        rbig(iaahh+AAHAZR)=1.
+        rbig(iaahh+AAHNPL)=0.
+        rbig(iaahh+AAHNZR)=0.
+      else
+
+        ipi=iaresp
+        ipf=iaresp/LENFLT
+        ipi0=iaresp
+        nstage=ibig(ipi+IRSNCS)
+        ipow=ibig(ipi+IRSPOW)
+        rbig(iaahh+AAHDSN)=rbig(ipf+FRSOSN)
+        ipi=ipi+ILENRS
+        ipf=ipi/LENFLT
+        nz=0
+        np=0
+        rbig(iaahh+AAHAZR)=1./rbig(iaahh+AAHDSN)
+        do i=1,ipow
+          rbig(iaahh+AAHPZS+2*(1+2*nz))=0.
+          rbig(iaahh+AAHPZS+1+2*(1+2*nz-1))=0.
+          nz=nz+1
+        enddo
+        
+        do istage=1,nstage
+          ipzco=ibig(ipi+ISGPZC)
+          if(ipzco.eq.STRPZS) then
+            ntop=ibig(ipi+ISGNTP)
+            nbot=ibig(ipi+ISGNBT)
+            rbig(iaahh+AAHAZR)=rbig(iaahh+AAHAZR)*rbig(ipf+FSGGAI)*rbig(ipf+FSGAZE)
+            ipf1=ipf+FLENSG
+            do i=1,ntop
+              if(nz.ge.MAHPZS) then
+                write(6,'(a)') 'sgdumpah: *** Warning too many zeros ***'
+              else
+                rbig(iaahh+AAHPZS+4*nz+2)=rbig(ipf1+2*i-2)
+                rbig(iaahh+AAHPZS+4*nz+3)=rbig(ipf1+2*i-1)
+                nz=nz+1
+              endif
+            enddo
+            ipf1=ipf1+ibig(ipi+ISGLNT)
+            do i=1,nbot
+              if(np.ge.MAHPZS) then
+                 write(6,'(a)') 'sgdumpah: *** Warning too many poles ***'
+              else
+                rbig(iaahh+AAHPZS+4*np)=rbig(ipf1+2*i-2)
+                rbig(iaahh+AAHPZS+4*np+1)=rbig(ipf1+2*i-1)
+                np=np+1
+              endif
+            enddo
+          else
+            write(6,'(a)') 'sgdumpah: ***Warning: can only enter poles and zeroes'
+          endif
+          ipi=ipi0+ibig(ipi+ISGADN)
+          ipf=ipi/LENFLT
+        enddo
+
+        rbig(iaahh+AAHNPL)=np
+        rbig(iaahh+AAHNZR)=nz
+      endif
+      ibig(iaahh+AAHITP)=1
+      ibig(iaahh+AAHNDT)=nsamp
+      rbig(iaahh+AAHDEL)=del
+      call sectim(ibig(iach+OGCHSGS),jy,jd,ih,im,fsec)
+      fsec=fsec+1.e-4*ishft(ibig(iach+OGCHSGS+1),-16)
+      call juldat(jy,jd,imo,idm)
+      ibig(iaahh+AAHSYR)=jy
+      ibig(iaahh+AAHSMO)=jy=imo
+      ibig(iaahh+AAHSDA)=idm
+      ibig(iaahh+AAHSHR)=ih
+      ibig(iaahh+AAHSMI)=im
+      rbig(iaahh+AAHSSC)=fsec
+      aa=0.
+      ka=iads
+      do i=1,nsamp
+         aa=amax1(aa,abs(rbig(ka)))
+         ka=ka+1
+      enddo
+      rbig(iaahh+AAHAMX) =aa
+c  write ah file
+      call bffo(luo,1,ibig(iaahh),LAHHDR*4,j,0)
+      call bffo(luo,1,rbig(iads),nsamp*4,j,0)
+
+c check the ah-style response
+
+      call chekahrspx(rbig(iaahh))
+      call dalloc(LAHHDR,iaahh)
+      return
+      end
+c-----------------------------------------------
+      subroutine chekahrspx(headr)
+      real*4 headr(*)
+      include 'seedparam.h'
+      dimension ftest(12)
+      data ftest
+     1               /00.002
+     1               ,00.004
+     1               ,00.010
+     1               ,00.020
+     1               ,00.040
+     1               ,00.100
+     1               ,00.200
+     1               ,00.500
+     1               ,01.000
+     1               ,02.000
+     1               ,05.000
+     1               ,10.000/
+      data ntest/12/
+      data tpi/6.2831853/
+      complex resp(0:2),respahx
+
+      write(6,'(a,i4,a,i4,a,1pe13.5,a,e13.5)')
+     1   'Response from AH header: np=',ifix(headr(15)),' nz=',ifix(headr(17))
+     1    ,' ds=',headr(13),' a0=',headr(14)
+
+      do i=1,ntest
+        om=ftest(i)*tpi
+        resp(0)=respahx(om,headr)
+        resp(1)=resp(0)/cmplx(0.0,om)
+        resp(2)=resp(1)/cmplx(0.0,om)
+        write(6,"(a1,f7.4,f7.2,3x,3(1pe10.4,0pf9.2,2x,a5),f7.2)") 
+     1         ' ',ftest(i),1./ftest(i)
+     1       ,(cabs(resp(j)),360.*atan2(aimag(resp(j)),real(resp(j)))/tpi,utext(j)
+     1       ,j=0,2)
+      enddo
+      return
+      end
+
+
+
+
+c------------------------------------------------
+      complex function respahx(om,headr)
+      real*4 headr(*)
+
+      respahx=headr(13)*headr(14)
+      k=21
+      do i=1,ifix(headr(17))
+        respahx=respahx*cmplx(-headr(k),om-headr(k+1))
+        k=k+4
+      enddo
+      k=19
+      do i=1,ifix(headr(15))
+        respahx=respahx/cmplx(-headr(k),om-headr(k+1))
+        k=k+4
+      enddo
+      return
+      end
+
+
+
+      

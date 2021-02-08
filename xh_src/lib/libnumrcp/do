@@ -1,0 +1,6 @@
+#!/bin/tcsh -f
+
+foreach fl(*.f)
+ set nm = $fl:r
+ echo '	$(LIBDIR)/$(LIB).a(' $nm.o ') \'
+end

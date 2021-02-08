@@ -1,0 +1,251 @@
+c--------------------------------------------------------------
+      subroutine tropnk(itre,iname,lname,istat,iflap,ierr
+     1  ,nstak,maxlev,itradr
+     1  ,mord,lkey,linfo,ityp,exname)
+      include "dblib.h"
+      logical trfind
+      character*(*) exname
+      dimension iname(*)
+      character*80 name
+      integer*4 kname(20)
+      equivalence (name,kname)
+      character*80 ename,ename1
+      dimension iename(0:19)
+      logical exist
+      if(itre.ge.0.and.and(ibig(itre+OTRTP),MTRDR).eq.0) then
+        ierr=ERNTDI
+        itradr=-1
+        return
+      endif
+c ! first check to see if this tree is already open
+      it=iptree
+      do while(it.ge.0)
+        if(itre.eq.ibig(it+OTRFA).and.lname.eq.ibig(it+OTRLN)) then
+          do i=0,lname-1
+            if(iname(i+1).ne.ibig(it+OTRNM+i)) then
+              goto 40
+            endif
+          enddo
+          itradr=it
+          write(6,*) 'tree is open ',itradr
+          if(istat.eq.STNEW) then
+            ierr=EREXST
+            itradr=-1
+          else
+            ierr=0
+            iptrcu=itradr
+          endif
+          return
+        else
+          goto 40
+        endif
+   40   continue
+        it=ibig(it+OTRLO)
+      enddo
+
+      call byswap4(iname,lname)
+      write(name,"(20a4)") (iname(i),i=1,lname)
+      call byswap4(iname,lname)
+
+      itref=itre
+   10 continue
+      if(itref.ge.0) then
+        if(lname.ne.ibig(itref+OTRLK)) pause 'tropnk: name wrong length'
+        if(.not.trfind(itref,iname,lname,iok,ioi)) then
+          exist=.FALSE.
+          if(istat.eq.STOLD) then
+            ierr=ERNEXS
+            itradr=-1
+            return
+          endif
+        else
+          exist=.TRUE.
+          if(istat.eq.STNEW) then
+            ierr=EREXST
+            itradr=-1
+            return
+          endif
+        endif
+        lu=ibig(ibig(itref+OTRST)+OSTLU)
+
+c ! reserved_info+user_info
+        lent=ibig(itref+OTRNR)+ibig(itref+OTRLI)
+      else
+        lu=lufil(name)
+        if(lu.le.0) then 
+          llname=istlen(name)
+          call opnflc(lu,name(1:llname),iflap,0,0,ierr,-1,istat)
+          if(ierr.ne.0) then
+            itradr=-1
+            return
+          endif
+        endif
+        if(lenlu(lu).eq.0) then
+          exist=.FALSE.
+        else
+          exist=.TRUE.
+        endif
+        lent=LDRPK
+      endif
+      if(.not.exist) then
+        call balloc(lent,ia)
+c ! no root
+        ibig(ia+ODRFR)=-1
+        ibig(ia+ODROR)=mord
+        ibig(ia+ODRLK)=lkey
+        ibig(ia+ODRLI)=linfo
+        ibig(ia+ODRTP)=ityp
+c ! no primary redirect
+        ibig(ia+ODRPP)=-1
+        ibig(ia+ODRPL)=0
+c ! no secondary redirect
+        ibig(ia+ODRSP)=-1
+        ibig(ia+ODRSL)=0
+        k=LDRPK
+        do i=LDRPK+1,lent
+c ! null user info
+          ibig(ia+k)=-1
+          k=k+1
+        enddo
+        if(and(ityp,MTRRG).ne.0) then
+          if(exname.ne.' ') then
+            nwn=8
+            call balloc(nwn,in)
+            ename=exname
+            read(ename,"(8a4)") (ibig(in+i),i=0,nwn-1)
+            call byswap4(ibig(in),nwn)
+            if(itref.lt.0) then
+              call bffobs4(lu,1,ibig(ia),LDRPK*4,j,1)
+            endif
+            l=lenlu(lu)
+            call bffobs4(lu,1,ibig(in),nwn*4,j,l+1)
+            call dalloc(nwn,in)
+            ibig(ia+ODRSP)=l
+            ibig(ia+ODRSL)=nwn
+          endif
+        endif
+        if(itref.ge.0) then
+          call traddk(itref,iname,ibig(itref+OTRLK),ibig(ia),lent)
+        else
+          call bffobs4(lu,1,ibig(ia),LDRPK*4,j,1)
+        endif
+        call dalloc(lent,ia)
+      endif
+
+      if(itref.ge.0) then
+        if(.not.trfind(itref,iname,lname,iok,ioi)) pause
+     1    'tropnk: cannot find?'
+        ia=iok+ibig(itre+OTRLK)
+        iall=0
+      else
+        call balloc(LDRPK,ia)
+        call bffibs4(lu,1,ibig(ia),LDRPK*4,j,m,1)
+        iall=LDRPK
+      endif
+
+c ! primary redirection
+      if(ibig(ia+ODRPL).gt.0) then
+        call balloc(ibig(ia+ODRPL),in)
+        call bffibs4(lu,1,ibig(in),ibig(ia+ODRPL)*4,j,m,ibig(ia+ODRPP)+1)
+        write(name,"(20a4)") (ibig(in+i),i=0,ibig(ia+ODRPL)-1)
+        call byswap4(kname,20)
+        call dalloc(ibig(ia+ODRPL),in)
+        itref=-1
+        if(iall.ne.0) call dalloc(iall,ia)
+        goto 10
+      endif
+
+      iadrt=ibig(ia+ODRFR)
+      mord=ibig(ia+ODROR)
+      lkey=ibig(ia+ODRLK)
+      linfo=ibig(ia+ODRLI)
+      ityp=ibig(ia+ODRTP)
+      iadsec=ibig(ia+ODRSP)
+      lensec=ibig(ia+ODRSL)
+      if(iall.ne.0) call dalloc(iall,ia)
+      la=lkey+linfo+1
+      if(and(ityp,MTRRG).ne.0) then
+        la=la+LEXPK
+c ! secondary redirection
+        if(lensec.gt.0) then
+          call balloc(lensec,in)
+          call bffibs4(lu,1,ibig(in),lensec*4,j,m,iadsec+1)
+          do i=0,ibig(ia+ODRSL)-1
+            iename(i)=ibig(in+i)
+          enddo
+          call byswap4(iename,ibig(ia+ODRSL))
+          write(ename,"(20a4)") (iename(i),i=0,ibig(ia+ODRSL)-1)
+c         write(6,'(''tropnk: ename: '',a)') ename
+          if(ename(1:1).eq.'*') then
+            l1=lenst(ename)
+            call fillu(lu,ename1)
+            l2=lenst(ename1)
+            ename1(l2+1:l2+l1-1)=ename(2:l1)
+            ename=ename1
+          endif
+
+          lue=lufil(ename)
+          if(lue.le.0) then
+c           write(6,'(''tropnk: ename=:'',a)') ename
+            call opnflc(lue,ename,iflap,0,0,kstat,-1,STUNK)
+            if(lue.le.0.or.kstat.ne.0) 
+     1          pause 'tropnk: error opening secondary file'
+          endif
+
+          call dalloc(lensec,in)
+          exname=ename
+        else
+          lue=lu
+          exname='*'
+        endif
+      else
+        lue=-1
+        exname=' '
+      endif
+
+      lnamf=lname
+
+      call balloc(LTRPK+lnamf,itradr)
+
+      ibig(itradr+OTRFR)=iadrt
+      ibig(itradr+OTROR)=mord
+      ibig(itradr+OTRLK)=lkey
+      ibig(itradr+OTRLI)=linfo
+      ibig(itradr+OTRTP)=ityp
+c ! contents are directories
+      if(and(ityp,MTRDR).ne.0) then
+        lres=LDRPK
+      else
+        lres=0
+      endif
+      la=la+lres
+      nwds=2+mord*la
+      call stakcr(lu,nstak,nwds-la,la,istk)
+      ibig(itradr+OTRST)=istk
+      ibig(itradr+OTRML)=maxlev
+      call balloc(maxlev,ipatha)
+      call balloc(maxlev,ikeyta)
+      ibig(itradr+OTRPA)=ipatha
+      ibig(itradr+OTRKY)=ikeyta
+      ibig(itradr+OTRLV)=0
+      ibig(itradr+OTRUX)=lue
+      ibig(itradr+OTRKO)=la
+      ibig(itradr+OTRNR)=lres
+      ibig(itradr+OTRFA)=itref
+      ibig(itradr+OTRLO)=iptree
+      iptree=itradr
+      ibig(itradr+OTRLN)=lnamf
+
+      do i=1,lnamf
+        ibig(itradr+OTRNM+i-1)=iname(i)
+      enddo
+
+      ierr=0
+      iptrcu=itradr
+      return
+      end
+c------------------------------------------------
+      block data treeinit
+      include "dblib.h"
+      data iptree/-1/,iptrcu/-1/
+      end

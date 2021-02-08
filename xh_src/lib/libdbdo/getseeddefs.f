@@ -1,0 +1,326 @@
+c-----------------------------------------------------------
+      subroutine getseeddefs(lu,file)
+      character*(*) file
+      include 'seeddefs.h'
+      character*100 line
+      character*1 typ
+      character*3 cod
+      character*80 word,dict
+      character*80 getwd
+      character*4 str4
+      logical isdigit
+      logical none
+      common/plevel/iprtlv
+
+      do i=1,MXTYPES
+        ncodes(i)=0
+      enddo
+      numcodes=0
+      numdicts=0
+      do i=1,MXDICTS
+        ldictnams(i)=0
+      enddo
+      nknown=0
+      lfknown=0
+      do i=1,MXKNOWN
+        locfkn(i)=0
+      enddo
+      nknowu=0
+      luknown=0
+      do i=1,MXKNOWN
+        locukn(i)=0
+      enddo
+      ilev=0
+
+      open(lu,file=file)
+      mode=1
+      k=1+len(line)
+  100 call skipwht(line,k,none)
+      if(none) then
+  120   read(lu,"(a100)",iostat=ioerr) line
+        lline=istlen(line)
+        if(iprtlv.gt.1) write(6,'(a)') 'getseeddefs: '//line(1:lline)
+        if(ioerr.ne.0) then
+          goto 99
+        else if(line(1:1).eq.'#') then
+          goto 120
+        else if(line.eq.' ') then
+          goto 120
+        endif
+        k=1
+        goto 100
+      endif
+      goto (1,2,3,4,5,6,7,8,9,10,11,12,13,14),mode
+      pause 'unknown mode'
+c Expecting 'Code:' or 'Known:'
+    1 word=getwd(line,k,':',lgot)
+      if(word(1:lgot).eq.'Code') then
+        iencnt=0
+        if(ilev.ne.0) pause 'level error'
+        mode=2
+      else if(word(1:lgot).eq.'Known') then
+        ient=0
+        mode=12
+      else
+        pause 'error 1'
+      endif
+      k=k+1
+      goto 100
+c Expecting type
+    2 typ=getwd(line,k,' ',ltyp)
+      if(ltyp.ne.1) pause 'error 2'
+      ityp=iseedtp(typ)
+      mode=3
+      goto 100
+c Expecting cod
+    3 cod=getwd(line,k,' ',lcod)
+      if(lcod.ne.3) pause 'error 3'
+      numcodes=numcodes+1
+      if(numcodes.gt.MXCODES) pause 'too many codes'
+      ncodes(ityp)=ncodes(ityp)+1
+      if(ncodes(ityp).gt.MXCODPT) pause 'too many codes of one type'
+      indcods(ncodes(ityp),ityp)=numcodes
+      codes(ncodes(ityp),ityp)=cod
+      codstat(numcodes)=INTRPC
+      mode=4
+      goto 100
+c Expecting description of blockette
+    4 cdescrs(numcodes)=getwd(line,k,':',lcdescrs(numcodes))
+      k=k+1
+      mode=5
+      goto 100
+c Expecting possible '!'
+    5 if(line(k:k).eq.'!') then
+        k=k+1
+        mode=6
+        goto 100
+      else
+        mode=7
+        goto 100
+      endif
+c Expecting string after '!'
+    6 word=getwd(line,k,'EOL',lword)
+      if(word.eq.'Unsupported') then
+        codstat(numcodes)=IUNSPT
+      else if(word.eq.'Ignore') then
+        codstat(numcodes)=IGNORE
+      else
+        pause 'unknown string after !'
+      endif
+      mode=1
+      goto 100
+c Expecting digit or '(' or ')' or 'C' or '->' or '<-' or '%'
+    7 if(isdigit(line(k:k)) ) then
+        word=getwd(line,k,'.',lword)
+        iencnt=1+iencnt
+        read(word,*) ient
+        if(ient.ne.iencnt) pause 'error in entry count'
+        if(ient.gt.MXENTRY) pause 'too many entries'
+        nument(numcodes)=ient
+        entstat(ient,numcodes)=NOTSPCL
+        k=k+1
+        mode=9
+      else if(line(k:k).eq.'C'.or.line(k:k).eq.'K') then
+        mode=1
+      else if(line(k:k).eq.'(') then
+        k=k+1
+        entstat(ient,numcodes)=ISCOUNT
+        ilev=ilev+1
+        ientstt(ilev)=ient
+        mode=7
+      else if(line(k:k).eq.')') then
+        k=k+1
+        nrep=ient-ientstt(ilev)
+        if(nrep.ge.MXREPTS) pause 'too many repeats'
+        if(entstat(ientstt(ilev),numcodes).ne.ISCOUNT)
+     1     pause 'entry is not a count?'
+        entstat(ientstt(ilev),numcodes)
+     1    =entstat(ientstt(ilev),numcodes)+nrep
+        ilev=ilev-1
+        mode=7
+      else if(line(k:k+1).eq.'->') then
+        k=k+2
+        entstat(ient,numcodes)=INSERT
+        mode=8
+      else if(line(k:k+1).eq.'<-') then
+        k=k+2
+        entstat(ient,numcodes)=LOOKUP
+        mode=8
+      else if(line(k:k).eq.'%') then
+        k=k+1
+        entstat(ient,numcodes)=ISSEQNO
+        mode=11
+      else
+        pause 'error 7'
+      endif
+      goto 100
+c Expecting dict name
+    8 dict=getwd(line,k,' ',ldict)
+      if(dict(1:ldict).eq.'0') then
+        entstat(ient,numcodes)=ISZERO
+      else if(dict(1:ldict).eq.'1') then
+        entstat(ient,numcodes)=ISGOTN
+      else
+        idict=0
+        if(dict(1:ldict).eq.'Units_dict') idict=DICTUT
+        if(dict(1:ldict).eq.'Format_dict') idict=DICTFT
+        if(dict(1:ldict).eq.'Comment_dict') idict=DICTCT
+        if(dict(1:ldict).eq.'Generic_dict') idict=DICTGC
+        if(dict(1:ldict).eq.'Response_dict') idict=DICTRE
+        if(dict(1:ldict).eq.'Cited_dict') idict=DICTCD
+        if(dict(1:ldict).eq.'Beam_dict') idict=DICTBM
+        if(idict.eq.0) pause 'unknown dictionary'
+        dictnams(idict)=dict(1:ldict)
+        ldictnams(idict)=ldict
+        numdicts=max0(numdicts,idict)
+        if(numdicts.ge.MXDICTS) pause 'too many dictionaries'
+        entstat(ient,numcodes)
+     1      =entstat(ient,numcodes)+idict
+      endif
+      mode=7
+      goto 100
+c Expecting description of an entry
+    9 edescr(ient,numcodes)=getwd(line,k,':',ledescr(ient,numcodes))
+      k=k+1
+      mode=10
+      goto 100
+c Expecting format desriptor
+   10 fstr(ient,numcodes)=getwd(line,k,' ',lfstr(ient,numcodes))
+      kk=2
+      word=getwd(fstr(ient,numcodes),kk,'.',lword)
+      read(word(1:lword),*) lenent(ient,numcodes)
+      mode=7
+      goto 100
+c Expecting type after '%'
+   11 str4=getwd(line,k,' ',lstr4)
+      if(lstr4.ne.1.and.lstr4.ne.4) pause 'getseeddefs: type/code invalid'
+      if(entstat(ient,numcodes).ne.ISSEQNO) pause 'entry not a seq no'
+      itypr=iseedtp(str4(1:1))
+      entstat(ient,numcodes)=entstat(ient,numcodes)+itypr
+      if(lstr4.eq.4) then
+        nrefcd=1+nrefcd
+        if(nrefcd.gt.MXREFCD) pause 'getseeddefs: too many referenced'
+        codrefcd(nrefcd)=str4(2:4)
+      endif
+      mode=7
+      goto 100
+c Expecting '[' 
+   12 word=getwd(line,k,'[',lgot)
+      k=k+1
+      mode=13
+      goto 100
+c Expecting entry
+   13 word=getwd(line,k,']',lgot)
+      if(ient.eq.0) then
+        if(lgot.ne.3) pause 'getseeddefs: expecting a code'
+        cod=word(1:lgot)
+        ityp=ifindtyp(cod,indcd)
+        if(cod.eq.'030') then
+          nknown=nknown+1
+          if(nknown.gt.MXKNOWN) pause 'getseeddefs: too many known formats'
+          iknow(nknown)=lfknown+1
+          nkeys=-1
+        else if(cod.eq.'034') then
+          nknowu=nknowu+1
+          if(nknowu.gt.MXKNOWU) pause 'getseeddefs: too many known units'
+          iknowu(nknowu)=luknown+1
+        else
+          pause 'getseeddefs: unexpected code'
+        endif
+        mode=12
+        ient=1
+      else
+        if(cod.eq.'030') then
+          if(ient.eq.1) then
+            fkndscr(nknown)=word(1:lgot)
+            lfkndscr(nknown)=lgot
+            ient=2
+          else if(ient.eq.2) then
+            read(word(1:lgot),*) lfmc
+            if(lfmc.le.0) pause 'getseeddefs: illegal local format code'
+            if(lfmc.gt.MXKNOWN) pause 'getseeddefs: local format code too large'
+            if(locfkn(lfmc).eq.0.and.lfmc.ne.nknown) pause
+     1         'getseeddefs: local formats must be in numerical order'
+            locfkn(nknown)=lfmc
+            ient=3
+          else if(ient.eq.3) then
+            fknown(lfknown+1:lfknown+lgot)=word(1:lgot)
+            lfknown=lfknown+lgot
+            iknow(nknown+1)=lfknown+1
+            ient=4
+          else if(ient.eq.4) then
+            fknown(lfknown+1:lfknown+lgot)=word(1:lgot)
+            lfknown=lfknown+lgot
+            iknow(nknown+1)=lfknown+1
+            read(word(1:lgot),*) nkeys
+            ient=5
+          else if(ient.eq.5) then
+            fknown(lfknown+1:lfknown+lgot)=word(1:lgot)
+            lfknown=lfknown+lgot
+            lfknown=lfknown+1
+            fknown(lfknown:lfknown)='~'
+            iknow(nknown+1)=lfknown+1
+            nkeys=nkeys-1
+          else
+            pause 'getseeddefs: unexpected entry number'
+          endif
+          if(lfknown.gt.MXFKNOW) pause 'getseeddefs: fknown buffer exceeded'
+          if(nkeys.eq.0) then
+            mode=14
+          else
+            mode=12
+          endif
+        else if(cod.eq.'034') then
+          if(ient.eq.1) then
+            read(word(1:lgot),*) lunc
+            if(lunc.le.0) pause 'getseeddefs: illegal local unit code'
+            if(lunc.gt.MXKNOWU) pause 'getseeddefs: local unit code too large'
+            if(locukn(lunc).eq.0.and.lunc.ne.nknowu) pause
+     1         'getseeddefs: local formats must be in numerical order'
+            locukn(nknowu)=lunc
+
+
+            ient=2
+          else if(ient.eq.2) then
+            uknown(luknown+1:luknown+lgot)=word(1:lgot)
+            luknown=luknown+lgot
+            luknown=luknown+1
+            uknown(luknown:luknown)='~'
+            iknowu(nknowu+1)=luknown+1
+            ient=3
+          else if(ient.eq.3) then
+            uknown(luknown+1:luknown+lgot)=word(1:lgot)
+            luknown=luknown+lgot
+            luknown=luknown+1
+            uknown(luknown:luknown)='~'
+            iknowu(nknowu+1)=luknown+1
+            ient=4
+          else
+            pause 'getseeddefs: unexpected entry number'
+          endif
+          if(luknown.gt.MXUKNOW) pause 'getseeddefs: uknown buffer exceeded'
+          if(ient.eq.4) then
+            mode=14
+          else
+            mode=12
+          endif
+        endif
+      endif
+        
+      k=k+1
+      goto 100
+c expecting '}'
+   14 if(line(k:k).ne.'}') pause '} expected'
+      k=k+1
+      mode=1
+      goto 100
+
+   99 continue
+      close(1)
+      do k=1,nrefcd
+        cod=codrefcd(k)
+        idummy=ifindtyp(cod,indcd)
+        codstat(indcd)=IREFCD
+      enddo
+      return
+      end

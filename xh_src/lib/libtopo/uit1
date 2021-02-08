@@ -1,0 +1,104 @@
+openkr: opening /home/seiraid4/hendrikv/dta/SPRM1.BIN
+   1. Radius of solid surface  (KM)           
+   2. Ocean depth (0 for land)                
+   3. Crustal thickness                       
+   4. EPSILON S      MOHO-CMB SPLH  0         
+   5. EPSILON S      MOHO-CMB SPLH  1         
+   6. EPSILON S      MOHO-CMB SPLH  2         
+   7. EPSILON S      MOHO-CMB SPLH  3         
+   8. EPSILON S      MOHO-CMB SPLH  4         
+   9. EPSILON S      MOHO-CMB SPLH  5         
+  10. EPSILON S      MOHO-CMB SPLH  6         
+  11. EPSILON S      MOHO-CMB SPLH  7         
+  12. EPSILON S      MOHO-CMB SPLH  8         
+  13. EPSILON S      MOHO-CMB SPLH  9         
+  14. EPSILON S      MOHO-CMB SPLH 10         
+  15. EPSILON S      MOHO-CMB SPLH 11         
+  16. EPSILON S      MOHO-CMB SPLH 12         
+  17. EPSILON S      MOHO-CMB SPLH 13         
+  18. EPSILON S      MOHO-CMB SPLH 14         
+  19. EPSILON S      MOHO-CMB SPLH 15         
+  20. EPSILON S      MOHO-CMB SPLH 16         
+  21. EPSILON S      MOHO-CMB SPLH 17         
+  22. EPSILON S      MOHO-CMB SPLH 18         
+  23. EPSILON S      MOHO-CMB SPLH 19         
+  24. EPSILON S      MOHO-CMB SPLH 20         
+ nparm =   24
+getkr: ibatch=   32 iskip=    1 mdnum=  7985
+getkr: reading   33    1
+   1   -5.50610E-05
+   2   -2.00423E-05
+   3   -4.70104E-05
+   4    1.14696E-03
+   5    9.55719E-03
+   6    1.65856E-02
+   7    1.39482E-02
+   8    7.20595E-03
+   9    2.78594E-03
+   10    7.46535E-04
+   11    1.31651E-04
+   12    1.71563E-05
+   13    1.05506E-06
+   14    8.73326E-08
+   15   -4.70870E-09
+   16    1.42887E-09
+   17   -3.31433E-10
+   18    7.68569E-11
+   19   -1.78229E-11
+   20    4.13355E-12
+   21   -9.58992E-13
+   22    2.21088E-13
+   23   -4.64874E-14
+   24    6.16414E-15
+ LUMP, LUPER  21  22
+openkr: opening /home/seiraid4/hendrikv/dta/SPRM1.BIN
+   1. Radius of solid surface  (KM)           
+   2. Ocean depth (0 for land)                
+   3. Crustal thickness                       
+   4. EPSILON S      MOHO-CMB SPLH  0         
+   5. EPSILON S      MOHO-CMB SPLH  1         
+   6. EPSILON S      MOHO-CMB SPLH  2         
+   7. EPSILON S      MOHO-CMB SPLH  3         
+   8. EPSILON S      MOHO-CMB SPLH  4         
+   9. EPSILON S      MOHO-CMB SPLH  5         
+  10. EPSILON S      MOHO-CMB SPLH  6         
+  11. EPSILON S      MOHO-CMB SPLH  7         
+  12. EPSILON S      MOHO-CMB SPLH  8         
+  13. EPSILON S      MOHO-CMB SPLH  9         
+  14. EPSILON S      MOHO-CMB SPLH 10         
+  15. EPSILON S      MOHO-CMB SPLH 11         
+  16. EPSILON S      MOHO-CMB SPLH 12         
+  17. EPSILON S      MOHO-CMB SPLH 13         
+  18. EPSILON S      MOHO-CMB SPLH 14         
+  19. EPSILON S      MOHO-CMB SPLH 15         
+  20. EPSILON S      MOHO-CMB SPLH 16         
+  21. EPSILON S      MOHO-CMB SPLH 17         
+  22. EPSILON S      MOHO-CMB SPLH 18         
+  23. EPSILON S      MOHO-CMB SPLH 19         
+  24. EPSILON S      MOHO-CMB SPLH 20         
+getkr: ibatch=   32 iskip=    1 mdnum=  7985
+getkr: reading   33    1
+   1   -5.50610E-05
+   2   -2.00423E-05
+   3   -4.70104E-05
+   4    1.14696E-03
+   5    9.55719E-03
+   6    1.65856E-02
+   7    1.39482E-02
+   8    7.20595E-03
+   9    2.78594E-03
+   10    7.46535E-04
+   11    1.31651E-04
+   12    1.71563E-05
+   13    1.05506E-06
+   14    8.73326E-08
+   15   -4.70870E-09
+   16    1.42887E-09
+   17   -3.31433E-10
+   18    7.68569E-11
+   19   -1.78229E-11
+   20    4.13355E-12
+   21   -9.58992E-13
+   22    2.21088E-13
+   23   -4.64874E-14
+   24    6.16414E-15

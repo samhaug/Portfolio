@@ -1,0 +1,32 @@
+      subroutine mtrace(cfac,com,t0,dt,n,n0,x,y)
+      complex com, cfac, cstep, csave
+      dimension x(*),y(*)
+C$DOIT PPROG MTRACE
+      cstep=cexp( ((0.,1.)*com)*dt )
+      x(1)=1.
+      y(1)=0.
+      n1=min0(n0,n)
+      do i=2,n1
+        csave=cexp( ((0.,1.)*com)*dt*(i-1) )
+        x(i)=real(csave)
+        y(i)=aimag(csave)
+      enddo
+      k=n1
+      do while (k.lt.n)
+        csave=cmplx(x(k),y(k))*cstep
+        s1=real(csave)
+        s2=aimag(csave)
+        k1=min0(2*k,n)
+        knum=k1-k
+        kstart=k+1
+        call extnd(knum,s1,-s2,x(1),y(1),x(kstart))
+        call extnd(knum,s2,s1,x(1),y(1),y(kstart))
+        k=k1
+      enddo
+      csave=cexp( ((0.,1.)*com)*t0 )*cfac
+      s1=real(csave)
+      s2=-aimag(csave)
+      call sscal(n,s1,x(1),1)
+      call saxpy(n,s2,y(1),1,x(1),1)
+      return
+      end

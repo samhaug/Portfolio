@@ -1,0 +1,436 @@
+c-------------------------------------------------------------
+c        subroutine ylmv4(xlat,xlon,lmax,y,ypp,ytp,ypppp,ytppp,d)
+c
+c  evaluates the vectors ypp,ytp, of length lenv=(lmax-1)*(2*lmax+6)
+c  and vectors ypppp,ytppp, of length lenv4=(lmax-3)*(2*lmax+10).
+c
+c  ypp,ytp represent contributions to the symmetric trace-free
+c  second rank tensor c.
+c
+c  ypppp,ytppp represent contributions to the completely symmetric trace-free
+c  fourth rank tensor e.
+c
+c    In spherical coordinates ('t'=theta=colatitiude, 'p'=phi=longitude)
+c
+c    c  =  ( c_tt  c_tp )
+c          ( c_pt  c_pp )
+c
+c    and  c_pp   = -c_tt   = ypp . c2
+c         c_tp    = c_pt   = ytp . c2
+c
+c     Similarly for e:
+c     e_pppp =  e_tttt = -e_pptt   = ypppp . c4
+c     e_tppp = -e_tttp             = ytppp . c4
+c
+c     where c2 and c4 represent model coefficient vectors,
+c     of the appropriate length, describing the 2-psi and
+c     4-psi dependence of phase velocity, respectively.
+c       
+c 
+c     Scalar spherical harmonics are also calculated and
+c     placed in y(1) -- y( (lmax+1)**2 )
+c
+c     The companion routine ylmavv4() (q.v.) calculates the
+c     contribution to the average value of  c_ll (= l.c.l) and e_llll
+c     along the minor arc and the complete great circle,
+c     where 'l' represents the tangent to the path:
+c         
+c           l_t = -cos(az)      l_p = sin(az)
+c 
+c     and az is the local azimuth of the path.
+c
+c     Thus:
+c            c_ll   =  - c_pp * cos(2*az)  - c_tp * sin(2*az)
+c     and  
+c            e_llll =  e_pppp * cos(4*az) + e_tppp * sin(4*az)
+c
+c     Thus in terms of the formula
+c             (delta c)/c =   eps_0
+c                           + eps_1 cos(2*az)  + eps_2 c_tp * sin(2*az)
+c                           + eps_3 cos(4*az)  + eps_4 c_tp * sin(4*az)
+c     we have 
+c
+c         eps_0 =  c0.y
+c         eps_1 = -c2.ypp
+c         eps_2 = -c2.ytp
+c         eps_3 =  c4.ypppp
+c         eps_4 =  c4.ytppp
+c
+c     Notice that c2 incorporates BOTH 2-psi coefficients eps_1 and eps_2
+c     and that c4 incorporates BOTH 4-psi coefficients eps_3 and eps_4
+c     This is reflected in the fact that the number of degrees of freedom
+c     in c2 and c4 are increasing as 2*(lmax+1)**2 - i.e. they each contain
+c     approximately the same number of degrees of freedom as in TWO
+c     scalar spherical harmonic expansions.
+c
+c----------------------------------------------------------------
+c     'd' is d.p. workspace. (notice that it's bigger than in ylmv)
+c----------------------------------------------------------------
+c
+c   Explanation
+c   -----------
+c
+c   Let Y[l][N,m] represent generalised spherical harmonics.
+c   These are the same as the generalised spherical harmonics of
+c   Phinney & Burridge, except that we normalise so that
+x   Integral  | Y[l][N,m] |**2 = 1.
+c   Thus
+c
+c        Y[l][N,m] = sqrt((2*l+1)/(4*pi)) Ypb[l][N,m]
+c
+c   where Ypb[l][N,m] are the generalised spherical harmonics of
+c   Phinney & Burridge.
+c    
+c   This routine generates output vectors as follows.
+c
+c   y(1)  =    Y[0][0,0]     l=0
+c   y(2)  =    Y[1][0,0]     l=1
+c   y(3)  = Re Y[1][0,1]
+c   y(4)  = Im Y[1][0,1]
+c   y(5)  =    Y[2][0,0]     l=2
+c   y(6)  = Re Y[2][0,1]
+c   y(7)  = Im Y[2][0,1]
+c   y(8)  = Re Y[2][0,2]
+c   y(9)  = Im Y[2][0,2]
+c   y(10) =    Y[3][0,0]     l=3
+c   y(11) = Re Y[3][0,1]
+c   y(12) = Im Y[3][0,1]
+c   y(13) = Re Y[3][0,2]
+c   y(14) = Im Y[3][0,2]
+c   y(15) = Re Y[3][0,3]
+c   y(16) = Im Y[3][0,3]
+c        ...
+c        ...                 l=lmax
+c        ...
+c        ...
+c   y((lmax+1)**2) = Im Y[lmax][0,lmax]
+c
+c
+c   ypp(1) = - Re Y[2][2, 0]        ytp(1) = - Im Y[2][2, 0] (=0)  l=2
+c   ypp(2) = + Im Y[2][2, 0] (=0)   ytp(2) = - Re Y[2][2, 0]
+c   ypp(3) = - Re Y[2][2, 1]        ytp(3) = - Im Y[2][2, 1] 
+c   ypp(4) = + Im Y[2][2, 1]        ytp(4) = - Re Y[2][2, 1]
+c   ypp(5) = - Re Y[2][2,-1]        ytp(5) = - Im Y[2][2,-1] 
+c   ypp(6) = + Im Y[2][2,-1]        ytp(6) = - Re Y[2][2,-1]
+c   ypp(7) = - Re Y[2][2, 2]        ytp(7) = - Im Y[2][2, 2] 
+c   ypp(8) = + Im Y[2][2, 2]        ytp(8) = - Re Y[2][2, 2]
+c   ypp(9) = - Re Y[2][2,-2]        ytp(9) = - Im Y[2][2,-2] 
+c   ypp(10)= + Im Y[2][2,-2]        ytp(10)= - Re Y[2][2,-2]
+c   ypp(11)= - Re Y[3][2, 0]        ytp(11)= - Im Y[3][2, 0] (=0)  l=3
+c   ypp(12)= + Im Y[3][2, 0] (=0)   ytp(12)= - Re Y[3][2, 0]
+c   ypp(13)= - Re Y[3][2, 1]        ytp(13)= - Im Y[3][2, 1] 
+c   ypp(14)= + Im Y[3][2, 1]        ytp(14)= - Re Y[3][2, 1]
+c   ypp(15)= - Re Y[3][2,-1]        ytp(15)= - Im Y[3][2,-1] 
+c   ypp(16)= + Im Y[3][2,-1]        ytp(16)= - Re Y[3][2,-1]
+c   ypp(17)= - Re Y[3][2, 2]        ytp(17)= - Im Y[3][2, 2] 
+c   ypp(18)= + Im Y[3][2, 2]        ytp(18)= - Re Y[3][2, 2]
+c   ypp(19)= - Re Y[3][2,-2]        ytp(19)= - Im Y[3][2,-2] 
+c   ypp(20)= + Im Y[3][2,-2]        ytp(20)= - Re Y[3][2,-2]
+c   ypp(11)= - Re Y[3][2, 3]        ytp(21)= - Im Y[3][2, 3] 
+c   ypp(22)= + Im Y[3][2, 3]        ytp(11)= - Re Y[3][2, 3]
+c   ypp(23)= - Re Y[3][2,-3]        ytp(23)= - Im Y[3][2,-3] 
+c   ypp(24)= + Im Y[3][2,-3]        ytp(24)= - Re Y[3][2,-3]
+c   ... 
+c   ... 
+c   ypp((lmax-1)*(2*lmax+6)) = + Im Y[lmax][2,-lmax]
+c   ytp((lmax-1)*(2*lmax+6)) = - Re Y[lmax][2,-lmax]
+c
+
+
+c   ypppp(1) = - Re Y[4][4, 0]        ytppp(1) = - Im Y[4][4, 0] (=0)  l=4
+c   ypppp(2) = + Im Y[4][4, 0] (=0)   ytppp(2) = - Re Y[4][4, 0]
+c   ypppp(3) = - Re Y[4][4, 1]        ytppp(3) = - Im Y[4][4, 1] 
+c   ypppp(4) = + Im Y[4][4, 1]        ytppp(4) = - Re Y[4][4, 1]
+c   ypppp(5) = - Re Y[4][4,-1]        ytppp(5) = - Im Y[4][4,-1] 
+c   ypppp(6) = + Im Y[4][4,-1]        ytppp(6) = - Re Y[4][4,-1]
+c   ypppp(7) = - Re Y[4][4, 2]        ytppp(7) = - Im Y[4][4, 2] 
+c   ypppp(8) = + Im Y[4][4, 2]        ytppp(8) = - Re Y[4][4, 2]
+c   ypppp(9) = - Re Y[4][4,-2]        ytppp(9) = - Im Y[4][4,-2] 
+c   ypppp(10)= + Im Y[4][4,-2]        ytppp(10)= - Re Y[4][4,-2]
+c   ypppp(11)= - Re Y[4][4, 3]        ytppp(11)= - Im Y[4][4, 3] 
+c   ypppp(12)= + Im Y[4][4, 3]        ytppp(12)= - Re Y[4][4, 3]
+c   ypppp(13)= - Re Y[4][4,-3]        ytppp(13)= - Im Y[4][4,-3] 
+c   ypppp(14)= + Im Y[4][4,-3]        ytppp(14)= - Re Y[4][4,-3]
+c   ypppp(15)= - Re Y[4][4, 4]        ytppp(15)= - Im Y[4][4, 4] 
+c   ypppp(16)= + Im Y[4][4, 4]        ytppp(16)= - Re Y[4][4, 4]
+c   ypppp(17)= - Re Y[4][4,-4]        ytppp(17)= - Im Y[4][4,-4] 
+c   ypppp(18)= + Im Y[4][4,-4]        ytppp(18)= - Re Y[4][4,-4]
+c   ... 
+c   ypp((lmax4-3)*(2*lmax4+10)) = + Im Y[lmax][2,-lmax]
+c   ytp((lmax4-3)*(2*lmax4+10)) = - Re Y[lmax][2,-lmax]
+c
+c   ---- Theory ---
+c
+c    Let c be the trace free symmetric 2-tensor
+c
+c    c  =  ( c_tt  c_tp )
+c          ( c_pt  c_pp )
+c
+c    with c_tt = -c_pp (so that it's trace free)
+c    and  c_pt = c_tp  (so that it's symmetric)
+c    In the terminology of Phinney & Burridge its 'contravariant'
+c    components are given by (PB eq 2.4)
+c
+c    c++ = -cpp - i ctp
+c    c-- = -cpp + i ctp
+c    c+- = c-+ = 0
+c
+c    c++ and c-- can be expanded in terms of Y[l][2,m] and Y[l][-2,m]
+c    respectively. Let us write
+c
+c    c++ = -cpp - i ctp = Sum  C[++][l,m] Y[l][+2,m]
+c    c-- = -cpp + i ctp = Sum  C[--][l,m] Y[l][-2,m]
+c                       = Sum  C[--][l,m] (-1)**m Conj[Y[l][2,-m]]
+c
+c    where C[xx][l,m] represent the expansion coefficients and where
+c    the last line follows from
+c
+c    Conj[Y[l][N,m]] = P[l][N,m] exp[- i m phi]
+c                   = (-1)**(N+m) P[l][-N,-m] exp[- i m phi]
+c                                  (see PB Appendix A Item 3(a))
+c                   = (-1)**(N+m) Y[l][-N,-m]
+
+c    Note that we must have 
+c             C[--][l,m] = (-1)**m Conj[C[++][l,m]]
+c    in order that c-- be the conjugate of c++ amd thus for
+c    cpp and ctp to be real.
+c
+c    Thus
+c
+c    -cpp - i ctp = Sum_lm  C[++][l,m]  Y[l][2,m]
+c
+c                 =  Sum_l  C[++][l,0]  Y[l][2,0]
+c                         + C[++][l,1]  Y[l][2,1]
+c                         + C[++][l,-1] Y[l][2,-1]
+c                         + C[++][l,2]  Y[l][2,2]
+c                         + C[++][l,-2] Y[l][2,-2]
+c                         + ...  )
+c Therefore, taking the real and imaginary parts
+c
+c      c_pp = Sum_l
+c            - Re C[++][l,0]  Re Y[l][2,0]  + Im C[++][l,0] Im Y[l][2,0]
+c            - Re C[++][l,1]  Re Y[l][2,1]  + Im C[++][l,1] Im Y[l][2,1]
+c            - Re C[++][l,-1] Re Y[l][2,-1] + Im C[++][l,-1] Im Y[l][2,-1]
+c            - Re C[++][l,2]  Re Y[l][2,2]  + Im C[++][l,2] Im Y[l][2,2]
+c            - Re C[++][l,-2] Re Y[l][2,-2] + Im C[++][l,-2] Im Y[l][2,-2]
+c             + ...
+c
+c          =    Re C[++][2,0]  ypp(1) + Im C[++][2,0]  ypp(2)
+c             + Re C[++][2,1]  ypp(3) + Im C[++][2,1]  ypp(4)
+c             + Re C[++][2,-1] ypp(5) + Im C[++][2,-1] ypp(6)
+c             + Re C[++][2,2]  ypp(7) + Im C[++][2,2]  ypp(8)
+c             + Re C[++][2,-2] ypp(9) + Im C[++][2,-2] ypp(10)
+c             + ...
+c
+c          = c2.ypp
+c
+c
+c      c_tp = Sum_l
+c            - Re C[++][l,0]  Im Y[l][2,0]  - Im C[++][l,0] Re Y[l][2,0]
+c            - Re C[++][l,1]  Im Y[l][2,1]  - Im C[++][l,1] Re Y[l][2,1]
+c            - Re C[++][l,-1] Im Y[l][2,-1] - Im C[++][l,-1] Re Y[l][2,-1]
+c            - Re C[++][l,2]  Im Y[l][2,2]  - Im C[++][l,2] Re Y[l][2,2]
+c            - Re C[++][l,-2] Im Y[l][2,-2] - Im C[++][l,-2] Re Y[l][2,-2]
+c            - ...
+c
+c          =    Re C[++][2,0]  ytp(1) + Im C[++][2,0]  ytp(2)
+c             + Re C[++][2,1]  ytp(3) + Im C[++][2,1]  ytp(4)
+c             + Re C[++][2,-1] ytp(5) + Im C[++][2,-1] ytp(6)
+c             + Re C[++][2,2]  ytp(7) + Im C[++][2,2]  ytp(8)
+c             + Re C[++][2,-2] ytp(9) + Im C[++][2,-2] ytp(10)
+c             + ...
+c
+c          = c2.ytp
+c
+c    where c2 is the 'model vector' describing the 2-psi dependence:
+c
+c       c2(1)  = Re C[++][2,0]
+c       c2(2)  = Im C[++][2,0]
+c       c2(3)  = Re C[++][2,1]
+c       c2(4)  = Im C[++][2,1]
+c       c2(5)  = Re C[++][2,-1]
+c       c2(6)  = Im C[++][2,-1]
+c       c2(7)  = Re C[++][2,2]
+c       c2(8)  = Im C[++][2,2]
+c       c2(9)  = Re C[++][2,-2]
+c       c2(10) = Im C[++][2,-2]
+c       c2(11) = Re C[++][3,0]
+c       c2(12) = Im C[++][3,0]
+c       c2(13) = Re C[++][3,1]
+c       c2(14) = Im C[++][3,1]
+c       c2(15) = Re C[++][3,-1]
+c       c2(16) = Im C[++][3,-1]
+c       c2(17) = Re C[++][3,2]
+c       c2(18) = Im C[++][3,2]
+c       c2(19) = Re C[++][3,-2]
+c       c2(20) = Im C[++][3,-2]
+c       c2(21) = Re C[++][3,3]
+c       c2(22) = Im C[++][3,3]
+c       c2(23) = Re C[++][3,-3]
+c       c2(24) = Im C[++][3,-3]
+c       ....
+c       ....
+c
+c       Similarly for the 4-psi terms:
+c       e is a fourth rank 2-tensor which is completely symmetric
+c       and trace free.
+c       It has only 2 independent elements e_pppp and e_tppp, say
+c       and all others elements expressible in terms of these by
+c       virtue of the symmetry and trace-free conditions.
+c       e.g. e_ttpp = -e_pppp by virtue of the trace-free condition
+c       Sum_i e_iijk = 0.
+c
+c       Again, using PB2.4 we find that the only non-vanishing
+c       contravariant components are:
+c
+c       e++++ = 2 c_pppp + 2 i ctpppp
+c       e---- = 2 c_pppp - 2 i ctpppp
+c     
+c       Expanding in the same way as for the 2-psi terms above
+c       we get
+c       e_pppp = c4.ypppp
+c       e_tppp = c4.ytppp
+c
+c       where the 'model vector' in this case is
+c
+c       c4(1)  = -(1/2) Re C[++++][4,0]
+c       c4(2)  = -(1/2) Im C[++++][4,0]
+c       c4(3)  = -(1/2) Re C[++++][4,1]
+c       c4(4)  = -(1/2) Im C[++++][4,1]
+c       c4(5)  = -(1/2) Re C[++++][4,-1]
+c       c4(6)  = -(1/2) Im C[++++][4,-1]
+c       c4(7)  = -(1/2) Re C[++++][4,2]
+c       c4(8)  = -(1/2) Im C[++++][4,2]
+c       c4(9)  = -(1/2) Re C[++++][4,-2]
+c       c4(10) = -(1/2) Im C[++++][4,-2]
+c       c4(11) = -(1/2) Re C[++++][4,3]
+c       c4(12) = -(1/2) Im C[++++][4,3]
+c       c4(13) = -(1/2) Re C[++++][4,-3]
+c       c4(14) = -(1/2) Im C[++++][4,-3]
+c       c4(15) = -(1/2) Re C[++++][4,4]
+c       c4(16) = -(1/2) Im C[++++][4,4]
+c       c4(17) = -(1/2) Re C[++++][4,-4]
+c       c4(18) = -(1/2) Im C[++++][4,-4]
+c       c4(19) = -(1/2) Re C[++++][5,0]
+c       c4(20) = -(1/2) Im C[++++][5,0]
+c       c4(21) = -(1/2) Re C[++++][5,1]
+c       c4(22) = -(1/2) Im C[++++][5,1]
+c       c4(23) = -(1/2) Re C[++++][5,-1]
+c       c4(24) = -(1/2) Im C[++++][5,-1]
+c       c4(25) = -(1/2) Re C[++++][5,2]
+c       ...
+c       ...
+
+
+
+
+
+      subroutine ylmv4(xlat,xlon,lmax,y,ypp,ytp,ypppp,ytppp,d)
+      dimension y((lmax+1)**2)
+     1         ,ypp((lmax-1)*(2*lmax+6))
+     1         ,ytp((lmax-1)*(2*lmax+6))
+     1         ,ypppp((lmax-3)*(2*lmax+10))
+     1         ,ytppp((lmax-3)*(2*lmax+10))
+      double precision theta,d(9*(2*lmax+1))
+      complex cfac,dfac
+      data radian/57.2957795/,rr4pi/0.28209479/
+      theta=(90.-xlat)/radian
+      dfac=cexp(cmplx(0.,xlon/radian))
+      k=0
+      ka=0
+      ka4=0
+      do l=0,lmax
+        if(l.lt.2) then
+          call rotmx2(0,l,theta,d,1,2*l+1)
+          ind=l
+          cfac=rr4pi*sqrt(2.*l+1)
+          do m=0,l
+            k=k+1
+            ind=ind+1
+            y(k)=d(ind)*real(cfac)
+            if(m.ne.0) then
+              k=k+1
+              y(k)=d(ind)*aimag(cfac)
+            endif
+            cfac=cfac*dfac
+          enddo
+        else if(l.lt.4) then
+          call rotmx2(2,l,theta,d,5,2*l+1)
+          ind=5*l+3
+          indp=ind+2
+          indm=indp
+          cfac=rr4pi*sqrt(2.*l+1)
+          do m=0,l
+            k=k+1
+            y(k)=d(ind)*real(cfac)
+            ka=ka+1
+            ypp(ka)=-d(indp)*real(cfac)
+            ytp(ka)=-d(indp)*aimag(cfac)
+            ka=ka+1
+            ypp(ka)=+d(indp)*aimag(cfac)
+            ytp(ka)=-d(indp)*real(cfac)
+            if(m.ne.0) then
+              k=k+1
+              y(k)=d(ind)*aimag(cfac)
+              ka=ka+1
+              ypp(ka)=-d(indm)*real(cfac)
+              ytp(ka)=+d(indm)*aimag(cfac)
+              ka=ka+1
+              ypp(ka)=-d(indm)*aimag(cfac)
+              ytp(ka)=-d(indm)*real(cfac)
+            endif
+            ind=ind+5
+            indp=indp+5
+            indm=indm-5
+            cfac=cfac*dfac
+          enddo
+        else
+          call rotmx2(4,l,theta,d,9,2*l+1)
+          ind=9*l+5
+          indp=ind+2
+          indm=indp
+          indp4=ind+4
+          indm4=indp4
+          cfac=rr4pi*sqrt(2.*l+1)
+          do m=0,l
+            k=k+1
+            y(k)=d(ind)*real(cfac)
+            ka=ka+1
+            ypp(ka)=-d(indp)*real(cfac)
+            ytp(ka)=-d(indp)*aimag(cfac)
+            ka=ka+1
+            ypp(ka)=+d(indp)*aimag(cfac)
+            ytp(ka)=-d(indp)*real(cfac)
+            ka4=ka4+1
+            ypppp(ka4)=-d(indp4)*real(cfac)
+            ytppp(ka4)=-d(indp4)*aimag(cfac)
+            ka4=ka4+1
+            ypppp(ka4)=+d(indp4)*aimag(cfac)
+            ytppp(ka4)=-d(indp4)*real(cfac)
+            if(m.ne.0) then
+              k=k+1
+              y(k)=d(ind)*aimag(cfac)
+              ka=ka+1
+              ypp(ka)=-d(indm)*real(cfac)
+              ytp(ka)=+d(indm)*aimag(cfac)
+              ka=ka+1
+              ypp(ka)=-d(indm)*aimag(cfac)
+              ytp(ka)=-d(indm)*real(cfac)
+              ka4=ka4+1
+              ypppp(ka4)=-d(indm4)*real(cfac)
+              ytppp(ka4)=+d(indm4)*aimag(cfac)
+              ka4=ka4+1
+              ypppp(ka4)=-d(indm4)*aimag(cfac)
+              ytppp(ka4)=-d(indm4)*real(cfac)
+            endif
+            ind=ind+9
+            indp=indp+9
+            indm=indm-9
+            indp4=indp4+9
+            indm4=indm4-9
+            cfac=cfac*dfac
+          enddo
+        endif
+      enddo
+      return
+      end

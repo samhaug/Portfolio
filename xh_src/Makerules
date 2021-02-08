@@ -1,0 +1,40 @@
+#-- Gfortran (Arwen)
+FHJ       = gfortran     -ffixed-line-length-none -static -fno-automatic -mcmodel=medium -m64 -O3
+FHJ       = gfortran     -ffixed-line-length-none -static -fno-automatic -mcmodel=medium -fno-range-check -m64 -O3
+FCOMPILE  = gfortran -c  -ffixed-line-length-none -static -fno-automatic -mcmodel=medium -m64 -O3
+FCOMPILE  = gfortran -c  -ffixed-line-length-none -static -fno-automatic -m64 -O3
+FFCOMPILE = gfortran -c  -ffixed-line-length-none         -fno-automatic -mcmodel=medium -m64 -O3 -DMachinel
+
+#-- G77 (Arwen)
+# FHJ       = g77    -fno-silent -ffixed-line-length-none -Wno-globals -static -fno-automatic -finit-local-zero 
+# FCOMPILE  = gfortran -c -fno-silent -ffixed-line-length-none -Wno-globals -static -fno-automatic -finit-local-zero -mcmodel=medium -m64
+# FFCOMPILE = gfortran -c             -ffixed-line-length-none                      -fno-automatic                   -mcmodel=medium -m64 -DMachinel
+
+#-- Sun (Jeannot)
+# FHJ       = sunf77    -O3 -e -mcmodel=medium -xmodel=medium -shared-intel
+# FHJ       = sunf77    -O3 -e                 -xmodel=medium
+# FCOMPILE  = sunf77 -c -O3 -e -mcmodel=medium -xmodel=medium -shared-intel
+# FFCOMPILE = sunf77 -c -03 -e -mcmodel=medium -xmodel=medium -shared-intel -D__SunOS_5_3 
+# FLINK     = sunf77
+
+
+CC        = gcc -O3 -Wno-implicit
+CCOMPILE  = gcc -c -mcmodel=medium -m64 -O3 -DMachinel
+# CCOMPILE  = gcc -c mcmodel=medium -m64 -O3
+
+MAKE          = make
+
+.f.a:
+	${FCOMPILE}  $<
+	ar rv $@ $*.o
+	rm -f $*.o
+
+.F.a:
+	${FFCOMPILE} $<
+	ar rv $@ $*.o
+	rm -f $*.o
+
+.c.a:
+	${CCOMPILE}  $<
+	ar rv $@ $*.o
+	rm -f $*.o

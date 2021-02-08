@@ -1,0 +1,11 @@
+
+c----------------------------------------------------------------
+      subroutine closechng(iadgtr)
+      include 'gramdb.h'
+      include '../libdb/dblib.h'
+      do i=ibig(iadgtr+OGHNOP),1,-1
+        call trclos(ibig(iadgtr+OGHTCG+i-1))
+      enddo
+      ibig(iadgtr+OGHNOP)=0
+      return
+      end

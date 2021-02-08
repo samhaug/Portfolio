@@ -1,0 +1,66 @@
+
+      subroutine trrotk(istak,ipa1,ike2,ipa2,ipa3,idir,la)
+      include "dblib.h"
+c  idir=-1: borrow from left  brother (clockwise rotation)
+c  idir=+1: borrow from right brother (anti-clockwise rotation)
+      lam1=la-1
+      lam2=la-2
+      call stakgt(istak,ipa3,ibrec)
+      nkey=ibig(ibrec)-1
+      if(idir.lt.0) then
+        ike3=nkey
+        io3=lam1
+        io1=-1
+      else
+        ike3=0
+        io3=-1
+        io1=lam1
+      endif
+      k=ibrec+2+la*ike3
+      ipt3=ibig(k+io3)
+      call balloc(lam1,is3)
+      do i=0,lam2
+        ibig(is3+i)=ibig(k+i)
+      enddo
+c ! close up
+      if(idir.ge.0) then
+        do i=ibrec+1,ibrec+1+nkey*la
+          ibig(i)=ibig(i+la)
+        enddo
+      endif
+      ibig(ibrec)=nkey
+      call staktc(istak)
+
+      call stakgt(istak,ipa2,ibrec)
+      call balloc(lam1,is2)
+      k=ibrec+2+ike2*la
+      do i=0,lam2
+        ibig(is2+i)=ibig(k+i)
+        ibig(k+i)=ibig(is3+i)
+      enddo
+      call staktc(istak)
+
+      call stakgt(istak,ipa1,ibrec)
+      nkey=ibig(ibrec)
+c ! make space
+      if(idir.lt.0) then
+        do i=ibrec+1+nkey*la,ibrec+1,-1
+          ibig(i+la)=ibig(i)
+        enddo
+        ike1=0
+        io1=-1
+      else
+        ike1=nkey
+        io1=lam1
+      endif
+      k=ibrec+2+la*ike1
+      do i=0,lam2
+        ibig(k+i)=ibig(is2+i)
+      enddo
+      ibig(k+io1)=ipt3
+      ibig(ibrec)=nkey+1
+      call staktc(istak)
+      call dalloc(lam1,is2)
+      call dalloc(lam1,is3)
+      return
+      end

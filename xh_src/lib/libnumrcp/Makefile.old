@@ -1,0 +1,15 @@
+OBJDIR= $(HOME)/obj$(MS)/numrcp
+BINDIR= $(HOME)/bin$(MS)
+
+spline:
+	f77 -extend_source -c -O -o $(OBJDIR)/spline.o spline.f
+
+splint:
+	f77 -extend_source -c -O -o $(OBJDIR)/splint.o splint.f
+
+splinetest:
+	f77 -extend_source -O -o $(BINDIR)/splinetest splinetest.f \
+        $(OBJDIR)/*.o
+
+rantest:
+	f77 -extend_source -O -o $(BINDIR)/rantest rantest.f

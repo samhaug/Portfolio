@@ -1,0 +1,42 @@
+      subroutine volumes()
+      include 'seedparam.h'
+      include 'seedcommun.h'
+      include 'seedtrees.h'
+      logical getabr
+      integer trread
+      character*60 name
+      integer*4 iname(15)
+      character*100 path
+      equivalence (name,iname)
+
+      idblf=1
+      do while (getabr(itblabr,idblf,tmpblk,ltmp))
+        write(6,'(i8,a)') idblf,'-- '//tmpblk(1:ltmp)
+
+        nw=1
+        knt=0
+        ifound=0
+        do while(nw.gt.0)
+          nw=trread(itblabr,iname,15)
+          if(nw.gt.0) then
+            knt=knt+1
+            lname=istlen(name(1:4*nw))
+c           write(6,'(8x,a)') '   '//name(1:lname)
+          endif
+          if(lname.gt.5.and.name(1:5).eq.'/opt/') then
+             lud=-1
+             call opnflc(lud,'/home/seiraid1/j1/'//name(6:lname),1,0,0,ist1,-1,0)
+             if(ist1.eq.0) then ! exists on sr1
+               path='/home/seiraid1/j1/'//name(6:lname)
+             else
+               lud=-1
+               call opnflc(lud,'/home/seiraid2/j2/'//name(6:lname),1,0,0,ist1,-1,0)
+             endif
+          endif
+
+        enddo
+
+        idblf=idblf+1
+      enddo
+      return
+      end

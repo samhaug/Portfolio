@@ -1,0 +1,471 @@
+c---------------------------------------------------------------------
+      subroutine mapcnt(grid,igrid,ikx,iky,z1,z2,i1,i2,j1,j2
+     1       ,ifirc,nshds,iproj,icolor,ithick,mapfun,mapprj)
+      dimension grid(igrid,*)
+      dimension
+     1  wk(100000),ind(20000),ilev(20000),ax(5),ay(5)
+     1 ,cxy(2,3000),indcxy(10)
+     1 ,xy1(2,100000),ind1(20000),ilev1(20000),xy(2,100000)
+
+      common/cntwr/ ifcntwr
+
+      external mapfun
+      if(z1.gt.z2) then
+        z11=-z1
+        z21=-z2
+        do i=1,ikx
+          do j=1,iky
+            grid(i,j)=-grid(i,j)
+          enddo
+        enddo
+      else
+        z11=z1
+        z21=z2
+      endif
+
+      call twindo(i1,i2,j1,j2)
+      call dwindo(0.,360.,-90.,90.)
+
+c     nx=30
+c     nx=ikx
+      nx=350
+      nx2=0
+      nx1=1
+      do while (nx2.ne.ikx)
+        nx2=min0(nx1+nx,ikx)
+        if(nx2+4.ge.ikx) nx2=ikx
+c       ny=30
+c       ny=iky
+        ny=350
+        ny2=0
+        ny1=1
+        do while(ny2.ne.iky)
+          ny2=min0(ny1+ny,iky)
+          if(ny2+4.ge.iky) ny2=iky
+          aa=0.
+          bb=360./(iky-1)
+          cc=-180./(ikx-1)
+          dd=0.
+          tx=(ny1-1)*bb
+          ty=(nx1-1)*cc+90.
+          if(nx1.eq.1.and.ny1.eq.61) ifcntwr=0
+          if(nx1.ne.1.or.ny1.ne.61) ifcntwr=0
+          is=0
+          call cntrack(grid(nx1,ny1),igrid,nx2-nx1+1,ny2-ny1+1
+     1     ,aa,bb,cc,dd,tx,ty
+     1     ,nshds,z11,z21
+     1     ,xy(1,1),xy(2,1),2,100000,is,ind,ilev,20000)
+c         cxy(1,5)=aa*(0)+bb*(0)+tx
+c         cxy(2,5)=cc*(0)+dd*(0)+ty
+c         cxy(1,4)=aa*(nx2-nx1)+bb*(0)+tx
+c         cxy(2,4)=cc*(nx2-nx1)+dd*(0)+ty
+c         cxy(1,3)=aa*(nx2-nx1)+bb*(ny2-ny1)+tx
+c         cxy(2,3)=cc*(nx2-nx1)+dd*(ny2-ny1)+ty
+c         cxy(1,2)=aa*(0)+bb*(ny2-ny1)+tx
+c         cxy(2,2)=cc*(0)+dd*(ny2-ny1)+ty
+c         cxy(1,1)=aa*(0)+bb*(0)+tx
+c         cxy(2,1)=cc*(0)+dd*(0)+ty
+c         ncxy=5
+          j=0
+          i=0
+          call drawci(aa*j+bb*i+tx,cc*j+dd*i+ty,0,1
+     1          ,cxy(1,1),cxy(2,1),2,3000,iscxy,indcxy,10)
+          do i=1,ny2-ny1
+             call drawci(aa*j+bb*i+tx,cc*j+dd*i+ty,1,0
+     1          ,cxy(1,1),cxy(2,1),2,3000,iscxy,indcxy,10)
+          enddo
+          i=ny2-ny1
+          do j=1,nx2-nx1
+             call drawci(aa*j+bb*i+tx,cc*j+dd*i+ty,1,0
+     1          ,cxy(1,1),cxy(2,1),2,3000,iscxy,indcxy,10)
+          enddo
+          j=nx2-nx1
+          do i=ny2-ny1-1,0,-1
+             call drawci(aa*j+bb*i+tx,cc*j+dd*i+ty,1,0
+     1          ,cxy(1,1),cxy(2,1),2,3000,iscxy,indcxy,10)
+          enddo
+          i=0
+          do j=nx2-nx1-1,0,-1
+             call drawci(aa*j+bb*i+tx,cc*j+dd*i+ty,1,0
+     1          ,cxy(1,1),cxy(2,1),2,3000,iscxy,indcxy,10)
+          enddo
+          ncxy=indcxy(2)-indcxy(1)
+
+          ii=(ny2-ny1+1)/2
+          jj=(nx2-nx1+1)/2
+          xref=aa*(jj-1)+bb*(ii-1)+tx
+          yref=cc*(jj-1)+dd*(ii-1)+ty
+          rcll=1.+float(nshds)*(grid(jj+nx1-1,ii+ny1-1)-z11)/(z21-z11)
+          if(rcll.ge.0) then
+            icll=ifix(rcll)
+          else
+            icll=-1+ifix(rcll)
+          endif
+          icll=max0(0,min0(nshds+1,icll))
+          is1=0
+          call joicnt(cxy(1,1),cxy(2,1),2,ncxy
+     1     ,xy(1,1),xy(2,1),2,is,ind,ilev
+     1     ,xy1(1,1),xy1(2,1),2,100000,is1,ind1,ilev1,20000
+     1     ,icll,xref,yref
+     1     ,wk(1),wk(1),100000)
+
+          do i=1,is1
+            icol=min0(nshds,max0(1,ilev1(i)))
+            ifillcolor=ifirc+icol-1
+            call filcol(ifillcolor)
+            do kp=ind1(i),ind1(i+1)-1
+              call mapprj(xy1(1,kp),xy1(2,kp),iproj,xy1(1,kp),xy1(2,kp))
+            enddo
+            call polyfil(0,xy1(1,ind1(i)),xy1(2,ind1(i)),2,ind1(i+1)-ind1(i))
+          enddo
+          call tsend()
+          if( ismono().ne.0 ) then
+            call lincol(icolor)
+            call linwdt(1)
+            do i=1,is
+              do kp=ind(i),ind(i+1)-1
+                call mapprj(xy(1,kp),xy(2,kp),iproj,xx,yy)
+                if(kp.eq.ind(i)) then
+                  call movea(xx,yy)
+                else
+                  call drawa(xx,yy)
+                endif
+                if(mod(kp,500).eq.0) call tsend()
+              enddo
+              call tsend()
+            enddo
+          endif
+
+
+          ny1=ny2
+        enddo
+        nx1=nx2
+      enddo
+
+
+
+
+
+      if(ithick.ge.0) then
+        ax(1)=0.
+        ax(2)=360.
+        ax(3)=ax(2)
+        ax(4)=ax(1)
+        ax(5)=ax(1)
+        ay(1)=-90.
+        ay(2)=ay(1)
+        ay(3)=90.
+        ay(4)=ay(3)
+        ay(5)=ay(1)
+
+        call linwdt(ithick)
+        call lincol(icolor)
+        x=ax(1)
+        y=ay(1)
+        call mapprj(x,y,iproj,xp,yp)
+        call movea(xp,yp)
+        do i=2,5
+          do j=1,100
+            x=ax(i-1)+float(j)*(ax(i)-ax(i-1))/100.
+            y=ay(i-1)+float(j)*(ay(i)-ay(i-1))/100.
+            call mapprj(x,y,iproj,xp,yp)
+            call drawa(xp,yp)
+          enddo
+          call tsend
+        enddo
+      endif
+
+      return
+      end
+c---------------------------------------------------------
+      subroutine cntrack(g,ig,n1,n2
+     1     ,aa,bb,cc,dd,tx,ty
+     1     ,nshds,zmin,zmax
+     1     ,xs,ys,inc,nxy,is,indx,ilev,nindx)
+
+      dimension g(ig,*),xs(inc,*),ys(inc,*),indx(*),ilev(*)
+
+      common/cntwr/ ifcntwr
+
+      logical more,segind
+      dz=(zmax-zmin)/nshds
+      ncont=nshds+1
+
+      if(is.le.0) call drawci(0.,0.,0,1
+     1          ,xs,ys,inc,nxy,is,indx,nindx)
+
+      do icont=1,ncont
+        is0=is
+        z=zmin+(icont-1)*dz
+
+        if(ifcntwr.ne.0) then
+          write(6,*) 'about to do ',icont
+          read(5,'(a1)') xxxx
+          call initt(0)
+          call twindo(200,3000,200,3500)
+          call dwindo(0.,22.,0.,22.)
+          call linwdt(1)
+          call lincol(4)
+          do i=1,n2
+            call movea(float(i),1.)
+            call drawa(float(i),float(n1))
+          enddo
+          do i=1,n1
+            call movea(1.,float(i))
+            call drawa(float(n2),float(i))
+          enddo
+          call lincol(1)
+          if(icont.eq.5) then
+            write(6,'(i4,''.'',6f8.2)')
+     1            (jjj,(g(jjj,iii)-z,iii=1,6),jjj=n1,1,-1)
+          endif
+        endif
+        is0=is
+        z=zmin+(icont-1)*dz
+        ind=1
+        do while(segind(ind,n2,n1,i1i,j1i,i2i,j2i))
+          if(ifcntwr.ne.0) then
+            call movea(float(i1i),float(j1i))
+            call drawa(float(i2i),float(j2i))
+            call tsend()
+          endif
+          if(ifcntwr.ne.0) write(6,*) 'cnt',ind,n2,n1,i1i,j1i,i2i,j2i
+          if(sign(1.,g(j1i,i1i)-z).eq.sign(1.,g(j2i,i2i)-z)) goto 40
+          isv=is
+          isv1=is+1
+          m1=mod(i1i,2)
+          if(g(j1i,i1i).gt.g(j2i,i2i)) then
+            ifrh=m1
+          else
+            ifrh=1-m1
+          endif
+          do ifb=0,1
+            if(ifcntwr.ne.0.and.icont.eq.5) then
+              write(6,*) 'start of ifb loop'
+              read(5,'(a1)') xxxx
+            endif
+            ifdraw=0
+            ind1=0
+            i1=i1i
+            j1=j1i
+            i2=i2i
+            j2=j2i
+            more=.TRUE.
+            do while(more)
+              i=i1
+              j=j1
+              ii=i2
+              jj=j2
+              if(m1.eq.ifb) then
+                iu=j2-j1
+                ju=i1-i2
+              else
+                iu=j1-j2
+                ju=i2-i1
+              endif
+              gii=g(jj,ii)-z
+              gi=g(j,i)-z
+              den=gi-gii
+              if(den.ne.0.) then
+                x=(ii*gi-i*gii)/den-1.
+                y=(jj*gi-j*gii)/den-1.
+              else
+                x=.5*(i+ii)-1.
+                y=.5*(j+jj)-1.
+              endif
+              call drawci(aa*y+bb*x+tx,cc*y+dd*x+ty,ifdraw,0
+     1          ,xs,ys,inc,nxy,is,indx,nindx)
+              if(ifcntwr.ne.0) then
+                 if(ifdraw.eq.0) call movea(x+1.,y+1.)
+                 if(ifdraw.ne.0) call drawa(x+1.,y+1.)
+                 call tsend()
+               endif
+              ifdraw=1
+              if(is.eq.isv1) then
+                isv1=-ifb
+              endif
+              if(ifcntwr.ne.0)
+     1          write(6,*) 'ind ind1',ind,ind1
+              if(ind1.eq.ind) goto 30
+              in=i+iu
+              jn=j+ju
+              im=ii+iu
+              jm=jj+ju
+              if(im.ge.1.and.im.le.n2.and.jm.ge.1.and.jm.le.n1
+     1           .and.in.ge.1.and.in.le.n2.and.jn.ge.1.and.jn.le.n1) then
+                ich=mod(min(i,ii,in,im)+min(j,jj,jn,jm),2)
+                s11=sign(1.,gi)
+                gn=g(jn,in)-z
+                s12=sign(1.,gn)
+                s21=sign(1.,gii)
+                gm=g(jm,im)-z
+                s22=sign(1.,gm)
+                if(ifcntwr.ne.0)
+     1            write(6,*) 's11 s12 s21 s22 ich',s11,s12,s21,s22,ich
+                if(ifcntwr.ne.0)
+     1            write(6,*) 'in,jn,im,jm',in,jn,im,jm
+c               if      (s11.ne.s12.and.(s21.eq.s22.or.ich.eq.0) ) then
+c                 i1=i
+c                 j1=j
+c                 i2=in
+c                 j2=jn
+c               else if (s21.ne.s22.and.(s11.eq.s12.or.ich.ne.0) ) then
+c                 i1=im
+c                 j1=jm
+c                 i2=ii
+c                 j2=jj
+c               else if (s12.ne.s22) then
+c                 i1=in
+c                 j1=jn
+c                 i2=im
+c                 j2=jm
+c               endif
+
+                if      (s11.ne.s12.and.s21.eq.s22) then
+                  i1=i
+                  j1=j
+                  i2=in
+                  j2=jn
+                else if (s21.ne.s22.and.s11.eq.s12) then
+                  i1=im
+                  j1=jm
+                  i2=ii
+                  j2=jj
+                else if (s12.ne.s22.and.s21.eq.s22) then
+                  i1=in
+                  j1=jn
+                  i2=im
+                  j2=jm
+                else
+                  if(abs(gi-gm).gt.abs(gii-gn)) then
+                    i1=i
+                    j1=j
+                    i2=in
+                    j2=jn
+                  else
+                    i1=im
+                    j1=jm
+                    i2=ii
+                    j2=jj
+                  endif
+                endif
+
+                ind1=indseg(n2,n1,i1,j1,i2,j2)
+                if(ind1.ne.0.and.ind1.lt.ind) then
+                   is=isv
+                   goto 40
+                endif
+              else
+                more=.FALSE.
+              endif
+            enddo
+          enddo
+   30     continue
+          if(is.eq.isv+2) then
+            call revvec(xs(1,indx(isv+1)),inc,indx(isv+2)-indx(isv+1))
+            call revvec(ys(1,indx(isv+1)),inc,indx(isv+2)-indx(isv+1))
+            call shfvec(xs(1,indx(is)),inc,-1,indx(is+1)-indx(is))
+            call shfvec(ys(1,indx(is)),inc,-1,indx(is+1)-indx(is))
+            indx(is)=indx(is+1)-1
+            is=is-1
+            ifrh=1-ifrh
+          endif
+          if(isv1.ne.0) ifrh=1-ifrh
+          if(is.ne.isv.and.ifrh.eq.0) then
+            call revvec(xs(1,indx(is)),inc,indx(is+1)-indx(is))
+            call revvec(ys(1,indx(is)),inc,indx(is+1)-indx(is))
+          endif
+   40     ind=ind+1
+        enddo
+        do i=is0+1,is
+          ilev(i)=icont
+        enddo
+      enddo
+      return
+      end
+c---------------------------------------------------------
+      function indseg(ikx,iky,ix1,iy1,ix2,iy2)
+      if(ix1.eq.ix2) then
+        if(mod(ix1,2).eq.0) then
+          indseg=(ix1-1)*iky+iky-min0(iy1,iy2)
+        else
+          indseg=(ix1-1)*iky+min0(iy1,iy2)
+        endif
+      else if(iy1.eq.1) then
+        ixmin=min0(ix1,ix2)
+        if(mod(ixmin,2).eq.0) then
+          indseg=ixmin*iky
+        else
+          indseg=0
+        endif
+      else if(iy1.eq.iky) then
+        ixmin=min0(ix1,ix2)
+        if(mod(ixmin,2).eq.1) then
+          indseg=ixmin*iky
+        else
+          indseg=0
+        endif
+      else
+        indseg=0
+      endif
+      return
+      end
+c---------------------------------------------------------
+      logical function segind(ind,ikx,iky,ix1,iy1,ix2,iy2)
+      ix=ind/iky
+      if(ix*iky.eq.ind) then
+        ix1=ix
+        ix2=ix+1
+        if(mod(ix,2).eq.0) then
+          iy1=1
+          iy2=1
+        else
+          iy1=iky
+          iy2=iky
+        endif
+      else if(mod(ix,2).eq.0) then
+        ix1=ix+1
+        ix2=ix1
+        iy1=ind-ix*iky
+        iy2=iy1+1
+      else 
+        ix1=ix+1
+        ix2=ix1
+        iy2=(ix+1)*iky-ind
+        iy1=iy2+1
+      endif
+      if(ix2.gt.ikx.or.max0(iy1,iy2).gt.iky) then
+        segind=.FALSE.
+      else
+        segind=.TRUE.
+      endif
+      return
+      end
+c---------------------------------------------------------
+      subroutine revvec(ka,inc,n)
+      dimension ka(inc,*)
+      nh=n/2
+      k=n
+      do i=1,nh
+        ksave=ka(1,i)
+        ka(1,i)=ka(1,k)
+        ka(1,k)=ksave
+        k=k-1
+      enddo
+      return
+      end
+c---------------------------------------------------------
+      subroutine shfvec(ka,inc,kshf,n)
+      dimension ka(inc,*)
+      if(kshf.lt.0) then
+        do i=1,n
+          ka(1,i+kshf)=ka(1,i)
+        enddo
+      else if(kshf.gt.0) then
+        do i=n,1,-1
+          ka(1,i+kshf)=ka(1,i)
+        enddo
+      endif
+      return
+      end
+

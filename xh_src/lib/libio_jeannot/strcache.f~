@@ -1,0 +1,107 @@
+      call cattest('1a1','2ab2','3abc3','4wxyz4')
+      end
+
+
+      subroutine cattest(str1,str2,str3,str4)
+      character*(*) str1,str2,str3,str4
+
+      include 'catbuf.h'
+
+      data ilev/0/
+
+      call strcache(str1,k1str1,k2str1) 
+      call strcache(str2,k1str2,k2str2)
+      call strcache(str3,k1str3,k2str3)
+      call strcache(str4,k1str4,k2str4)
+
+      ilev=ilev+1
+      if(ilev.le.6) then
+
+        write(6,'(''Level: '',i3)') ilev
+        write(6,'(a)') 'String is: '//ctbf(k1str1:k2str1)
+     1     //'.'//ctbf(k1str2:k2str2)
+     1     //'.'//ctbf(k1str3:k2str3)//'.'//ctbf(k1str4:k2str4)
+
+        call cattesth(ctbf(k1str4:k2str4),ctbf(k1str3:k2str3)
+     1     ,ctbf(k1str2:k2str2),ctbf(k1str1:k2str1))
+
+        ilev=ilev-1
+      endif
+      call struncache(str4,k1str4,k2str4)
+      call struncache(str3,k1str3,k2str3)
+      call struncache(str2,k1str2,k2str2)
+      call struncache(str1,k1str1,k2str1) 
+
+      return
+      end
+
+
+      subroutine cattesth(str1,str2,str3,str4)
+      character*(*) str1,str2,str3,str4
+      call cattest(str1,str2,str3,str4)
+      return
+      end
+
+
+c---------------------------------------------------
+
+      subroutine strcache(str,k1str,k2str)
+      character*(*) str
+      include 'catbuf.h'
+      write(6,'(''strcache: starting level'',i3)') ilctbf
+      lstr=len(str)
+      ilctbf=ilctbf+1
+      if(ilctbf.gt.MXCSTR) then
+         write(0,'(a)') 'strcache: Too many cached strings'
+         call exit(2)
+      endif
+      ipinit(ilctbf)=ipctbf
+      k1str=ipctbf+1
+      k2str=ipctbf+lstr
+      if(k2str.gt.MXCTBF) then
+        write(0,'(a)') 'strcache: Space exceeded'
+        call exit(2)
+      endif
+      ctbf(k1str:k2str)=str
+      ipctbf=k2str
+      return
+      end
+
+c---------------------------------------------------
+
+      subroutine struncache(str,k1str,k2str)
+      character*(*) str
+      include 'catbuf.h'
+      write(6,'(''struncache level: '',i3,''  Pointer'',i4,$)') ilctbf,ipctbf
+      lstr=len(str)
+      if(ctbf(k1str:k2str).ne.str) str=ctbf(k1str:k2str)
+      ipctbf=ipinit(ilctbf)
+      ilctbf=ilctbf-1
+      if(ilctbf.lt.0) then
+        write(0,'(a)') 'struncache: Negative level'
+        call exit(2)
+      endif
+      write(6,'('' changed to'',i4)') ipctbf
+      return
+      end
+
+c---------------------------------------------------
+
+      block data catbufinit
+      include 'catbuf.h'
+      data ipctbf/0/,ilctbf/0/
+      end
+
+
+
+
+
+
+
+
+
+
+
+
+
+

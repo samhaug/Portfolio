@@ -1,0 +1,19 @@
+      subroutine ttabls(xl,y)
+      dimension y(2,4)
+      common/tab3/ fil3(92),qq5(3),qq6(3),qq7(3)
+      common/ap1/ dum1(17),f4,f5,f6,f2pf3,f2mf3,dum2(4)
+      common/iap4/ b1st,a2st,b2ct,b2st,a3ct,a3st
+      x=xl*(xl+1.)
+      qq5(1)=-5.*x
+      qq5(2)=.5*x
+      qq6(1)=.5*x
+      qq7(1)=-.25*(x-2.)
+      f62=2.*f6
+      b1st=f4*y(2,2)-f5*y(1,2)
+      a2st=f2mf3*y(2,3)-f62*y(1,3)
+      b2ct=f4*y(1,3)+f5*y(2,3)
+      b2st=f4*y(2,3)-f5*y(1,3)
+      a3ct=f2mf3*y(1,4)+f62*y(2,4)
+      a3st=f2mf3*y(2,4)-f62*y(1,4)
+      return
+      end

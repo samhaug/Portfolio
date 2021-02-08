@@ -19,4 +19,7 @@ Linux\_Python\_course: Cirriculum to teach basics of linux and python.
 
 digit\_recognizer: CNN architecture for the mnist handwritten digit classifier.
 
+xh\_src: C libary for processing seismic data. Includes library for beamforming
+and vincenty distance calculations.
+
 

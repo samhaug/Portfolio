@@ -1,0 +1,52 @@
+
+C$**********************************************************************
+CXREF
+      SUBROUTINE STSORT(NPATH,NPREC,ISTOR0,ISTOR1)
+      save
+      DIMENSION NPREC(3,*),ISTOR0(*),ISTOR1(*)
+      COMMON/BIGSPA/  LREC0(200),LREC1(200),KFLAG(200),JFLAG(200),
+     1JID(200),B(536),FILLB(16140)
+      EQUIVALENCE (B(1),ID),(B(22),IFLAG)
+      KT0=0
+      KNT=0
+      NPATH=0
+      CALL REWFL(1)
+    1 CALL BFFIN(1,1,B,536,J,M)
+      IF(J.EQ.3) GO TO 10
+      KT0=KT0+1
+      IF(IFLAG.LT.0) GO TO 1
+      KNT=KNT+1
+      KFLAG(KNT)=0
+      LREC0(KNT)=KT0
+      LREC1(KNT)=KNT+2
+      JFLAG(KNT)=IFLAG
+      JID(KNT)=ID
+      GO TO 1
+   10 KT0=0
+      DO 2 N=1,KNT
+      LAST=0
+      IF(KFLAG(N).NE.0) GO TO 2
+      LAST=JID(N)
+      NPATH=NPATH+1
+      NPREC(1,NPATH)=1
+      KT0=KT0+1
+      NPREC(2,NPATH)=KT0+2
+      NPREC(3,NPATH)=0
+      ISTOR0(KT0)=LREC0(N)
+      ISTOR1(KT0)=LREC1(N)
+      KFLAG(N)=1
+      NP1=N+1
+      IF(NP1.GT.KNT) GO TO 4
+      DO 3 I=NP1,KNT
+      IF(JID(I).NE.LAST) GO TO 3
+      NPREC(1,NPATH)=NPREC(1,NPATH)+1
+      KT0=KT0+1
+      ISTOR0(KT0)=LREC0(I)
+      ISTOR1(KT0)=LREC1(I)
+      KFLAG(I)=1
+    3 CONTINUE
+    2 CONTINUE
+    4 WRITE(6,1000) NPATH,KNT
+ 1000 FORMAT(' NUMBER OF PATHS',I3,' NUMBER OF RECORDS',I4)
+      RETURN
+      END

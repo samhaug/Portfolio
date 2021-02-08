@@ -1,0 +1,178 @@
+c-----------------------------------------
+      character*80 function findcmt(name,lstring,ifcen,ierr)
+      character*7 name
+
+      character*8 event
+      common/cmtbin/ idum,event,isour,
+     1  lyear,month,iday,ih,min,fsec,eplat,
+     1eplong,depth,xmb,xms,ireg(6),isb,icb,icutb,ism,icm,icutm,
+     2torg,jh,jmin,xsec,errt,epa,xlat,ins,erra,epo,xlon,iew,erro,xd,
+     3errd,durt,iexp,xm(6),xerr(6),ev(3),
+     4ipl(3),iaz(3),sc,istr(2),idip(2),
+     5islp(2),idumm
+
+      character*80 string,temp
+
+      character*8 aname
+      integer*4 iname(2)
+      equivalence (aname,iname)
+      dimension itc1(2),itc2(2),itim(2)
+
+      character*80 jhome,fgetenv
+      jhome=fgetenv('JHOME',ljhome)
+      if(ljhome.le.0) then
+        jhome='/home/seismic/john'
+        ljhome=istlen(jhome)
+      endif
+
+      read(name,'(3i2)',iostat=ioerr) imonn,idayn,iyearn
+      if(ioerr.ne.0) then
+        write(6,'(''findcmt: Invalid format for CMT name'')')
+        ierr=9
+        return
+      endif
+
+      jyearn=1900+mod(iyearn,1900)
+      if(jyearn.lt.1935) jyearn=jyearn+100
+
+      call datjul(imonn,idayn,jyearn,jdayn)
+      call timsec(jyearn,jdayn,0,0,0.0,itc1(1))
+
+      itc1(2)=0
+      itc2(1)=itc1(1)+24*3600
+      itc2(2)=0
+
+      ierr=0
+      lunxcm=-1
+      call openfl(lunxcm,jhome(1:ljhome)//'/dta/allorder.bin',1,0,0,istat,292)
+      call ffstat(lunxcm,lent,iftyp,isize)
+      num=isize/292
+   
+      ircmt=1
+      ifeq=0
+      ient=1
+      ilb=0
+      iub=num+1
+  100 call bffi(lunxcm,1,idum,40,j,m,ient)
+      call byswap4(lyear,6)
+
+      jyear=1900+mod(lyear,1900)
+      if(jyear.lt.1935) jyear=jyear+100
+      call datjul(month,iday,jyear,jday)
+      call timsec(jyear,jday,ih,min,fsec,itim(1))
+
+      it=10000*amod(fs,1.0)
+      itim(2)=ishft(it,16)
+
+
+      if(itcmp(itc1,itim).lt.0) then
+        iub=ient
+        goto 400
+      else if(itcmp(itc1,itim).eq.0) then
+        ifeq=1
+        iub=ient
+        goto 500
+      else
+        ilb=ient
+        goto 400
+      endif
+  400 continue
+      if(iub-ilb.eq.1) goto 500
+      if(ient.eq.1) then
+        ient=num
+        goto 100
+      endif
+      ient=(iub+ilb)/2
+      goto 100
+  500 continue
+      if(ifeq.eq.1) ilb=max0(1,iub-1)
+      ircmt=ilb+1
+  223 call bffi(lunxcm,1,idum,40,j,m,ircmt)
+      call byswap4(lyear,6)
+      if(j.eq.2.and.event(2:8).eq.name) then
+        call bffi(lunxcm,1,idum,292,j,m,ircmt)
+        call byswap4(lyear,11)
+        call byswap4(isb,51)
+        call byswap4(ins,1)
+        call byswap4(iew,1)
+        if(event(2:8).ne.name) pause 'findcmt: unexpected error'
+        jyear=1900+mod(lyear,1900)
+        if(jyear.lt.1935) jyear=jyear+100
+        call datjul(month,iday,jyear,jday)
+        call tadd(jyear,jday,ih,min,fsec,jyearc,jdayc,ihc,minc,fsecc,dble(torg))
+        io=0
+        if(ifcen.le.0) then
+          call puttim(string,io,jyear,jday,ih,min,fsec)   ! pde time
+          write(string(io:80),'(''@'',1x,f5.2,'','',1x,f6.2,'','',f5.1)')
+     1       abs(eplat),abs(eplong),depth                 ! pde lat lon dep
+          if(eplat.lt.0.) then
+            string(io+1:io+1)='-'
+          else
+            string(io+1:io+1)='+'
+          endif
+          if(eplong.lt.0.) then
+            string(io+8:io+8)='-'
+          else
+            string(io+8:io+8)='+'
+          endif
+        else
+          call puttim(string,io,jyearc,jdayc,ihc,minc,fsecc) ! centroid time
+          write(string(io:80),'(''@'',1x,f5.2,'','',1x,f6.2,'','',f5.1)')
+     1       abs(epa),abs(epo),xd                      ! centroid lat lon dep
+          if(epa.lt.0.) then
+            string(io+1:io+1)='-'
+          else
+            string(io+1:io+1)='+'
+          endif
+          if(epo.lt.0.) then
+            string(io+8:io+8)='-'
+          else
+            string(io+8:io+8)='+'
+          endif
+        endif
+        lstring=istlen(string)
+        do i=1,lstring
+          if(string(i:i).eq.' ') string(i:i)='0'
+        enddo
+        xm0=sc*10.**(iexp-26)
+        xmw=.667*alog10(xm0*1.e+26)-10.73
+
+        findcmt=string
+        call setvar('cmtname',name(1:7))
+        call setvar('evtname',name(5:6)//name(1:4)//name(7:7))
+        call setvar('eventtime',string(1:21))
+        call setvar('event',string(1:lstring))
+        write(temp,'(f3.1)') xmw
+        call setvar('mw',temp(1:3))
+        write(temp,'(f3.1)') xmb
+        call setvar('mb',temp(1:3))
+        write(temp,'(f3.1)') xms
+        call setvar('ms',temp(1:3))
+      else if(j.eq.2) then
+        jyear=1900+mod(lyear,1900)
+        if(jyear.lt.1935) jyear=jyear+100
+        call datjul(month,iday,jyear,jday)
+        call timsec(jyear,jday,ih,min,fsec,itim(1))
+        it=10000*amod(fs,1.0)
+        itim(2)=ishft(it,16)
+        if(itcmp(itim,itc2).lt.0) then
+          ircmt=ircmt+1
+          goto 223
+        endif
+        write(6,'(''findcmt: '',a,'' not found'')') name
+        ierr=9
+        findcmt=' '
+        lstring=0
+      else
+        write(6,'(''findcmt: '',a,'' not found'')') name
+        ierr=9
+        findcmt=' '
+        lstring=0
+      endif
+      call closfl(lunxcm,kk)
+      lunxcm=-1
+      return
+      end
+
+
+     

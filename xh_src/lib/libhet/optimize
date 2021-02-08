@@ -1,0 +1,23 @@
+f77 -c -O3 fdotpr.f
+ar rv /home/eeyore1/john/eq/libS/libhet.a fdotpr.o
+rm fdotpr.o
+
+f77 -c -O3 fsvesq.f
+ar rv /home/eeyore1/john/eq/libS/libhet.a fsvesq.o
+rm fsvesq.o
+
+f77 -c -O3 fvclr.f
+ar rv /home/eeyore1/john/eq/libS/libhet.a fvclr.o
+rm fvclr.o
+
+f77 -c -O3 fvmov.f
+ar rv /home/eeyore1/john/eq/libS/libhet.a fvmov.o
+rm fvmov.o
+
+f77 -c -O3 fvsma.f
+ar rv /home/eeyore1/john/eq/libS/libhet.a fvsma.o
+rm fvsma.o
+
+f77 -c -O3 fvsub.f
+ar rv /home/eeyore1/john/eq/libS/libhet.a fvsub.o
+rm fvsub.o

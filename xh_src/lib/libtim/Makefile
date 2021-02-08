@@ -1,0 +1,30 @@
+LIBDIR=$(HOME)/src/lib
+LIB = libtim_sun
+
+include	$(HOME)/etc/Makerules_sun
+
+$(LIBDIR)/$(LIB).a: \
+	$(LIBDIR)/$(LIB).a(tadd.o) \
+	$(LIBDIR)/$(LIB).a(tdiffi.o) \
+	$(LIBDIR)/$(LIB).a(jdoc.o) \
+	$(LIBDIR)/$(LIB).a(doy.o) \
+	$(LIBDIR)/$(LIB).a(tdif.o) \
+	$(LIBDIR)/$(LIB).a(lpyr.o) \
+	$(LIBDIR)/$(LIB).a(julday.o) \
+	$(LIBDIR)/$(LIB).a(daymo.o) \
+	$(LIBDIR)/$(LIB).a(timsec.o) \
+	$(LIBDIR)/$(LIB).a(sectim.o) \
+	$(LIBDIR)/$(LIB).a(secstr.o) \
+	$(LIBDIR)/$(LIB).a(juldoc.o) \
+	$(LIBDIR)/$(LIB).a(docjul.o) \
+	$(LIBDIR)/$(LIB).a(secdat.o) \
+	$(LIBDIR)/$(LIB).a(datsec.o) \
+	$(LIBDIR)/$(LIB).a(jsecna.o) \
+	$(LIBDIR)/$(LIB).a(digits.o) \
+	$(LIBDIR)/$(LIB).a(docdat.o) \
+	$(LIBDIR)/$(LIB).a(modx.o) \
+	$(LIBDIR)/$(LIB).a(juldat.o) \
+	$(LIBDIR)/$(LIB).a(datdoc.o) \
+	$(LIBDIR)/$(LIB).a(datjul.o)
+
+include	$(HOME)/etc/Makeranlib

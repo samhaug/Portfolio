@@ -1,0 +1,97 @@
+      subroutine grdmpu(grid,igrid,ikla,iklo,rn,vn,rmoho,r670,rx)
+      real lcon,ncon
+c
+      common/modl1/n,nic,noc,moho,nsl,ifanis,r(222)
+     1            ,rho(222),qrho(3,222),g(222),ell(222),eta(222)
+      common/modl2/acon(222),qacon(3,222),ccon(222),qccon(3,222)
+     1            ,lcon(222),qlcon(3,222),ncon(222),qncon(3,222)
+     2            ,fcon(222),qfcon(3,222)
+c
+      double precision d
+      common/legwk/wk1(9),wk2(9),wk3(9),sar(11),d(17,17)
+     1   ,vec1(34),vec2(34),ylmh(81),ylmt(81),ylmh1(81),ylmt1(81)
+      common/wkwk/cosa(9),sina(9),wrk(295),vsc(5),y1(82),y2(82)
+      common/hetmdl/ifani,lmax,lmaxm1,leny,npar,pertm(588),bmdl(588)
+      dimension grid(igrid,1)
+      radian=180./3.1415926535
+      x=-1.+2.*(rx-r670)/(rmoho-r670)
+      write(5,1)
+    1 format(' type lmin,lmax and n for upper mantle'/'* * *')
+      read(15,2) lminp,lmaxp,npp
+    2 format(i1,1x,i1,1x,i1)
+      npp=min0(1+npp,4)
+      lmaxp=min0(lmaxp,lmax)
+
+      if(rx.le.rmoho) then
+
+      ir1=n
+      ir=n-1
+      rr=rx/rn
+  132 if(r(ir).le.rr.and.r(ir1).gt.rr) goto 131
+      ir=ir-1
+      ir1=ir1-1
+      if(ir.lt.1) ir=n-1
+      if(ir1.lt.2) r1=n
+      goto 132
+  131 continue
+      t=rr-r(ir)
+      xlll=lcon(ir)+t*(qlcon(1,ir)+t*(qlcon(2,ir)+t*qlcon(3,ir)))
+      xrho= rho(ir)+t*( qrho(1,ir)+t*( qrho(2,ir)+t* qrho(3,ir)))
+      vs2=2.*(vn/1000.)**2*xlll/xrho
+      do 139 icof=1,4
+      pnx=pn(icof-1,x)
+  139 vsc(icof)=100.*pnx/vs2
+      istart=2*leny
+
+      else
+      vsc(1)=1.
+      npp=1
+      istart=0
+      endif
+c****
+      ind1=lminp**2+1
+      ind2=(lmaxp+1)**2
+
+
+      do ind=1,leny
+      wrk(ind)=0.
+      enddo
+      do 104 ind=ind1,ind2
+      sum=0.
+      indx=istart+ind
+      do 105 icof=1,npp
+      sum=sum+vsc(icof)*bmdl(indx)
+  105 indx=indx+leny
+  104 wrk(ind)=sum
+c
+      stla=180./float(ikla-1)
+      do 200 ilat=1,ikla
+      xlat=90.-float(ilat-1)*stla
+      call ylm(xlat,0.,lmaxp,y1,wk1,wk2,wk3)
+      stlo=360./float(iklo-1)
+      do 100 ilon=1,iklo
+      phi=(float(ilon-1)*stlo)/radian
+      sdif=sin(phi)
+      cdif=cos(phi)
+      sina(1)=0.
+      cosa(1)=1.
+      do 101 i=2,lmaxm1
+      ii=i-1
+      sina(i)=sina(ii)*cdif+cosa(ii)*sdif
+  101 cosa(i)=cosa(ii)*cdif-sina(ii)*sdif
+      k=0
+      sum=0.
+      do 102 l1=1,lmaxm1
+      do 103 m1=1,l1
+      k=k+1
+      sum=sum+y1(k)*wrk(k)*cosa(m1)
+      if(m1.eq.1) goto 103
+      k1=k+1
+      sum=sum+y1(k)*wrk(k1)*sina(m1)
+      k=k1
+  103 continue
+  102 continue
+  100 grid(ilat,ilon)=sum
+  200 continue
+      return
+      end

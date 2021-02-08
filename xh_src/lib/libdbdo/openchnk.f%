@@ -1,0 +1,91 @@
+
+c-------------------------------------------------------------
+
+      
+      subroutine openchnk(ckey,iflap)
+      character*16 ckey
+      include 'seeddefs.h'
+      include 'seedtrees.h'
+      include '~/eq/src/libdb/dblib.h'
+      double precision dsmpin
+      character*80 exname
+
+
+      if(ckey.eq.chnopen) return
+
+      call closechn()
+
+
+      ckey(4:4)=char(255-ichar(ckey(4:4)))
+      ckey(5:5)=char(255-ichar(ckey(5:5)))
+      nstak=3
+      maxlev=3
+      mord=15
+      lkey=3
+      ityp=2
+      linfo=1
+      exname='*'
+      call tropnn(itchns,ckey(1:16),STUNK,iflap,ierr
+     1    ,nstak,maxlev,itchn
+     1    ,mord,lkey,linfo,ityp,exname)
+
+
+
+
+      nstak=3
+      maxlev=7
+      mord=21
+      linfo=2
+      mschccl=10 00000
+      call opncldr(itchn,'comments',STUNK,iflap,ierr
+     1   ,nstak,maxlev,itchccl,mschccl,mtchccl
+     1   ,mord,linfo)
+
+      nstak=3
+      maxlev=7
+      mord=21
+      linfo=1
+      mschicl=300 00000
+      call opncldr(itchn,'info',STUNK,iflap,ierr
+     1   ,nstak,maxlev,itchicl,mschicl,mtchicl
+     1   ,mord,linfo)
+
+      nstak=3
+      maxlev=7
+      mord=21
+      linfo=1
+      mschrcl=50 00000
+      call opncldr(itchn,'responses',STUNK,iflap,ierr
+     1   ,nstak,maxlev,itchrcl,mschrcl,mtchrcl
+     1   ,mord,linfo)
+
+      nstak=5
+      maxlev=7
+      mord=71
+      linfo=3
+      mschpcl=1 00000
+      call opncldr(itsttsr,ckey(1:14),STUNK,iflap,ierr
+     1   ,nstak,maxlev,itchpcl,mschpcl,mtchpcl
+     1   ,mord,linfo)
+
+      ckey(4:4)=char(255-ichar(ckey(4:4)))
+      ckey(5:5)=char(255-ichar(ckey(5:5)))
+
+      chnopen=ckey
+
+      call chnldcd(chnopen,hz,isub,ifmt)
+
+
+      write(chzopen,"(f8.4)") hz
+      write(cftopen,"(i3)") ifmt
+      do i=1,3
+        if(cftopen(i:i).eq.' ') cftopen(i:i)='0'
+      enddo
+      write(csbopen,"(i4)") isub
+      do i=1,4
+        if(csbopen(i:i).eq.' ') csbopen(i:i)='0'
+      enddo
+
+
+      return
+      end

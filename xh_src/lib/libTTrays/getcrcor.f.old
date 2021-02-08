@@ -1,0 +1,126 @@
+      subroutine getcrcor(phas,ela,elo,edp,sla,slo,selev,dtcrust,ierr)
+
+      character*1 typ
+      character*(*) phas
+      character*20 mod,phout
+
+      character*20 phsbncold
+      common/phsbnc/phsbncold,lphsbncold,nbnc
+      common/corsetups/isetup
+      character*20 oldphs
+      common/ireadphs/oldphs
+
+      parameter(MXBNC=4)
+      dimension delb(MXBNC),delbrad(MXBNC),pnts(2,MXBNC)
+
+      radian = 45.0/atan(1.0)
+
+c     set some values
+      ierr=0
+      mod='prem'
+      lmd=4
+
+c     set up maps for travel time interpolation as function of
+c     ray parameter p
+      if(isetup.ne.999) then
+       call setupinterpcr()
+       isetup=999
+      endif
+
+c     determine relevant mantle velocity
+      typ=phas(1:1)
+      if(typ.eq.'s'.or.typ.eq.'S') then
+       vman=4.49
+      else if(typ.eq.'p'.or.typ.eq.'P') then
+       vman=8.19
+      else
+       stop 'raycor: unknown typ'
+      endif
+
+c     determine epicentral distance
+      call delaz(ela,elo,sla,slo,delta,azep,azst,eldg,stldg)
+
+c     determine ray parameter of phase
+      call schkdiff(phas,edp,delta,phout,ierr)
+      lph=istlen(phout)
+
+      if(oldphs.ne.phout) then
+       write(6,*) 'getcrcor: renitialising phase times',phas,phout
+       call readphs(mod,lmd,phout,lph,hdepmx)
+       oldphs=phout
+       loldphs=lph
+      endif
+
+      call getphsmnmx(edp,delmn,delmx)
+      if(delta.lt.delmn) then
+       ierr=1
+       return
+      elseif(delta.gt.delmx) then
+       ierr=2
+       return
+      endif
+
+      call getphsp(delta,edp,p)
+c     write(6,*) 'Ray parameter',p
+
+c     calculate correction at the station
+      call interpttcr(sla,slo,p,typ,dtcrst,dh)
+      prad=p*radian
+      rcr=6340.
+      sini=prad*vman/rcr
+      cosi=sqrt(1-sini*sini)
+c     write(6,*) sini,cosi,dh
+      if(lelev.eq.-1) then
+       write(6,*) 'station topography from global topography file',dh
+       dttopost=cosi*dh/vman
+      else
+       dttopost=cosi*((selev+3000.)/1000.)/vman
+      endif
+      write(6,12) dtcrst,dttopost
+12    format('STATION ',20x,' dt-crust=',f8.3,' dt-topo=',f8.3)
+
+c     find number of surface bounces
+      call getnbnc(phout,nbnc,ibtyp)
+      if(nbnc.ne.0) then
+
+c      initialise bounce files if nescessarry
+       lphs=istlen(phout)
+       if(lphs.ne.lphsbncold) then
+        lphsbncold=lphs
+        phsbncold=''
+        phsbncold(1:lphs)=phout(1:lphs)
+c       write(6,*) 'reinitialising .bnc file'
+        call readbnc(mod,lmd,phout,lphs)
+       else if(phsbncold(1:lphs).ne.phout(1:lphs)) then
+        lphsbncold=lphs
+        phsbncold=''
+        phsbncold(1:lphs)=phout(1:lphs)
+c       write(6,*) 'reinitialising .bnc file'
+        call readbnc(mod,lmd,phout,lphs)
+       endif
+
+c      find the lat-lon of bounce points
+       call getbnc(delta,edp,delb)
+       do i=1,nbnc
+        delbrad(i)=delb(i)/radian
+       enddo
+       call scgrcgivedel(ela,elo,sla,slo,delbrad,nbnc,MXBNC,pnts,idb,epd)
+
+c      add the corrections
+       dtbncstot=0.
+       do i=1,nbnc
+        bla=pnts(2,i)
+        blo=pnts(1,i)
+        call interpttcr(bla,blo,p,typ,dtbnc,dh)
+        dtbnc=dtbnc*2.
+c       write(6,*) sini,cosi,dh
+        dttopobnc=2.*cosi*dh/vman
+        write(6,11) i,bla,blo,dtbnc,dttopobnc
+11      format('BOUNCE ',i1,' at ',2f8.2,' dt-crust=',f8.3,' dt-topo=',f8.3)
+        dtbncstot=dtbncstot+dtbnc+dttopobnc
+       enddo
+      endif
+
+      dtcrust=dtbncstot+dtcrst+dttopost
+
+      end

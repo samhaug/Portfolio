@@ -1,0 +1,49 @@
+
+
+c-------------------------------------------------------------------
+
+      SUBROUTINE LKUPBI(NAMES,INC,NUM,NTRY,NLEN,NCUT,IUB,IFEQ,COMPAR)
+      DIMENSION NAMES(INC,1),NTRY(1)
+      INTEGER*4 COMPAR
+      IFEQ=0
+c ! SEQUENTIAL SEARCH
+      IF(NUM.LE.NCUT) THEN
+        DO I=1,NUM
+          ITEST=COMPAR(NTRY(1),NAMES(1,I),NLEN)
+          IF(ITEST.LT.0) THEN
+            IUB=I
+            GOTO 87
+          ELSE IF(ITEST.EQ.0) THEN
+            IFEQ=1
+            IUB=I
+            GOTO 87
+          ENDIF
+        ENDDO
+        IUB=NUM+1
+   87   CONTINUE
+        RETURN
+      ENDIF
+      IENT=1
+      ILB=0
+      IUB=NUM+1
+  100 ITEST=COMPAR(NTRY(1),NAMES(1,IENT),NLEN)
+      IF(ITEST.LT.0) THEN
+        IUB=IENT
+        GOTO 400
+      ELSE IF(ITEST.EQ.0) THEN
+        IFEQ=1
+        IUB=IENT
+        RETURN
+      ELSE
+        ILB=IENT
+        GOTO 400
+      ENDIF
+  400 CONTINUE
+      IF(IUB-ILB.EQ.1) RETURN
+      IF(IENT.EQ.1) THEN
+        IENT=NUM
+        GOTO 100
+      ENDIF
+      IENT=(IUB+ILB)/2
+      GOTO 100
+      END

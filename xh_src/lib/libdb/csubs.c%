@@ -1,0 +1,21 @@
+/*
+dbexit_()
+{	
+	extern int trclal_();
+#if ( defined(Machine4)  )
+	(void)on_exit(trclal_,(char *)0);
+#endif
+}
+*/
+
+#include <stdlib.h>
+dbexeunt()
+{	printf("Exiting\n");
+}
+
+dbexit_()
+{	int iat;
+	printf("Calling atexit\n");
+	iat=atexit(dbexeunt);
+	printf("iat= %d\n",iat);
+}

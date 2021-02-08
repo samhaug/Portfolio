@@ -1,0 +1,217 @@
+c--------------------------------------------------------------------
+      subroutine dfind(lu,gflag,ierr)
+      include 'seeddefs.h'
+      include 'seedtrees.h'
+      include '/home/eeyore1/john/eq/src/libdb/dblib.h'
+c      integer*4 itim1(2),itim2(2)
+      character*60 site
+      character*30 comment
+      character*50 inst
+      character*26 flags
+      character*14 chnlast
+      integer*4 ichnlast(4)
+      equivalence (chnlast,ichnlast)
+      character*2 gflag
+      include 'dbdocm.h'
+      double precision dsmpin
+      character*14 ckey
+
+      integer*4 START,STOP,CONTINUE
+      parameter(STOP=z'00004000',START=z'00008000',CONTINUE=z'0000c000')
+      double precision difl1,difk2
+      character*200 line,linel
+
+      dimension itim1(2),itim2(2),ltim(2),ktim(2)
+
+      if(kntstno.le.0) then
+        write(6,*) 'No stations selected'
+        ierr=9
+        return
+      endif
+      call inttime(timelor,itim1)
+      call inttime(timehir,itim2)
+      do istno=1,kntstno
+        if(kntchno(istno).gt.0) then
+          call openstn(stnopnd(istno),inetopnd(istno),4)
+          call getsti(itim1,irefsi,flat,flon,felv,site,lsite,ifvax,ierri)
+          if(ierri.eq.0) then
+             write(lu,"('# ',a5,'  ',f10.5,'  ',f11.5,$)") stnopen,flat,flon
+             write(lu,*) '  '//netopen(1:lnetopen)//'  '//site(1:lsite)
+          else
+             write(lu,*) '# '//stnopen//' '//netopen(1:lnetopen)//' '//'Undefined'
+          endif
+          chnlast='xxxxx'
+          do ichno=1,kntchno(istno)
+            iach=ichno+iofchno(istno)
+            if(chnopnd(iach)(1:14).eq.chnlast) goto 100
+            chnlast=chnopnd(iach)(1:14)
+
+              hertz=1.d0/dsmpin(ichnlast(3))
+              if(nrates.eq.0) goto 200
+              do i=1,nrates
+                if(hertz.eq.rates(i)) goto 200
+                if(hertz.ne.0.) then
+                  if(abs(1.-rates(i)/hertz).lt.1.e-2) goto 200
+                endif
+              enddo
+              goto 100
+
+  200       continue
+            write(line,*) '# '//stnopnd(istno)//chnopnd(iach)(1:5)
+     1                 ,hertz
+            lline=istlen(line)
+            if(line(1:lline).ne.linel(1:llinel)) write(lu,"(200a1)") (line(i:i),i=1,lline)
+            linel=line
+            llinel=lline
+
+            nstak=5
+            maxlev=7
+            mord=71
+            linfo=3
+            mschpcl=1 00000
+            ckey=chnopnd(iach)(1:14)
+            ckey(4:4)=char(255-ichar(ckey(4:4)))
+            ckey(5:5)=char(255-ichar(ckey(5:5)))
+            call opncldr(itsttsr,ckey,STOLD,4,ierr
+     1         ,nstak,maxlev,itchpcl,mschpcl,mtchpcl
+     1         ,mord,linfo)
+ 
+
+
+            linfo=ibig(itchpcl+OTRLI)
+            call scanintvl(itchpcl,mschpcl,mtchpcl,itim1,itim2,-2,iadnseen)
+            nseen=ibig(iadnseen)
+            call balloc(1+nseen*(linfo+2),ia)
+            call balloc(1,iadnseen1)
+            nseen1=ibig(iadnseen1)
+            call balloc(nseen1*(linfo+2),ia)
+            ntot=nseen+nseen1
+            write(6,*) 'dfind: nseen,nseen1',nseen,nseen1
+            do l=1,ntot
+              if(l.le.nseen) then
+                lad=iadnseen+(nseen-l)*(linfo+2)+1
+               else
+                lad=iadnseen1+(l-nseen-1)*(linfo+2)+1
+              endif
+              lstat=and(ibig(lad+1),CONTINUE)
+              lrank=and(ibig(lad+1),z'00000fff')
+              if(lstat.eq.START) then
+                ltim(1)=ibig(lad)
+                ltim(2)=and(ibig(lad+1),z'ffff0000')
+                k1=max0(1,l-nseen+1)
+                do k=k1,nseen1
+                  kad=iadnseen1+(k-1)*(linfo+2)+1
+                  kstat=and(ibig(kad+1),CONTINUE)
+                  krank=and(ibig(kad+1),z'00000fff')
+                  if(krank.eq.lrank.and.kstat.eq.STOP) then
+                    ktim(1)=ibig(kad)
+                    ktim(2)=and(ibig(kad+1),z'ffff0000')
+                    goto 101
+                  endif
+                enddo
+                ktim(1)=itim2(1)
+                ktim(2)=itim2(2)
+  101           continue
+                ivol=ibig(lad+2)
+                ifil=ishft(ibig(lad+3),-23)
+                irec=and(ibig(lad+3),z'007fffff')
+                nrecs=ibig(lad+4)
+                call sectim(ltim(1),jyl,jdl,ihl,iml,fsecl)
+                fsecl=fsecl+ishft(ltim(2),-16)/10000.
+                call sectim(ktim(1),jyk,jdk,ihk,imk,fseck)
+                fseck=fseck+ishft(ktim(2),-16)/10000.
+                call sectim(itim1(1),jyi1,jdi1,ihi1,imi1,fseci1)
+                fseci1=fseci1+ishft(itim1(2),-16)/10000.
+                call sectim(itim2(1),jyi2,jdi2,ihi2,imi2,fseci2)
+                fseci2=fseci2+ishft(itim2(2),-16)/10000.
+                call tdif(jyl,jdl,ihl,iml,fsecl,jyi1,jdi1,ihi1,imi1,fseci1,difl1)
+                call tdif(jyk,jdk,ihk,imk,fseck,jyi2,jdi2,ihi2,imi2,fseci2,difk2)
+                lfmt=ishft(ichnlast(4),-16)
+                write(line,*) '# '//stnopnd(istno)//chnopnd(iach)(1:5)
+     1                     ,hertz
+                lline=istlen(line)
+                if(line(1:lline).ne.linel(1:llinel)) write(lu,"(200a1)") (line(i:i),i=1,lline)
+                linel=line
+                llinel=lline
+
+                write(line,"(a2,1x,i6,'(',i3,':',i6,':',i6,')',1x,
+     1           ,i3,1x,a5,1x,'''',a5,''''
+     1           ,1x,1pe10.4,1x,i2
+     1           ,1x,i4,',',i3,',',i2,':',i2,':',0pf6.3
+     1           ,1x,'[',i4,',',i3,',',i2,':',i2,':',f6.3
+     1           ,1x,i4,',',i3,',',i2,':',i2,':',f6.3,']'
+     1           ,1x,i4,',',i3,',',i2,':',i2,':',f6.3
+     1           )")
+     1            gflag
+     1           ,ivol,ifil,irec,nrecs
+     1           ,inetopnd(istno),stnopnd(istno),chnopnd(iach)(1:5),hertz,lfmt
+     1           ,jyl,jdl,ihl,iml,fsecl
+     1           ,jyi1,jdi1,ihi1,imi1,fseci1
+     1           ,jyi2,jdi2,ihi2,imi2,fseci2
+     1           ,jyk,jdk,ihk,imk,fseck
+                lline=istlen(line)
+                do ii=4,28
+                  if(line(ii:ii).eq.' ') line(ii:ii)='0'
+                enddo
+                do it=1,4
+                  ls=61+(it-1)*22
+                  if(it.gt.1) ls=ls+1
+                  if(it.gt.3) ls=ls+1
+                  do ii=ls+1,ls+21
+                    if(line(ii:ii).eq.' ') line(ii:ii)='0'
+                  enddo
+                enddo
+                write(lu,"(200a1)") (line(ii:ii),ii=1,lline)
+
+              endif
+            enddo
+
+
+            call dalloc(1+nseen1*(linfo+2),iadnseen1)
+            call dalloc(1+nseen*(linfo+2),iadnseen)
+            call trclos(itchpcl)
+  100       continue
+          enddo
+        endif
+      enddo
+      return
+      end
+
+c-------------------------------------------------------------------
+      subroutine scanintvl(itcldr,mscldr,mtcldr,itim1,itim2,isw,iad)
+      integer*4 itim1(2),itim2(2),jtim(2)
+      include 'dblib.h'
+      logical x,getcldr0,trfind,trnext
+      integer*4 START,STOP,CONTINUE
+      parameter(STOP=z'00004000',START=z'00008000',CONTINUE=z'0000c000')
+      linfo=ibig(itcldr+OTRLI)
+      x=getcldr0(itcldr,mscldr,mtcldr,itim1,-1,iok,ioi,isw,iad)
+      nseen=ibig(iad)
+      call balloc(1+nseen*(linfo+2),iad)
+      call balloc(1,iad1)
+      nseen1=0
+      ibig(iad1)=0
+      jtim(1)=itim1(1)
+      jtim(2)=or(itim1(2),z'0000ffff')
+      if(trfind(itcldr,jtim,2,iok,ioi)) 
+     1     pause 'getcldr0: key with extreme rank and status found'
+      do while(trnext(itcldr,1,iok,ioi))
+        if(itcmp(ibig(iok),itim2).ge.0) goto 99
+        kstat=and(ibig(iok+1),CONTINUE)
+        if(kstat.ne.CONTINUE) then
+          krank=and(ibig(iok+1),z'00000fff')
+          nseen1=nseen1+1
+          call balloc(linfo+2,ia)
+          ibig(ia)=ibig(iok)
+          ibig(ia+1)=ibig(iok+1)
+          do i=0,linfo-1
+            ibig(ia+2+i)=ibig(ioi+i)
+          enddo
+        endif
+      enddo
+   99 continue
+      ibig(iad1)=nseen1
+      call dalloc(1+nseen1*(linfo+2),iad1)
+      call dalloc(1+nseen*(linfo+2),iad)
+      return
+      end

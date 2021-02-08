@@ -1,0 +1,210 @@
+LIBDIR=$(HOME)/eq/lib$(MS)
+LIB =libdbdo
+
+include	$(HOME)/etc/Makerules.${MS}
+
+.PRECIOUS: $(LIBDIR)/$(LIB).a
+
+
+$(LIBDIR)/$(LIB).a: \
+	$(LIBDIR)/$(LIB).a(verbsave.o) \
+	$(LIBDIR)/$(LIB).a(itimadd.o) \
+	$(LIBDIR)/$(LIB).a(findisc.o) \
+	$(LIBDIR)/$(LIB).a(nextcmt.o) \
+	$(LIBDIR)/$(LIB).a(findcmt.o) \
+	$(LIBDIR)/$(LIB).a(addevt.o) \
+	$(LIBDIR)/$(LIB).a(limphase.o) \
+	$(LIBDIR)/$(LIB).a(addphase.o) \
+	$(LIBDIR)/$(LIB).a(alphabr.o) \
+	$(LIBDIR)/$(LIB).a(bflush.o) \
+	$(LIBDIR)/$(LIB).a(chknown.o) \
+	$(LIBDIR)/$(LIB).a(chnldcd.o) \
+	$(LIBDIR)/$(LIB).a(closechn.o) \
+	$(LIBDIR)/$(LIB).a(closechng.o) \
+	$(LIBDIR)/$(LIB).a(closegram.o) \
+	$(LIBDIR)/$(LIB).a(closemem.o) \
+	$(LIBDIR)/$(LIB).a(closestn.o) \
+	$(LIBDIR)/$(LIB).a(clsseeddb.o) \
+	$(LIBDIR)/$(LIB).a(cpgram.o) \
+	$(LIBDIR)/$(LIB).a(cratio.o) \
+	$(LIBDIR)/$(LIB).a(cratiod.o) \
+	$(LIBDIR)/$(LIB).a(dfind.o) \
+	$(LIBDIR)/$(LIB).a(dget.o) \
+	$(LIBDIR)/$(LIB).a(dsmpin.o) \
+	$(LIBDIR)/$(LIB).a(dumpcal.o) \
+	$(LIBDIR)/$(LIB).a(dumpoutput.o) \
+	$(LIBDIR)/$(LIB).a(eatblock.o) \
+	$(LIBDIR)/$(LIB).a(eatseed.o) \
+	$(LIBDIR)/$(LIB).a(evlphs.o) \
+	$(LIBDIR)/$(LIB).a(findchn.o) \
+	$(LIBDIR)/$(LIB).a(findstn.o) \
+	$(LIBDIR)/$(LIB).a(fmtscal.o) \
+	$(LIBDIR)/$(LIB).a(getblkt.o) \
+	$(LIBDIR)/$(LIB).a(getblock.o) \
+	$(LIBDIR)/$(LIB).a(getblocka.o) \
+	$(LIBDIR)/$(LIB).a(getblockb.o) \
+	$(LIBDIR)/$(LIB).a(getbytes.o) \
+	$(LIBDIR)/$(LIB).a(getfield.o) \
+	$(LIBDIR)/$(LIB).a(getlrec.o) \
+	$(LIBDIR)/$(LIB).a(getseeddefs.o) \
+	$(LIBDIR)/$(LIB).a(getsti.o) \
+	$(LIBDIR)/$(LIB).a(getstr.o) \
+	$(LIBDIR)/$(LIB).a(gettim.o) \
+	$(LIBDIR)/$(LIB).a(getwd.o) \
+	$(LIBDIR)/$(LIB).a(ggetlrec.o) \
+	$(LIBDIR)/$(LIB).a(gheader.o) \
+	$(LIBDIR)/$(LIB).a(gheader0.o) \
+	$(LIBDIR)/$(LIB).a(gramnsubs.o) \
+	$(LIBDIR)/$(LIB).a(gramrate.o) \
+	$(LIBDIR)/$(LIB).a(gramtable.o) \
+	$(LIBDIR)/$(LIB).a(gsetup1.o) \
+	$(LIBDIR)/$(LIB).a(head80.o) \
+	$(LIBDIR)/$(LIB).a(icrate.o) \
+	$(LIBDIR)/$(LIB).a(ifindtyp.o) \
+	$(LIBDIR)/$(LIB).a(inctim.o) \
+	$(LIBDIR)/$(LIB).a(intimvol.o) \
+	$(LIBDIR)/$(LIB).a(inttime.o) \
+	$(LIBDIR)/$(LIB).a(isdigit.o) \
+	$(LIBDIR)/$(LIB).a(iseedtp.o) \
+	$(LIBDIR)/$(LIB).a(ldget.o) \
+	$(LIBDIR)/$(LIB).a(loadgram.o) \
+	$(LIBDIR)/$(LIB).a(loadphs.o) \
+	$(LIBDIR)/$(LIB).a(locltft.o) \
+	$(LIBDIR)/$(LIB).a(lsstn.o) \
+	$(LIBDIR)/$(LIB).a(lstresp.o) \
+	$(LIBDIR)/$(LIB).a(makechinfo.o) \
+	$(LIBDIR)/$(LIB).a(makestinfo.o) \
+	$(LIBDIR)/$(LIB).a(ndecod.o) \
+	$(LIBDIR)/$(LIB).a(openchn.o) \
+	$(LIBDIR)/$(LIB).a(openchng.o) \
+	$(LIBDIR)/$(LIB).a(openchngk.o) \
+	$(LIBDIR)/$(LIB).a(openchnk.o) \
+	$(LIBDIR)/$(LIB).a(opengram.o) \
+	$(LIBDIR)/$(LIB).a(openstn.o) \
+	$(LIBDIR)/$(LIB).a(openstnk.o) \
+	$(LIBDIR)/$(LIB).a(opnseeddb.o) \
+	$(LIBDIR)/$(LIB).a(pcaldr.o) \
+	$(LIBDIR)/$(LIB).a(phstim.o) \
+	$(LIBDIR)/$(LIB).a(putblockb.o) \
+	$(LIBDIR)/$(LIB).a(putbytes.o) \
+	$(LIBDIR)/$(LIB).a(puttim.o) \
+	$(LIBDIR)/$(LIB).a(res2bl.o) \
+	$(LIBDIR)/$(LIB).a(rstntr.o) \
+	$(LIBDIR)/$(LIB).a(rtrv.o) \
+	$(LIBDIR)/$(LIB).a(sacdummies.o) \
+	$(LIBDIR)/$(LIB).a(sacgram.o) \
+	$(LIBDIR)/$(LIB).a(saveabbrvs.o) \
+	$(LIBDIR)/$(LIB).a(savechn.o) \
+	$(LIBDIR)/$(LIB).a(savegram.o) \
+	$(LIBDIR)/$(LIB).a(savesegs.o) \
+	$(LIBDIR)/$(LIB).a(savestn.o) \
+	$(LIBDIR)/$(LIB).a(savevol.o) \
+	$(LIBDIR)/$(LIB).a(scaldr.o) \
+	$(LIBDIR)/$(LIB).a(seedhdr.o) \
+	$(LIBDIR)/$(LIB).a(setup1.o) \
+	$(LIBDIR)/$(LIB).a(sgchannel.o) \
+	$(LIBDIR)/$(LIB).a(sgdumpah.o) \
+	$(LIBDIR)/$(LIB).a(sgdumpahx.o) \
+	$(LIBDIR)/$(LIB).a(sgdumpascii.o) \
+	$(LIBDIR)/$(LIB).a(sgdumpsac.o) \
+	$(LIBDIR)/$(LIB).a(sgdumpseed.o) \
+	$(LIBDIR)/$(LIB).a(sggap.o) \
+	$(LIBDIR)/$(LIB).a(sgstation.o) \
+	$(LIBDIR)/$(LIB).a(show.o) \
+	$(LIBDIR)/$(LIB).a(showcldr.o) \
+	$(LIBDIR)/$(LIB).a(skipbytes.o) \
+	$(LIBDIR)/$(LIB).a(skipwht.o) \
+	$(LIBDIR)/$(LIB).a(sresp.o) \
+	$(LIBDIR)/$(LIB).a(srespd.o) \
+	$(LIBDIR)/$(LIB).a(srespsetup.o) \
+	$(LIBDIR)/$(LIB).a(srotrn.o) \
+	$(LIBDIR)/$(LIB).a(stdize.o) \
+	$(LIBDIR)/$(LIB).a(stdunfm.o) \
+	$(LIBDIR)/$(LIB).a(taddi2.o) \
+	$(LIBDIR)/$(LIB).a(timeint.o) \
+	$(LIBDIR)/$(LIB).a(tryresp.o) \
+	$(LIBDIR)/$(LIB).a(tt.o) \
+	$(LIBDIR)/$(LIB).a(verbosity.o) \
+	$(LIBDIR)/$(LIB).a(wrtblk.o)
+
+
+$(LIBDIR)/$(LIB).a(addevt.o): phstable.h
+$(LIBDIR)/$(LIB).a(addphase.o): phstable.h
+$(LIBDIR)/$(LIB).a(bflush.o): seedbuf.h
+$(LIBDIR)/$(LIB).a(chknown.o): seeddefs.h seedparam.h seedtrees.h cbufcm.h
+$(LIBDIR)/$(LIB).a(closechn.o): seeddefs.h seedparam.h seedtrees.h
+$(LIBDIR)/$(LIB).a(closechng.o): gramdb.h
+$(LIBDIR)/$(LIB).a(closegram.o): gramdb.h
+$(LIBDIR)/$(LIB).a(closestn.o): seeddefs.h seedparam.h seedtrees.h
+$(LIBDIR)/$(LIB).a(clsseeddb.o): seeddefs.h seedparam.h seedtrees.h
+$(LIBDIR)/$(LIB).a(cpgram.o): gramdb.h
+$(LIBDIR)/$(LIB).a(dfind.o): seeddefs.h seedparam.h seedtrees.h dbdocm.h cbufcm.h phstable.h
+$(LIBDIR)/$(LIB).a(dget.o): seedparam.h seedtrees.h
+$(LIBDIR)/$(LIB).a(eatblock.o): seeddefs.h seedparam.h seedcommun.h seedtrees.h
+$(LIBDIR)/$(LIB).a(eatseed.o): seedparam.h seedcommun.h seedbuf.h seedtrees.h dbdocm.h cbufcm.h
+$(LIBDIR)/$(LIB).a(evlphs.o): phases.h
+$(LIBDIR)/$(LIB).a(findchn.o): seeddefs.h seedparam.h seedtrees.h dbdocm.h
+$(LIBDIR)/$(LIB).a(findstn.o): seeddefs.h seedparam.h seedtrees.h dbdocm.h
+$(LIBDIR)/$(LIB).a(getblkt.o): seeddefs.h seedparam.h
+$(LIBDIR)/$(LIB).a(getblock.o): seedbuf.h   
+$(LIBDIR)/$(LIB).a(getblocka.o): seedbuf.h seeddefs.h seedparam.h seedcommun.h
+$(LIBDIR)/$(LIB).a(getblockb.o): seedtab.h
+$(LIBDIR)/$(LIB).a(getbytes.o): seedbuf.h 
+$(LIBDIR)/$(LIB).a(getfield.o): seeddefs.h seedparam.h
+$(LIBDIR)/$(LIB).a(getlrec.o): seedbuf.h seedparam.h
+$(LIBDIR)/$(LIB).a(getseeddefs.o): seeddefs.h seedparam.h
+$(LIBDIR)/$(LIB).a(getsti.o): seedparam.h seedtrees.h cbufcm.h
+$(LIBDIR)/$(LIB).a(ggetlrec.o): seedparam.h seedbuf.h
+$(LIBDIR)/$(LIB).a(gheader.o): seedparam.h
+$(LIBDIR)/$(LIB).a(gheader0.o): seedparam.h
+$(LIBDIR)/$(LIB).a(gramnsubs.o): gramblock.h
+$(LIBDIR)/$(LIB).a(gramrate.o): gramblock.h
+$(LIBDIR)/$(LIB).a(gramtable.o): gramdb.h gramblock.h
+$(LIBDIR)/$(LIB).a(gsetup1.o): seedparam.h seedbuf.h
+$(LIBDIR)/$(LIB).a(ifindtyp.o): seeddefs.h seedparam.h
+$(LIBDIR)/$(LIB).a(iseedtp.o): seeddefs.h seedparam.h
+$(LIBDIR)/$(LIB).a(limphase.o): phstable.h
+$(LIBDIR)/$(LIB).a(loadgram.o): seeddefs.h seedparam.h seedtrees.h gramblock.h cbufcm.h rspaddrs.h
+$(LIBDIR)/$(LIB).a(loadphs.o): phases.h
+$(LIBDIR)/$(LIB).a(locltft.o): seedparam.h
+$(LIBDIR)/$(LIB).a(lsstn.o): seeddefs.h seedparam.h seedtrees.h dbdocm.h
+$(LIBDIR)/$(LIB).a(makechinfo.o): seeddefs.h seedparam.h seedtrees.h gramblock.h
+$(LIBDIR)/$(LIB).a(makestinfo.o): seedparam.h seedtrees.h gramblock.h
+$(LIBDIR)/$(LIB).a(ndecod.o): seeddefs.h seedparam.h
+$(LIBDIR)/$(LIB).a(openchnk.o): seeddefs.h seedparam.h seedtrees.h
+$(LIBDIR)/$(LIB).a(openchngk.o): gramdb.h
+$(LIBDIR)/$(LIB).a(opengram.o): gramdb.h
+$(LIBDIR)/$(LIB).a(openstnk.o): seeddefs.h seedparam.h seedtrees.h
+$(LIBDIR)/$(LIB).a(opnseeddb.o): seeddefs.h seedparam.h seedtrees.h
+$(LIBDIR)/$(LIB).a(pcaldr.o): seeddefs.h seedparam.h seedtrees.h
+$(LIBDIR)/$(LIB).a(phstim.o): phstable.h
+$(LIBDIR)/$(LIB).a(putbytes.o): seedobuf.h
+$(LIBDIR)/$(LIB).a(res2bl.o): seeddefs.h cbufcm.h
+$(LIBDIR)/$(LIB).a(rtrv.o): seedparam.h seedtrees.h seedbuf.h gramdb.h cbufcm.h
+$(LIBDIR)/$(LIB).a(sacgram.o): sacfile.h dbdocm.h
+$(LIBDIR)/$(LIB).a(saveabbrvs.o): seeddefs.h seedparam.h seedcommun.h seedtrees.h
+$(LIBDIR)/$(LIB).a(savechn.o): seeddefs.h seedparam.h seedcommun.h seedtrees.h
+$(LIBDIR)/$(LIB).a(savegram.o): gramdb.h
+$(LIBDIR)/$(LIB).a(savesegs.o): seedparam.h seedcommun.h seedtrees.h
+$(LIBDIR)/$(LIB).a(savestn.o): seeddefs.h seedparam.h seedcommun.h seedtrees.h
+$(LIBDIR)/$(LIB).a(savevol.o): seedparam.h seedcommun.h seedtrees.h
+$(LIBDIR)/$(LIB).a(scaldr.o): seeddefs.h seedparam.h seedtrees.h dbdocm.h
+$(LIBDIR)/$(LIB).a(setup1.o): seedbuf.h
+$(LIBDIR)/$(LIB).a(sgchannel.o): gramblock.h
+$(LIBDIR)/$(LIB).a(sgdumpah.o): gramblock.h phstable.h seedparam.h rspaddrs.h
+$(LIBDIR)/$(LIB).a(sgdumpahx.o): gramblock.h phstable.h seedparam.h rspaddrs.h
+$(LIBDIR)/$(LIB).a(sgdumpascii.o): gramblock.h
+$(LIBDIR)/$(LIB).a(sgdumpsac.o): gramblock.h phstable.h seedparam.h rspaddrs.h
+$(LIBDIR)/$(LIB).a(sggap.o): gramblock.h
+$(LIBDIR)/$(LIB).a(sgstation.o): gramblock.h
+$(LIBDIR)/$(LIB).a(show.o): seeddefs.h seedparam.h seedtrees.h cbufcm.h
+$(LIBDIR)/$(LIB).a(skipbytes.o): seedbuf.h
+$(LIBDIR)/$(LIB).a(sresp.o): seedparam.h rspaddrs.h
+$(LIBDIR)/$(LIB).a(srespd.o): seedparam.h rspaddrs.h
+$(LIBDIR)/$(LIB).a(srespsetup.o): seedparam.h rspaddrs.h
+$(LIBDIR)/$(LIB).a(stdize.o): seeddefs.h seedparam.h seedtrees.h seedcommun.h
+$(LIBDIR)/$(LIB).a(stdunfm.o): seeddefs.h seedparam.h
+$(LIBDIR)/$(LIB).a(tryresp.o): seedparam.h seedtrees.h cbufcm.h
+$(LIBDIR)/$(LIB).a(wrtblk.o): seeddefs.h seedparam.h
+
+include	$(HOME)/etc/Makeranlib.${MS}

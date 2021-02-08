@@ -1,0 +1,111 @@
+
+
+
+
+
+c-------------------------------------------------------------------------------
+      integer function gramtable(iadgtr)
+      include 'gramdb.h'
+      include '../libdb/dblib.h'
+      include 'gramblock.h'
+      logical trfind,trnext
+      integer trreadl
+      dimension key8(8)
+      dimension key(7)
+      character*28 ckey
+      equivalence (key,ckey)
+      character*20 ckeyf
+      key(1)=z'80000000'
+      ifirstgram=1
+
+      call balloc(LTGTHDR,gramtable)
+      nwords=LTGTHDR
+      ckeyf=' '
+      ntrace=0
+      key(1)=z'80000000'
+      if(trfind(ibig(iadgtr+OGHTGS),key,7,iok,ioi)) pause 'getgram: small found'
+      do while(trnext(ibig(iadgtr+OGHTGS),1,iok,ioi))
+        do i=1,7
+          key(i)=ibig(iok+i-1)
+        enddo
+        call byswap4(key,7)
+        isub=ichar(ckey(14:14))
+        ckey(14:14)=char(0)
+        if(ckey(1:20).ne.ckeyf) then
+          ntrace=ntrace+1
+          numsubs=0
+          ckeyf=ckey(1:20)
+          call balloc(LTENTRY,iadent)
+          nwords=nwords+LTENTRY
+          if(ntrace.eq.1) ibig(gramtable+OTGETIT)=iadent-gramtable
+          do i=1,5
+            ibig(iadent+i-1)=key(i)
+          enddo
+          do is=1,LMXCHNL
+            ibig(iadent+LTHEADR+LTSUBEN*(is-1)+OTSBNPC)=-1
+          enddo
+          ibig(iadent+OTNSUBS)=0
+        endif
+        numsubs=max0(isub,numsubs)
+c       if(isub.ne.numsubs) pause 'gramtable: unexpected subchannel id'
+        if(numsubs.gt.LMXCHNL) pause 'getgram: too many subchannels'
+        ibig(iadent+OTNSUBS)=numsubs
+        do i=1,2
+          ibig(iadent+LTHEADR+LTSUBEN*(isub-1)+i-1)=key(5+i)
+        enddo
+        ibig(iadent+LTHEADR+LTSUBEN*(isub-1)+OTSBNPC)=0
+        
+      enddo
+      ibig(gramtable+OTNGRAM)=ntrace
+      do itrace=1,ntrace
+        iadent=gramtable+LTGTHDR+(itrace-1)*LTENTRY
+        nsubs=ibig(iadent+OTNSUBS)
+        call balloc(1,iplace1)
+        call dalloc(1,iplace1)
+        do isub=1,nsubs
+          if(ibig(iadent+LTHEADR+LTSUBEN*(isub-1)+OTSBNPC).ge.0) then
+            write(ckey,"(7a4)") (ibig(iadent+i-1),i=1,5)
+     1       ,(ibig(iadent+LTHEADR+LTSUBEN*(isub-1)+i-1),i=1,2)
+            ckey(14:14)=char(isub)
+            call openchngk(iadgtr,ckey,1,ierr)
+          endif
+        enddo
+        call balloc(1,iplace2)
+        call dalloc(1,iplace2)
+        ksub=0
+        do isub=1,nsubs
+          if(ibig(iadent+LTHEADR+LTSUBEN*(isub-1)+OTSBNPC).ge.0) then
+            ksub=ksub+1
+            key8(1)=z'80000000'
+            if(trfind(ibig(iadgtr+OGHTCG+ksub-1),key8,8,iok,ioi)) pause 'getgram: small found in itchng'
+            npiece=0
+            do while(trnext(ibig(iadgtr+OGHTCG+ksub-1),1,iok,ioi))
+              do i=1,8
+                key8(i)=ibig(iok+i-1)
+              enddo
+              npiece=npiece+1
+              call balloc(LTSBPCE,iadpc)
+              nwords=nwords+LTSBPCE
+              if(npiece.eq.1) ibig(iadent+LTHEADR+LTSUBEN*(isub-1)+OTSBPAD)=iadpc-gramtable-iplace2+iplace1
+              ibig(iadent+LTHEADR+LTSUBEN*(isub-1)+OTSBNPC)=npiece
+              do i=1,8
+                ibig(iadpc+i-1)=key8(i)
+              enddo
+              ibig(iadpc+OTPCNSM)=trreadl(ibig(iadgtr+OGHTCG+ksub-1),ibig(iadpc+OTPCLUR),ibig(iadpc+OTPCBYT))
+            enddo
+          endif
+        enddo
+        call balloc(1,iplace3)
+        call dalloc(1,iplace3)
+        call dalloc(iplace3-iplace2,iplace2)
+        call closechng(iadgtr)
+        do i=1,iplace3-iplace2
+          ibig(iplace1+i-1)=ibig(iplace2+i-1)
+        enddo
+        call balloc(iplace3-iplace2,iad)
+        if(iad.ne.iplace1) pause 'wrong place'
+        if(iad+iplace3-iplace2-gramtable.ne.nwords) pause 'wrong number of words'
+      enddo
+      ibig(gramtable+OTSPACE)=nwords
+      return
+      end
