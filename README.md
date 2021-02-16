@@ -22,4 +22,6 @@ digit\_recognizer: CNN architecture for the mnist handwritten digit classifier.
 xh\_src: C libary for processing seismic data. Includes library for beamforming
 and vincenty distance calculations.
 
+santander\_transaction: Two neural networks designed to predict 
+likelihood of a future transaction given a history of previous transactions
 
