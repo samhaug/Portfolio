@@ -25,3 +25,6 @@ and vincenty distance calculations.
 santander\_transaction: Two neural networks designed to predict 
 likelihood of a future transaction given a history of previous transactions
 
+class\_activation\_map: Helps to understand why an image classification 
+model makes the predicitons that it does
+
